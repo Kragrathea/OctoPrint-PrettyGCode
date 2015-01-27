@@ -18,7 +18,7 @@ Clone your repository into a new development directory and rename ``octoprint_sk
 
 Modify `setup.py`'s `plugin_<xyz>` settings so that they match your plugin, e.g.:
 
-´´´ python
+``` python
 plugin_identifier = "mynewplugin"
 plugin_name = "OctoPrint-MyNewPlugin"
 plugin_version = "1.0"
@@ -26,11 +26,11 @@ plugin_description = "Awesome plugin that does something"
 plugin_author = "You"
 plugin_author_email = "you@somewhere.net"
 plugin_url = "https://github.com/you/OctoPrint-MyNewPlugin"
-´´´
+```
 
 Then implement your plugin under ``octoprint_mynewplugin`` (don't forget to adjust ``__init__.py``!), e.g.:
 
-´´´ python
+``` python
 # coding=utf-8
 from __future__ import absolute_import
 
@@ -41,7 +41,7 @@ class HelloWorldPlugin(octoprint.plugin.StartupPlugin):
         self._logger.info("Hello World!")
 __plugin_name__ = "Hello World"
 __plugin_implementations__ = [HelloWorldPlugin()]
-´´´
+```
 
 Test it (e.g. via ``python setup.py develop``. If everything works like it should, commit your code, then push it to
 your plugin's repository (this assumes you already created it on Github as ``you/OctoPrint-MyNewPlugin``), e.g.:
