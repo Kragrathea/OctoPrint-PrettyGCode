@@ -39,12 +39,14 @@ import octoprint.plugin
 class HelloWorldPlugin(octoprint.plugin.StartupPlugin):
     def on_after_startup(self):
         self._logger.info("Hello World!")
+        
 __plugin_name__ = "Hello World"
 __plugin_implementations__ = [HelloWorldPlugin()]
 ```
 
-Test it (e.g. via ``python setup.py develop``. If everything works like it should, commit your code, then push it to
-your plugin's repository (this assumes you already created it on Github as ``you/OctoPrint-MyNewPlugin``), e.g.:
+Test it (e.g. via ``python setup.py develop``). If everything works, write a nice ``README.md``, replacing the existing one.
+Commit your code, then push it to your plugin's repository (this assumes you already created it on Github as
+``you/OctoPrint-MyNewPlugin``), e.g.:
 
     git commit -a -m "Initial commit of MyNewPlugin"
     git remote set-url origin git@github.com:you/OctoPrint-MyNewPlugin.git
