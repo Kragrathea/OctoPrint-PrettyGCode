@@ -56,6 +56,11 @@ def package_data_dirs(source, sub_folders):
 
 	return dirs
 
+
+def requirements(filename):
+	return filter(lambda line: line and not line.startswith("#"), map(lambda line: line.strip(), open(filename).read().split("\n")))
+
+
 def params():
 	# Our metadata, as defined above
 	name = plugin_name
@@ -78,7 +83,7 @@ def params():
 	zip_safe = False
 
 	# Read the requirements from our requirements.txt file
-	install_requires = open("requirements.txt").read().split("\n")
+	install_requires = requirements("requirements.txt")
 
 	# Hook the plugin into the "octoprint.plugin" entry point, mapping the plugin_identifier to the plugin_package.
 	# That way OctoPrint will be able to find the plugin and load it.
