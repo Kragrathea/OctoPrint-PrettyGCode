@@ -15,4 +15,4 @@ class SkeletonPlugin(octoprint.plugin.TemplatePlugin):
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
 __plugin_name__ = "Plugin Skeleton"
-__plugin_implementations__ = [SkeletonPlugin()]
+__plugin_implementation__ = SkeletonPlugin()
