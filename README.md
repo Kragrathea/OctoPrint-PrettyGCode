@@ -3,9 +3,9 @@ OctoPrint Plugin Skeleton
 
 This is a basic plugin skeleton that you can use as a basis for your own OctoPrint plugin.
 
-You can copy the files to a folder of your choice, or just clone this repository, renaming it in the process, and check
-it out. Then modify ``setup.py`` to fit your plugin, rename ``octoprint_skeleton`` accordingly and finally implement
-your plugin under ``octoprint_<plugin identifier>``.
+You can copy the files to a folder of your choice, or just clone this repository, renaming it in the process. Then 
+modify ``setup.py`` to fit your plugin, rename ``octoprint_skeleton`` accordingly and finally implement your plugin 
+under ``octoprint_<plugin identifier>``.
 
 Example Usage
 -------------
@@ -41,7 +41,7 @@ class HelloWorldPlugin(octoprint.plugin.StartupPlugin):
         self._logger.info("Hello World!")
         
 __plugin_name__ = "Hello World"
-__plugin_implementations__ = [HelloWorldPlugin()]
+__plugin_implementation__ = HelloWorldPlugin()
 ```
 
 Test it (e.g. via ``python setup.py develop``). If everything works, write a nice ``README.md``, replacing the existing one.
@@ -53,5 +53,5 @@ Commit your code, then push it to your plugin's repository (this assumes you alr
     git push -u origin master
 
 Congratulations, you are now the proud maintainer of a new OctoPrint plugin! :) Don't forget to add an entry to the
-[wiki](https://github.com/foosel/OctoPrint/wiki#plugins) once it's suitable for general consumption, so that other's
+[wiki](https://github.com/foosel/OctoPrint/wiki#plugins) once it's suitable for general consumption, so that others
 may find it!
