@@ -1,2 +1,10 @@
-OctoPrint
+###
+# This file is only here to make sure that something like
+#
+#    pip install -e .[develop]
+#
+# works as expected. Requirements can be found in setup.py in the
+# variables INSTALL_REQUIRES and EXTRA_REQUIRES.
+###
 
+.
