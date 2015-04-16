@@ -41,15 +41,7 @@ plugin_additional_data = []
 
 ########################################################################################################################
 
-# I18N setup
-I18N_MAPPING_FILE = "babel.cfg"
-I18N_DOMAIN = "messages"
-I18N_INPUT_DIRS = "."
-I18N_OUTPUT_DIR_PY = os.path.join(plugin_package, "translations")
-I18N_OUTPUT_DIR_JS = os.path.join(plugin_package, "static", "js", "i18n")
-I18N_POT_FILE = os.path.join(I18N_OUTPUT_DIR_PY, "messages.pot")
-
-# Requirements for out application
+# Requirements for our application
 INSTALL_REQUIRES = [
 	"OctoPrint"
 ]
@@ -62,6 +54,15 @@ EXTRA_REQUIRES = dict(
 		"po2json"
 	]
 )
+
+# I18N setup
+I18N_MAPPING_FILE = "babel.cfg"
+I18N_DOMAIN = "messages"
+I18N_INPUT_DIRS = "."
+I18N_OUTPUT_DIR_PY = os.path.join(plugin_package, "translations")
+I18N_OUTPUT_DIR_JS = os.path.join(plugin_package, "static", "js", "i18n")
+I18N_POT_FILE = os.path.join(I18N_OUTPUT_DIR_PY, "messages.pot")
+
 
 def package_data_dirs(source, sub_folders):
 	import os
@@ -315,12 +316,6 @@ def params():
 
 	install_requires = INSTALL_REQUIRES
 	extras_require = EXTRA_REQUIRES
-	
-	if os.environ.get('READTHEDOCS', None) == 'True':
-		# we can't tell read the docs to please perform a pip install -e .[develop], so we help
-		# it a bit here by explicitly adding the development dependencies, which include our
-		# documentation dependencies
-		install_requires = install_requires + extras_require['develop']
 
 	# Hook the plugin into the "octoprint.plugin" entry point, mapping the plugin_identifier to the plugin_package.
 	# That way OctoPrint will be able to find the plugin and load it.
