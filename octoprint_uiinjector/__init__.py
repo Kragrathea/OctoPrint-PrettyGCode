@@ -10,7 +10,10 @@ class UIInjectorPlugin(octoprint.plugin.StartupPlugin,
     def on_after_startup(self):
         self._logger.info("UI Injector Started.")
     pass
-
+    def get_assets(self):
+        return dict(
+            js=["js/uiinjector.js"]
+        )
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
