@@ -3,7 +3,56 @@ $(function () {
     function UIInjectorViewModel(parameters) {
         var self = this;
         console.log("UIInjector View Model");
-        alert("UIInjector");
+
+        var window_states = {}
+        try {
+            window_states = window.JSON.parse($.cookie("window_states"));
+        }
+        catch (err) { }
+        console.log(window_states);
+
+
+        //$("#tabs_content >div")
+        var width = $("#tabs_content").width();
+        var height = $("#tabs_content").height();
+
+        $("#tabs_content >div").each(function (i, el) {
+            console.log(el.id)
+
+            $(el).dialog({
+                modal: false,
+                //autoOpen: false,
+                width: width,
+                height: height,
+
+                dragStop: function (event, ui) {
+                    console.log(event.target.id);
+                    $.cookie(event.target.id, window.JSON.stringify(ui.position));
+                },
+                open: function (event, ui) {
+                    try {
+                        // Restore Dialog Position
+                        var cookie = $.cookie(event.target.id);
+                        var pos = window.JSON.parse(cookie)
+                        $(this).dialog('widget').css({ "left": pos.left, "top": pos.top });
+                        $(this).dialog('option', 'title', event.target.id);
+                    } catch (err) { }
+                },
+                close: function (event, ui) {
+                    try {
+                        window_states[event.target.id] = "closed";
+                        $.cookie("window_states", window.JSON.stringify(window_states));
+                    } catch (err) { }
+                },
+            }).dialog("widget").draggable("option", "containment", "none");
+
+            if (window_states[el.id] == "closed") {
+                //            $(el).dialog("close");
+            }
+        });
+
+
+        //alert("UIInjector");
         //self.settings = parameters[0];
 
         //// this will hold the URL currently displayed by the iframe
@@ -40,6 +89,6 @@ $(function () {
         ["settingsViewModel"],
 
         // Finally, this is the list of selectors for all elements we want this view model to be bound to.
-        ["body"]
+        ["#injector_link"]
     ]);
 });
