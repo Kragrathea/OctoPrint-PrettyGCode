@@ -1,8 +1,9 @@
 $(function () {
+    console.log("Create UIInjector View Model");
     function UIInjectorViewModel(parameters) {
         var self = this;
-        alert("UIInjector");
         console.log("UIInjector View Model");
+        alert("UIInjector");
         //self.settings = parameters[0];
 
         //// this will hold the URL currently displayed by the iframe

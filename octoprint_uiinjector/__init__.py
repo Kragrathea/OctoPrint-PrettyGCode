@@ -5,7 +5,8 @@ import octoprint.plugin
 
 class UIInjectorPlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.TemplatePlugin,
-                       octoprint.plugin.SettingsPlugin):
+                       octoprint.plugin.SettingsPlugin,
+                       octoprint.plugin.AssetPlugin):
     def on_after_startup(self):
         self._logger.info("UI Injector Started.")
     pass
