@@ -4,6 +4,31 @@ $(function () {
         var self = this;
         console.log("UIInjector View Model");
 
+
+        urlParam = function (name) {
+            var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            if (results == null) {
+                return null;
+            }
+            return decodeURI(results[1]) || 0;
+        }
+
+
+        var focus = urlParam("focus");
+        if (focus != null) {
+
+            console.log("Focusing on:" + focus);
+            $("body").children().hide();
+            $("#webcam_container").hide();
+            if (!focus.startsWith("."))
+                focus = "#" + focus;
+            var el = $(focus)[0];
+            $("body").prepend(el);
+
+        }
+
+        return;
+
         var window_states = {}
         try {
             window_states = window.JSON.parse($.cookie("window_states"));
