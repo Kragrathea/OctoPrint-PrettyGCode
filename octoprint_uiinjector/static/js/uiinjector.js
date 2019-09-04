@@ -79,6 +79,129 @@ $(function () {
 */
         //alert("UIInjector");
         //self.settings = parameters[0];
+
+        var container;
+        var camera, cameraControls, scene, renderer, loader;
+        var gcodeWid = 1280 / 2;
+        var gcodeHei = 960 / 2;
+        var visLayer = 1;
+
+        function loadGcode(url) {
+            function animate() {
+
+                //         var somethingVis=false;
+                //         scene.traverse ( function (child) {
+                //             if (child.name.startsWith("layer")
+                //                 && visLayer==1
+                //                  /* instanceof THREE.LineSegments*/) {
+                //                 child.visible = false;
+                //             }
+                //             if (child.name==="layer"+visLayer){
+                //                 child.visible = true;
+                //                 somethingVis=true;
+                //             }
+                //         });
+                //         //wrap
+                //         if(!somethingVis
+                //            //|| visLayer>30
+                //           ){
+                //             visLayer=1;
+                //         }else
+                //             visLayer++;
+
+
+                const delta = clock.getDelta();
+                const elapsed = clock.getElapsedTime();
+                const updated = cameraControls.update(delta);
+                cameraControls.dollyToCursor = true;
+
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+
+            var gwin = $("<div class='gwin' style='position:absolute;top:0px;width:" + gcodeWid + "px;height;" + gcodeHei + "px;opacity:0.8;z-index=5;'></div>");
+
+            //var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
+            //gwin.append(handle);
+
+            container = $("<div class='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
+            gwin.append(container);
+
+            $("body").append(gwin);
+
+            $('.gwin').resizable({
+                resize: function (event, ui) {
+                    camera.aspect = ui.size.width / ui.size.height;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(ui.size.width, ui.size.height);
+                }
+            });
+            $('.gwin').draggable({
+                handle: "#handle",
+                appendTo: 'body',
+            });
+
+            camera = new THREE.PerspectiveCamera(60, gcodeWid / gcodeHei, 0.1, 10000);
+            camera.position.set(310, 50, 0);
+
+            CameraControls.install({ THREE: THREE });
+            var clock = new THREE.Clock();
+            var cameraControls = new CameraControls(camera, container[0]);
+
+            // Mouse buttons
+            cameraControls.mouseButtons = { ORBIT: THREE.MOUSE.RIGHT, /*ZOOM: THREE.MOUSE.MIDDLE,*/ PAN: THREE.MOUSE.MIDDLE };
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xe0e0e0);
+
+            var grid = new THREE.GridHelper(2000, 40, 0x000000, 0x000000);
+            grid.material.opacity = 0.2;
+            grid.material.transparent = true;
+            scene.add(grid);
+
+
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(gcodeWid, gcodeHei);
+            container.append(renderer.domElement);
+
+            loader = new GCodeParser();
+
+            var object = loader.getObject();
+            object.position.set(- 0, - 0, 0);
+            scene.add(object);
+
+            animate();
+
+            var file_url = url;//'http://192.168.1.5/downloads/files/local/CCR10_Raised_Deck_Cabin.gcode';
+            var myRequest = new Request(file_url);
+            fetch(myRequest)
+                .then(function (response) {
+                    var contentLength = response.headers.get('Content-Length');
+                    var myReader = response.body.getReader();
+                    var decoder = new TextDecoder();
+                    var buffer = '';
+                    var received = 0;
+                    myReader.read().then(function processResult(result) {
+                        if (result.done) {
+                            return;
+                        }
+                        received += result.value.length;
+                        //                buffer += decoder.decode(result.value, {stream: true});
+                        /* process the buffer string */
+                        loader.parse(decoder.decode(result.value, { stream: true }));
+
+                        // read the next piece of the stream and process the result
+                        return myReader.read().then(processResult);
+                    })
+                })
+
+
+        }
+
+
+        var gwin_width = 1280;
+        var gwin_height = 720;
         console.log("Start of three.js setup")
         $("body").append($("<div id='demo' style='width:500px;height:500px'></div>"))
         var createFatLineGeometry = function (opt) {
@@ -136,7 +259,7 @@ $(function () {
                 linewidth: opt.width, // in pixels
                 vertexColors: THREE.VertexColors
             });
-            matLine.resolution.set(320, 240);
+            matLine.resolution.set(gwin_width, gwin_height);
 
             var line = new THREE.Line2(opt.geo, matLine);
 
@@ -152,14 +275,14 @@ $(function () {
             });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setClearColor(0x000000, 0.0);
-            renderer.setSize(320, 240);
+            renderer.setSize(gwin_width, gwin_height);
             document.getElementById('demo').appendChild(renderer.domElement);
 
             // SCENE
             var scene = new THREE.Scene();
 
             // CAMERA
-            var camera = new THREE.PerspectiveCamera(40, 500 / 500, 1, 1000);
+            var camera = new THREE.PerspectiveCamera(40, gwin_width / gwin_height, 1, 1000);
             camera.position.set(-40, 0, 60);
 
             // CONTROLS
@@ -198,7 +321,7 @@ $(function () {
 
                 // main scene
                 renderer.setClearColor(0x000000, 0);
-                renderer.setViewport(0, 0, 320, 240);
+                renderer.setViewport(0, 0, gwin_width, gwin_height);
 
                 // renderer will set this eventually
                 renderer.render(scene, camera);
