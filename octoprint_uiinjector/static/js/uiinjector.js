@@ -26,7 +26,7 @@ $(function () {
             $("body").prepend(el);
 
         }
-
+/*
         return;
 
         var window_states = {}
@@ -76,7 +76,7 @@ $(function () {
             }
         });
 
-
+*/
         //alert("UIInjector");
         //self.settings = parameters[0];
         console.log("Start of three.js setup")
