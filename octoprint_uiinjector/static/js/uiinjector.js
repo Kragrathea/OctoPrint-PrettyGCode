@@ -199,6 +199,49 @@ $(function () {
 
         }
 
+        var curJobName = "";
+        function updateStatus() {
+            $.ajax({
+                url: '/api/job',
+                type: 'GET',
+                dataType: 'json',
+                success: function (d) {
+                    if (curJobName != d.job.file.path) {
+                        curJobName = d.job.file.path;
+                        loadGcode('http://192.168.1.5/downloads/files/local/' + curJobName);
+                    }
+
+                    //var div = $("#status");
+                    //div.empty();
+                    //div.append("<span>" + d.state + ":</span>");
+                    //div.append("<span>" + d.job.file.display + "</span><br>");
+
+                    //div.append("<span style='width:200px'>Done:" + Math.round(d.progress.completion) + "%</span>");
+
+
+                    //div.append("<br><span>Left:" + secondsTimeSpanToHMS(d.progress.printTimeLeft) + "</span>");
+
+                    //var currentdate = new Date();
+
+                    //currentdate.setSeconds(currentdate.getSeconds() + d.progress.printTimeLeft);
+                    //var datetime = currentdate.getHours() + ":"
+                    //    + currentdate.getMinutes() + ":"
+                    //    + currentdate.getSeconds();
+
+                    //div.append("<br><span>ETA:" + datetime + "</span>");
+
+
+                },
+                error: function () { /*alert('boo!');*/ },
+                beforeSend: function (xhr) { xhr.setRequestHeader('X-Api-Key', '74FB5A87481A4D048F0F723D7D9B7CC3'); }
+            });
+            //    });
+        }
+
+        setInterval(function () {
+            updateStatus();
+        }, 1000);
+
 
         var gwin_width = 1280;
         var gwin_height = 720;
