@@ -80,7 +80,7 @@ $(function () {
         //alert("UIInjector");
         //self.settings = parameters[0];
         console.log("Start of three.js setup")
-
+        $("body").append($("<div id='demo' style='width:500px;height:500px'></div>"))
         var createFatLineGeometry = function (opt) {
 
             opt = opt || {};
@@ -159,7 +159,7 @@ $(function () {
             var scene = new THREE.Scene();
 
             // CAMERA
-            var camera = new THREE.PerspectiveCamera(40, 320 / 240, 1, 1000);
+            var camera = new THREE.PerspectiveCamera(40, 500 / 500, 1, 1000);
             camera.position.set(-40, 0, 60);
 
             // CONTROLS
