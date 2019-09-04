@@ -12,7 +12,9 @@ class UIInjectorPlugin(octoprint.plugin.StartupPlugin,
     pass
     def get_assets(self):
         return dict(
-            js=["js/uiinjector.js","js/three.min.js","js/OrbitControls.js"]
+            js=["js/uiinjector.js","js/three.min.js","js/OrbitControls.js","js/GCodeLoader.js",
+                "js/Line2.js","js/LineGeometry.js",
+                "js/LineMaterial.js","js/LineSegments2.js","js/LineSegmentsGeometry.js"]
         )
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
