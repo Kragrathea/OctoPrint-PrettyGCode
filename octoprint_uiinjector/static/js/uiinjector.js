@@ -200,7 +200,8 @@ $(function () {
                 }
             }
 
-            var rainbow = new THREE.Lut("rainbow", 128);
+            var rainbow = new THREE.Lut("rainbow", 64);
+            rainbow.setMax(64);
 
 
             function addObject(vertex, extruding) {
@@ -219,7 +220,7 @@ $(function () {
 
                     xmatLine = new THREE.LineMaterial({
                         linewidth: 6, // in pixels
-                        color: rainbow.getColor(layers.length)
+                        color: rainbow.getColor(layers.length%64).getHex()
                     });
                     xmatLine.resolution.set(gcodeWid, gcodeHei);
 
@@ -273,6 +274,19 @@ $(function () {
         var gcodeWid = 1280 ;
         var gcodeHei = 960;
         var visLayer = 1;
+
+        var LayerDisplay = function () {
+            this.start = 0;
+            this.end = 100;
+            this.displayOutline = false;
+            this.explode = function () {alert(1) };
+        };
+
+        var gui = new dat.GUI();
+        gui.add(LayerDisplay, 'start', 0, 100);
+        gui.add(LayerDisplay, 'end', 0, 100);
+        gui.add(LayerDisplay, 'displayOutline');
+        gui.add(LayerDisplay, 'explode');
 
         function loadGcode(url) {
             function animate() {
