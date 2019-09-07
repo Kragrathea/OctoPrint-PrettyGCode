@@ -5,6 +5,27 @@ $(function () {
         console.log("UIInjector View Model");
 
 
+        self.control.onTabChange = function (current, previous) {
+            alert(1);
+            //// replaced #control with #tab_plugin_webcamtab
+            //if (current == "#tab_plugin_webcamtab") {
+            //    self.control._enableWebcam();
+            //} else if (previous == "#tab_plugin_webcamtab") {
+            //    self.control._disableWebcam();
+            //}
+        };
+
+        self.onAfterBinding = function () {
+            //var tab = $("#tab_plugin_webcamtab");
+            //var webcam = $("#webcam_container");
+            //if (webcam) {
+            //    var hint = webcam.next();
+            //    tab.append(webcam.detach());
+            //    if (hint && hint.attr("data-bind") === "visible: keycontrolPossible") {
+            //        tab.append(hint.detach());
+            //    }
+            //}
+        };
         urlParam = function (name) {
             var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
             if (results == null) {
@@ -359,7 +380,7 @@ $(function () {
             window.myScene = scene;
 
             //todo. make bed sized. 
-            var grid = new THREE.GridHelper(300, 30, 0x000000, 0x000000);
+            var grid = new THREE.GridHelper(300, 30, 0x000000, 0x888888);
             grid.position.set(150,0, -150);
             grid.material.opacity = 0.2;
             grid.material.transparent = true;
