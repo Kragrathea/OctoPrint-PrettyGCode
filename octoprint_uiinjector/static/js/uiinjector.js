@@ -4,18 +4,8 @@ $(function () {
         var self = this;
         console.log("UIInjector View Model");
 
-
-        self.control.onTabChange = function (current, previous) {
-            alert(1);
-            //// replaced #control with #tab_plugin_webcamtab
-            //if (current == "#tab_plugin_webcamtab") {
-            //    self.control._enableWebcam();
-            //} else if (previous == "#tab_plugin_webcamtab") {
-            //    self.control._disableWebcam();
-            //}
-        };
-
         self.onAfterBinding = function () {
+            console.log("onAfterBinding")
             //var tab = $("#tab_plugin_webcamtab");
             //var webcam = $("#webcam_container");
             //if (webcam) {
@@ -26,6 +16,19 @@ $(function () {
             //    }
             //}
         };
+
+
+        self.onTabChange = function (current, previous) {
+            // replaced #control with #tab_plugin_webcamtab
+            if (current == "#tab_plugin_uiinjector") {
+                console.log("TAB GOT FOCUS")
+                //self.control._enableWebcam();
+            } else if (previous == "#tab_plugin_uiinjector") {
+                //self.control._disableWebcam();
+            }
+        };
+
+
         urlParam = function (name) {
             var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
             if (results == null) {
@@ -335,7 +338,7 @@ $(function () {
 
                 container = $("<div class='gcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
                 gwin.append(container);
-                $("body").append(gwin);
+                $("#sexygcode").append(gwin);
 
 
                 //todo allow save/pos camera at start. 
@@ -360,17 +363,17 @@ $(function () {
                 renderer.setSize(gcodeWid, gcodeHei);
                 container.append(renderer.domElement);
 
-                $('.gwin').resizable({
-                    resize: function (event, ui) {
-                        camera.aspect = ui.size.width / ui.size.height;
-                        camera.updateProjectionMatrix();
-                        renderer.setSize(ui.size.width, ui.size.height);
-                    }
-                });
-                $('.gwin').draggable({
-                    handle: "#handle",
-                    appendTo: 'body',
-                });
+                //$('.gwin').resizable({
+                //    resize: function (event, ui) {
+                //        camera.aspect = ui.size.width / ui.size.height;
+                //        camera.updateProjectionMatrix();
+                //        renderer.setSize(ui.size.width, ui.size.height);
+                //    }
+                //});
+                //$('.gwin').draggable({
+                //    handle: "#handle",
+                //    appendTo: 'body',
+                //});
             }
 
             scene = new THREE.Scene();
