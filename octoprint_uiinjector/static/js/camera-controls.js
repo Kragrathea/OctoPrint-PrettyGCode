@@ -224,7 +224,7 @@
 
 	    _this.minPolarAngle = 0; // radians
 
-	    _this.maxPolarAngle = Math.PI; // radians
+	    _this.maxPolarAngle = Math.PI/2; // radians /2 keeps it from going below horizion. 
 
 	    _this.minAzimuthAngle = -Infinity; // radians
 
@@ -293,7 +293,8 @@
 	            break;
 
 	          case THREE.MOUSE.MIDDLE:
-	            scope._state = STATE.DOLLY;
+                    scope._state = STATE.TRUCK;
+	            //scope._state = STATE.DOLLY;
 	            break;
 
 	          case THREE.MOUSE.RIGHT:

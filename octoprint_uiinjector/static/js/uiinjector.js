@@ -75,6 +75,7 @@ $(function () {
                     var line = new THREE.Line2(geo, curMaterial);
                     line.name = 'layer#' + layers.length;
                     object.add(line);
+
                 }
             }
 
@@ -102,6 +103,12 @@ $(function () {
                 currentLayer.vertex.push(p1.x, p1.y, p1.z);
                 currentLayer.vertex.push(p2.x, p2.y, p2.z);
 
+
+                    //add mirror version
+                currentLayer.vertex.push(p1.x, p1.y, -p1.z);
+                currentLayer.vertex.push(p2.x, p2.y, -p2.z);
+
+
                 if (true)//faux shading. Darken line color based on angle
                 {
                     var deltaX = p2.x - p1.x;
@@ -120,6 +127,12 @@ $(function () {
                     //console.log(drawColor.r + " " + drawColor.g + " " + drawColor.b )
                     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
                     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+
+                    //add mirror version
+                    drawColor.setHSL(hsl.h, hsl.s, hsl.l/2);
+                    currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+                    currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+
                 }
                 else {
 
@@ -294,7 +307,7 @@ $(function () {
 
             //add gcode window to page.
             if ($(".gwin").length < 1) {
-                var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:0.8;z-index=5;'></div>");
+                var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;z-index=5;'></div>");
 
                 var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
                 gwin.append(handle);
@@ -341,6 +354,9 @@ $(function () {
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xe0e0e0);
+
+            //for debugging
+            window.myScene = scene;
 
             //todo. make bed sized. 
             var grid = new THREE.GridHelper(300, 30, 0x000000, 0x000000);
