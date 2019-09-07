@@ -286,9 +286,10 @@
 	        event.preventDefault();
 	        var prevState = scope._state;
 
+              //changed to match CURA
 	        switch (event.button) {
 	          case THREE.MOUSE.LEFT:
-	            scope._state = STATE.ROTATE;
+                scope._state = STATE.TRUCK;
 	            break;
 
 	          case THREE.MOUSE.MIDDLE:
@@ -296,7 +297,7 @@
 	            break;
 
 	          case THREE.MOUSE.RIGHT:
-	            scope._state = STATE.TRUCK;
+                scope._state = STATE.ROTATE;
 	            break;
 	        }
 

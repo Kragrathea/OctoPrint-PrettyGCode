@@ -37,9 +37,7 @@ $(function () {
 
         }
 
-
-        //todo. parser rewrite.
-        //build per "extrude" or travel. Change when extrude or type or layer changes.
+        //todo. parser rewrite. build per "extrude" or travel. Change when extrude or type or layer changes.
 
         //self.settings = parameters[0];
 
@@ -47,98 +45,17 @@ $(function () {
 
             var state = { x: 0, y: 0, z: 0, e: 0, f: 0, extruding: false, relative: false };
             var layers = [];
-
             
             var currentLayer = undefined;
 
-            var pathMaterial = new THREE.LineBasicMaterial({ color: 0xFF0000 });
-            pathMaterial.name = 'path';
-
-            var extrudingMaterial = new THREE.LineBasicMaterial({ color: 0x0000FF });
-            extrudingMaterial.name = 'extruded';
-            
-            var curColorHex = 'ff0000';
             var curColor = new THREE.Color('black');
-
-            var Bucket = function (name, color) {
-                this.name = name;
-                this.color = color;
-                this.vertexs = [];
-            };
-
-            function newLayer(line) {
-
-                if (currentLayer !== undefined) {
-                    addObject(currentLayer, true);
-
-
-        //    var line = new THREE.Line2(opt.geo, matLine);
-
-
-
-//                    if (currentLayer.curPath.length > 1) {
-//                        currentLayer.paths.push(curPath);//add previous path if valid.
-//                    }
-                    //add tube geom.
-                    //console.log(currentLayer.paths)
-/*                    for (i = 0; i < currentLayer.paths.length; i++) {
-                        var curve = new THREE.CatmullRomCurve3(currentLayer.paths[i]); 
-                        var extrudedGeometry = new THREE.TubeBufferGeometry(curve, 1, 0.2, 2, false);
-
-                        // Geometry doesn't do much on its own, we need to create a Mesh from it
-                        var extrudedMesh = new THREE.Mesh(extrudedGeometry, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
-                        object.add(extrudedMesh);
-                        //scene.add(extrudedMesh);
-                    }
-*/
-                }
-
-
-
-                currentLayer = { vertex: [], pathVertex: [], z: line.z,colors:[]};
-                layers.push(currentLayer);
-                console.log("layer #" + layers.length + " z:" + line.z);
-
-                //update ui.
-                $("#slider-vertical").slider("setMax", layers.length)
-                $("#slider-vertical").slider("setValue", layers.length)
-            }
-
-            function addSegment(p1, p2) {
-                if (currentLayer === undefined) {
-                    newLayer(p1);
-                }
-                if (state.extruding) {
-                    currentLayer.vertex.push(p1.x, p1.y, p1.z);
-                    currentLayer.vertex.push(p2.x, p2.y, p2.z);
-                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
-                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
-        //        }
-        //        colors.push(opt.color.r, opt.color.g, opt.color.b);
-
-                    //currentLayer.curPath = [];
-                    //currentLayer.curPath.push(new THREE.Vector3(p1.x, p1.y, p1.z));
-                    //currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
-                    //currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
-
-                } else {
-/*                    currentLayer.vertex.push(p1.x, p1.y, p1.z);
-                    currentLayer.vertex.push(p2.x, p2.y, p2.z);
-                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
-                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
-*/
-                    //currentLayer.curPath = [];
-                    //currentLayer.curPath.push(new THREE.Vector3(p1.x, p1.y, p1.z));
-                    //currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
-                    //currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
-
-                }
-
-            }
-
-            var rainbow = new THREE.Lut("rainbow", 64);
-            rainbow.setMax(64);
-
+            var curMaterial = new THREE.LineMaterial({
+                linewidth: 6, // in pixels
+                //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
+                vertexColors: THREE.VertexColors,
+            });
+            //todo. handle window resize
+            curMaterial.resolution.set(gcodeWid, gcodeHei);
 
             function addObject(layer, extruding) {
 
@@ -149,29 +66,68 @@ $(function () {
                 //segments.name = 'layer' + layers.length;
                 //object.add(segments);
 
-        //todo path part
-
-
                 if (layer.vertex.length > 2) {
 
                     geo = new THREE.LineGeometry();
                     geo.setPositions(layer.vertex);
                     geo.setColors(layer.colors)
 
-                    xmatLine = new THREE.LineMaterial({
-                        linewidth: 6, // in pixels
-                        //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
-                        vertexColors: THREE.VertexColors,
-                    });
-                    xmatLine.resolution.set(gcodeWid, gcodeHei);
-
-                    var line = new THREE.Line2(geo, xmatLine);
+                    var line = new THREE.Line2(geo, curMaterial);
                     line.name = 'layer#' + layers.length;
                     object.add(line);
                 }
-
-
             }
+
+
+            function newLayer(line) {
+
+                if (currentLayer !== undefined) {
+                    addObject(currentLayer, true);
+                }
+
+                currentLayer = { vertex: [], pathVertex: [], z: line.z,colors:[]};
+                layers.push(currentLayer);
+                console.log("layer #" + layers.length + " z:" + line.z);
+
+                //update ui.
+                $("#slider-vertical").slider("setMax", layers.length)
+                $("#slider-vertical").slider("setValue", layers.length)
+                layerDisplay.end = layers.length;
+            }
+
+            function addSegment(p1, p2) {
+                if (currentLayer === undefined) {
+                    newLayer(p1);
+                }
+                currentLayer.vertex.push(p1.x, p1.y, p1.z);
+                currentLayer.vertex.push(p2.x, p2.y, p2.z);
+
+                if (true)//faux shading. Darken line color based on angle
+                {
+                    var deltaX = p2.x - p1.x;
+                    var deltaY = p2.y - p1.y;
+                    var rad = Math.atan2(deltaY, deltaX);
+
+                    rad = Math.abs(rad)
+                    var per = (rad) / (2.0 * 3.1415);
+                    //console.log(rad + " " + per);
+
+                    var drawColor = new THREE.Color(curColor)
+                    var hsl = {}
+                    drawColor.getHSL(hsl);
+                    hsl.l = per+0.25;
+                    drawColor.setHSL(hsl.h,hsl.s,hsl.l);
+                    //console.log(drawColor.r + " " + drawColor.g + " " + drawColor.b )
+                    currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+                    currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+                }
+                else {
+
+                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
+                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
+                }
+            }
+
             function delta(v1, v2) {
                 return state.relative ? v2 : v2 - v1;
             }
@@ -182,7 +138,10 @@ $(function () {
 
             var previousPiece = "";
             this.parse = function (chunk) {
-//                var lines = chunk.replace(/;.+/g, '').split('\n');
+
+                //remove comments from chunk.
+                //var lines = chunk.replace(/;.+/g, '').split('\n');
+                //or not
                 var lines = chunk.split('\n');
 
                 //handle partial lines from previous chunk.
@@ -214,32 +173,26 @@ $(function () {
                     //G0/G1 - Linear Movement
                     if (cmd.startsWith(";TYPE")) {
                         if (cmd.indexOf("INNER") > -1) {
-                            curColor = new THREE.Color('green');
-
-                            curColorHex = 0xff0000;
+                            curColor = new THREE.Color(0x00ff00);//green
                         }
                         else if (cmd.indexOf("OUTER") > -1) {
-                            curColor = new THREE.Color('blue');
-                            curColorHex = 0x0000ff;
+                            curColor = new THREE.Color('red');
                         }
                         else if (cmd.indexOf("FILL") > -1) {
-                            curColor = new THREE.Color('yellow');
-                            curColorHex = 0x00ffff;
+                            curColor = new THREE.Color('orange');
                         }
                         else if (cmd.indexOf("SKIN") > -1) {
-                            curColor = new THREE.Color('red');
-                            curColorHex = 0xff00ff;
+                            curColor = new THREE.Color('yellow');
                         }
                         else if (cmd.indexOf("SUPPORT") > -1) {
                             curColor = new THREE.Color('skyblue');
-                            curColorHex = 0xff00ff;
                         }
                         else
                         {
-                            curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
+                            var curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
                             curColor = new THREE.Color(curColorHex);
+                            console.log(cmd + ' ' + curColorHex.toString(16))
                         }
-                        console.log(cmd + ' ' + curColorHex.toString(16))
                         //console.log(lines[i])
                     }
                     if (cmd === 'G0' || cmd === 'G1') {
@@ -258,8 +211,11 @@ $(function () {
                                 newLayer(line);
                             }
                         }
-                        if (cmd === 'G1')
-                            addSegment(state, line);
+
+                        //make sure extruding is updated. might not be needed.
+                        line.extruding = delta(state.e, line.e) > 0;
+                        if (line.extruding)
+                            addSegment(state, line);//only if extruding right now.
                         state = line;
                     } else if (cmd === 'G2' || cmd === 'G3') {
                         //G2/G3 - Arc Movement ( G2 clock wise and G3 counter clock wise )
@@ -284,7 +240,6 @@ $(function () {
                 }
             }
 
-
             var object = new THREE.Group();
             object.name = 'gcode';
             object.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
@@ -293,50 +248,40 @@ $(function () {
                 return object;
             }
 
-            //    this.parse(data);
-
-            //	return object;
-
         };
 
-
         var container;
-        var camera, cameraControls, scene, renderer, loader,light,xmatline;
+        var camera, cameraControls, scene, renderer, loader,light;
         var clock;
         var gcodeWid = 1280 ;
         var gcodeHei = 960;
         var visLayer = 1;
         var gui;
 
-
-
         var LayerDisplay = function () {
             this.start = 0;
             this.end = 100;
-            this.displayOutline = false;
-            this.explode = function () { alert(1) };
+            //this.displayOutline = false;
+            //this.explode = function () { alert(1) };
         };
         var layerDisplay = new LayerDisplay();
-
 
         function loadGcode(url) {
             function animate() {
 
-                if (true) {
-                    var somethingVis = false;
-                    scene.traverse(function (child) {
-                        if (child.name.startsWith("layer#")) {
-                            var num = child.name.split("#")[1]
-                            if (num < layerDisplay.end) {
-                                child.visible = true;
+                //set visible layers
+                scene.traverse(function (child) {
+                    if (child.name.startsWith("layer#")) {
+                        var num = child.name.split("#")[1]
+                        if (num < layerDisplay.end) {
+                            child.visible = true;
 
-                            }
-                            else {
-                                child.visible = false;
-                            }
                         }
-                    });
-                }
+                        else {
+                            child.visible = false;
+                        }
+                    }
+                });
 
                 const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
@@ -347,8 +292,9 @@ $(function () {
                 requestAnimationFrame(animate);
             }
 
+            //add gcode window to page.
             if ($(".gwin").length < 1) {
-                var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height;" + gcodeHei + "px;opacity:0.8;z-index=5;'></div>");
+                var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:0.8;z-index=5;'></div>");
 
                 var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
                 gwin.append(handle);
@@ -358,20 +304,22 @@ $(function () {
                 $("body").append(gwin);
 
 
+                //todo allow save/pos camera at start. 
                 camera = new THREE.PerspectiveCamera(60, gcodeWid / gcodeHei, 0.1, 10000);
                 camera.position.set(310, 50, 0);
+
 
                 CameraControls.install({ THREE: THREE });
                 clock = new THREE.Clock();
                 cameraControls = new CameraControls(camera, container[0]);
                 cameraControls.setTarget(150, 0, -150, true);;
 
-window.mycamera = cameraControls;
-
+                //for debugging
+                window.myCameraControls = cameraControls;
 
                 // Mouse buttons
-                cameraControls.mouseButtons = { ORBIT: THREE.MOUSE.RIGHT, /*ZOOM: THREE.MOUSE.MIDDLE,*/ PAN: THREE.MOUSE.MIDDLE };
-
+                //!!are now set in camera-controls.js 
+                //cameraControls.mouseButtons = { ORBIT: THREE.MOUSE.RIGHT, /*ZOOM: THREE.MOUSE.MIDDLE,*/ PAN: THREE.MOUSE.MIDDLE };
 
                 renderer = new THREE.WebGLRenderer();
                 renderer.setPixelRatio(window.devicePixelRatio);
@@ -391,36 +339,29 @@ window.mycamera = cameraControls;
                 });
             }
 
-
-
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xe0e0e0);
 
-            var grid = new THREE.GridHelper(2000, 40, 0x000000, 0x000000);
+            //todo. make bed sized. 
+            var grid = new THREE.GridHelper(300, 30, 0x000000, 0x000000);
+            grid.position.set(150,0, -150);
             grid.material.opacity = 0.2;
             grid.material.transparent = true;
             scene.add(grid);
 
 
-
             loader = new GCodeParser();
 
-            var object = loader.getObject();
-            object.position.set(- 0, - 0, 0);
-            scene.add(object);
+            var gcodeObject = loader.getObject();
+            gcodeObject.position.set(- 0, - 0, 0);
+            scene.add(gcodeObject);
 
-//////////////////////
+            //add a light. might not be needed.
             light = new THREE.PointLight(0xffffff);
             light.position.copy(camera.position);
             scene.add(light);
 
-
-            xmatLine = new THREE.LineMaterial({
-                linewidth: 6, // in pixels
-                color: new THREE.Color(0xff0000)
-            });
-            xmatLine.resolution.set(gcodeWid, gcodeHei);
-
+            //simple gui
 /*            gui = new dat.GUI({ autoPlace: false });
 
             var guielem = $("<div id='mygui' style='position:absolute;right:0px;top:0px;opacity:0.8;z-index=5;'></div>");
@@ -438,6 +379,7 @@ window.mycamera = cameraControls;
 
             $('.gwin').append($('<div id="slider-vertical" style=""></div>'));
 
+            //note this is an octoprint version of a bootstrap slider. not a jquery ui slider. 
             $("#slider-vertical").slider({
                 orientation: "vertical",
                 reversed: true,
@@ -449,70 +391,7 @@ window.mycamera = cameraControls;
                 layerDisplay.end = event.value;
             });;
 
-            //$("#slider-vertical").slider({
-            //    //id: "xxgcode_layer_slider",
-            //    reversed: true,
-            //    selection: "after",
-            //    orientation: "vertical",
-            //    min: 0,
-            //    max: 1,
-            //    step: 1,
-            //    value: 0,
-            //    enabled: true,
-            //    formatter: function (value) { return "Layer #" + (value + 1) ; }
-            //}).on("slide", function (event, ui) {
-            //    console.log(1111);
-            //});
-
             $(".slider-vertical").attr("style", "height:80%;position:absolute;top:5%;right:30px")
-
-            //$("#amount").val($("#slider-vertical").slider("value"));
-
-            //geo = new THREE.LineGeometry();
-            //geo.setPositions([0, 0, 0, 100, 100, 100]);
-            //var line = new THREE.Line2(geo, xmatLine);
-            //scene.add(line);
-
-
-            //var circle = new THREE.Shape();
-            //var radius = 0.2;
-            //var segments = 16;
-            //var theta, x, y;
-            //for (var i = 0; i < segments; i++) {
-            //    theta = ((i + 1) / segments) * Math.PI * 2.0;
-            //    x = radius * Math.cos(theta);
-            //    y = radius * Math.sin(theta);
-            //    if (i == 0) {
-            //        circle.moveTo(x, y);
-            //    } else {
-            //        circle.lineTo(x, y);
-            //    }
-            //}
-
-//            var closedSpline = new THREE.CatmullRomCurve3([
-//                new THREE.Vector3(- 60, - 100, 60),
-//                new THREE.Vector3(- 60, 20, 60),
-//                new THREE.Vector3(- 60, 120, 60),
-//                new THREE.Vector3(60, 20, - 60),
-//                new THREE.Vector3(60, - 100, - 60)
-//            ]);
-//            closedSpline.curveType = 'catmullrom';
-//            closedSpline.closed = true;
-//            var extrudeSettings = {
-//                steps: 1,
-////                amount: 50,
-//                bevelEnabled: false,
-//                extrudePath: closedSpline
-//            };
-
-//            //var extrudedGeometry = new THREE.ExtrudeGeometry(circle, extrudeSettings);
-
-//            var extrudedGeometry = new THREE.TubeBufferGeometry(closedSpline, 20, 2, 8, false);
-
-//            // Geometry doesn't do much on its own, we need to create a Mesh from it
-//            var extrudedMesh = new THREE.Mesh(extrudedGeometry, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
-//            scene.add(extrudedMesh);
-
 
 
             animate();
@@ -585,6 +464,69 @@ window.mycamera = cameraControls;
         setInterval(function () {
             updateStatus();
         }, 1000);
+
+
+        //////////old drawing experiments.
+
+                            //add tube geom.
+                    //console.log(currentLayer.paths)
+/*                    for (i = 0; i < currentLayer.paths.length; i++) {
+                        var curve = new THREE.CatmullRomCurve3(currentLayer.paths[i]); 
+                        var extrudedGeometry = new THREE.TubeBufferGeometry(curve, 1, 0.2, 2, false);
+
+                        var extrudedMesh = new THREE.Mesh(extrudedGeometry, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
+                        object.add(extrudedMesh);
+                        //scene.add(extrudedMesh);
+                    }
+*/
+
+
+            //geo = new THREE.LineGeometry();
+            //geo.setPositions([0, 0, 0, 100, 100, 100]);
+            //var line = new THREE.Line2(geo, xmatLine);
+            //scene.add(line);
+
+
+            //var circle = new THREE.Shape();
+            //var radius = 0.2;
+            //var segments = 16;
+            //var theta, x, y;
+            //for (var i = 0; i < segments; i++) {
+            //    theta = ((i + 1) / segments) * Math.PI * 2.0;
+            //    x = radius * Math.cos(theta);
+            //    y = radius * Math.sin(theta);
+            //    if (i == 0) {
+            //        circle.moveTo(x, y);
+            //    } else {
+            //        circle.lineTo(x, y);
+            //    }
+            //}
+
+//            var closedSpline = new THREE.CatmullRomCurve3([
+//                new THREE.Vector3(- 60, - 100, 60),
+//                new THREE.Vector3(- 60, 20, 60),
+//                new THREE.Vector3(- 60, 120, 60),
+//                new THREE.Vector3(60, 20, - 60),
+//                new THREE.Vector3(60, - 100, - 60)
+//            ]);
+//            closedSpline.curveType = 'catmullrom';
+//            closedSpline.closed = true;
+//            var extrudeSettings = {
+//                steps: 1,
+////                amount: 50,
+//                bevelEnabled: false,
+//                extrudePath: closedSpline
+//            };
+
+//            //var extrudedGeometry = new THREE.ExtrudeGeometry(circle, extrudeSettings);
+
+//            var extrudedGeometry = new THREE.TubeBufferGeometry(closedSpline, 20, 2, 8, false);
+
+//            // Geometry doesn't do much on its own, we need to create a Mesh from it
+//            var extrudedMesh = new THREE.Mesh(extrudedGeometry, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
+//            scene.add(extrudedMesh);
+
+
 
 
         //var gwin_width = 1280;
