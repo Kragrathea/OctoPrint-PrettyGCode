@@ -115,8 +115,8 @@ $(function () {
                 console.log("layer #" + layers.length + " z:" + line.z);
 
                 //update ui.
-                $("#slider-vertical").slider("setMax", layers.length)
-                $("#slider-vertical").slider("setValue", layers.length)
+                $("#myslider-vertical").slider("setMax", layers.length)
+                $("#myslider-vertical").slider("setValue", layers.length)
                 layerDisplay.end = layers.length;
             }
 
@@ -290,8 +290,10 @@ $(function () {
         var container;
         var camera, cameraControls, scene, renderer, loader,light;
         var clock;
-        var gcodeWid = 1280 ;
-        var gcodeHei = 960;
+        //var gcodeWid = 1280 ;
+        //var gcodeHei = 960;
+        var gcodeWid = 580;
+        var gcodeHei = 580;
         var visLayer = 1;
         var gui;
 
@@ -331,14 +333,35 @@ $(function () {
 
             //add gcode window to page.
             if ($(".gwin").length < 1) {
-                var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;z-index=5;'></div>");
+                if (false) {
+                    var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;z-index=5;'></div>");
 
-                var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
-                gwin.append(handle);
+                    var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
+                    gwin.append(handle);
 
-                container = $("<div class='gcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
+                    container = $("<div class='gcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
+                    gwin.append(container);
+                    $("body").append(gwin);
+
+                    //$('.gwin').resizable({
+                    //    resize: function (event, ui) {
+                    //        camera.aspect = ui.size.width / ui.size.height;
+                    //        camera.updateProjectionMatrix();
+                    //        renderer.setSize(ui.size.width, ui.size.height);
+                    //    }
+                    //});
+                    //$('.gwin').draggable({
+                    //    handle: "#handle",
+                    //    appendTo: 'body',
+                    //});
+                }
+
+                var gwin = $("<div class='gwin' style='position:absolute;;z-index=5;'></div>");
+
+                container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
                 gwin.append(container);
                 $("#sexygcode").append(gwin);
+
 
 
                 //todo allow save/pos camera at start. 
@@ -363,17 +386,7 @@ $(function () {
                 renderer.setSize(gcodeWid, gcodeHei);
                 container.append(renderer.domElement);
 
-                //$('.gwin').resizable({
-                //    resize: function (event, ui) {
-                //        camera.aspect = ui.size.width / ui.size.height;
-                //        camera.updateProjectionMatrix();
-                //        renderer.setSize(ui.size.width, ui.size.height);
-                //    }
-                //});
-                //$('.gwin').draggable({
-                //    handle: "#handle",
-                //    appendTo: 'body',
-                //});
+
             }
 
             scene = new THREE.Scene();
@@ -417,10 +430,11 @@ $(function () {
 */
             //$('.gwin').append($('<p><label for="amount">Volume:</label><input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;"></p>'));
 
-            $('.gwin').append($('<div id="slider-vertical" style=""></div>'));
+            $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
 
             //note this is an octoprint version of a bootstrap slider. not a jquery ui slider. 
-            $("#slider-vertical").slider({
+            $("#myslider-vertical").slider({
+                id:"myslider",
                 orientation: "vertical",
                 reversed: true,
                 range: "min",
@@ -430,8 +444,8 @@ $(function () {
             }).on("slide", function (event, ui) {
                 layerDisplay.end = event.value;
             });;
+            $("#myslider").attr("style", "display:inline-block;height:90%;float:left;position:absolute;top:5%;")
 
-            $(".slider-vertical").attr("style", "height:80%;position:absolute;top:5%;right:30px")
 
 
             animate();
