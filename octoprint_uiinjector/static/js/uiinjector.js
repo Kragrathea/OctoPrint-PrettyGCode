@@ -13,6 +13,16 @@ $(function () {
             return decodeURI(results[1]) || 0;
         }
 
+        String.prototype.hashCode = function () {
+            var hash = 0, i, chr;
+            if (this.length === 0) return hash;
+            for (i = 0; i < this.length; i++) {
+                chr = this.charCodeAt(i);
+                hash = ((hash << 5) - hash) + chr;
+                hash |= 0; // Convert to 32bit integer
+            }
+            return hash;
+        };
 
         var focus = urlParam("focus");
         if (focus != null) {
@@ -28,15 +38,17 @@ $(function () {
         }
 
 
-        //alert("UIInjector");
-        //self.settings = parameters[0];
+        //todo. parser rewrite.
+        //build per "extrude" or travel. Change when extrude or type or layer changes.
 
+        //self.settings = parameters[0];
 
         function GCodeParser(data) {
 
             var state = { x: 0, y: 0, z: 0, e: 0, f: 0, extruding: false, relative: false };
             var layers = [];
 
+            
             var currentLayer = undefined;
 
             var pathMaterial = new THREE.LineBasicMaterial({ color: 0xFF0000 });
@@ -44,12 +56,20 @@ $(function () {
 
             var extrudingMaterial = new THREE.LineBasicMaterial({ color: 0x0000FF });
             extrudingMaterial.name = 'extruded';
+            
+            var curColorHex = 'ff0000';
+            var curColor = new THREE.Color('black');
+
+            var Bucket = function (name, color) {
+                this.name = name;
+                this.color = color;
+                this.vertexs = [];
+            };
 
             function newLayer(line) {
 
                 if (currentLayer !== undefined) {
-                    addObject(currentLayer.vertex, true);
-                    addObject(currentLayer.pathVertex, false);
+                    addObject(currentLayer, true);
 
 
         //    var line = new THREE.Line2(opt.geo, matLine);
@@ -73,12 +93,17 @@ $(function () {
 */
                 }
 
-                currentLayer = { vertex: [], pathVertex: [], z: line.z,curPath:[],paths:[] };
+
+
+                currentLayer = { vertex: [], pathVertex: [], z: line.z,colors:[]};
                 layers.push(currentLayer);
                 console.log("layer #" + layers.length + " z:" + line.z);
+
+                //update ui.
+                $("#slider-vertical").slider("setMax", layers.length)
+                $("#slider-vertical").slider("setValue", layers.length)
             }
 
-            //Create lie segment between p1 and p2
             function addSegment(p1, p2) {
                 if (currentLayer === undefined) {
                     newLayer(p1);
@@ -86,39 +111,67 @@ $(function () {
                 if (state.extruding) {
                     currentLayer.vertex.push(p1.x, p1.y, p1.z);
                     currentLayer.vertex.push(p2.x, p2.y, p2.z);
+                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
+                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
+        //        }
+        //        colors.push(opt.color.r, opt.color.g, opt.color.b);
 
-                    currentLayer.curPath = [];
-                    currentLayer.curPath.push(new THREE.Vector3(p1.x, p1.y, p1.z));
-                    currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
-                    currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
+                    //currentLayer.curPath = [];
+                    //currentLayer.curPath.push(new THREE.Vector3(p1.x, p1.y, p1.z));
+                    //currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
+                    //currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
 
-
-//                    if (currentLayer.curPath.length < 1) {
-                        //I dont think this should happen.
-//                        console.log("XXXXXX PrePriming PATH");
-//                        currentLayer.curPath.push(new THREE.Vector3(p1.x,p1.y,p1.z));
-//                    }
-//                    currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
                 } else {
-                    currentLayer.vertex.push(p1.x, p1.y, p1.z);
+/*                    currentLayer.vertex.push(p1.x, p1.y, p1.z);
                     currentLayer.vertex.push(p2.x, p2.y, p2.z);
+                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
+                    currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
+*/
+                    //currentLayer.curPath = [];
+                    //currentLayer.curPath.push(new THREE.Vector3(p1.x, p1.y, p1.z));
+                    //currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
+                    //currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
 
-                    currentLayer.curPath = [];
-                    currentLayer.curPath.push(new THREE.Vector3(p1.x, p1.y, p1.z));
-                    currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z))
-                    currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
-
-//                    if (currentLayer.curPath.length > 1) {
-//                        currentLayer.paths.push(currentLayer.curPath);//add previous path if valid.
-//                    }
-//                    currentLayer.curPath = []
-//                    currentLayer.curPath.push(new THREE.Vector3(p2.x, p2.y, p2.z));
-                    //			currentLayer.pathVertex.push( p1.x, p1.y, p1.z );
-                    //			currentLayer.pathVertex.push( p2.x, p2.y, p2.z );
                 }
 
             }
 
+            var rainbow = new THREE.Lut("rainbow", 64);
+            rainbow.setMax(64);
+
+
+            function addObject(layer, extruding) {
+
+                //var geometry = new THREE.BufferGeometry();
+                //geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertex, 3));
+
+                //var segments = new THREE.LineSegments(geometry, extruding ? extrudingMaterial : pathMaterial);
+                //segments.name = 'layer' + layers.length;
+                //object.add(segments);
+
+        //todo path part
+
+
+                if (layer.vertex.length > 2) {
+
+                    geo = new THREE.LineGeometry();
+                    geo.setPositions(layer.vertex);
+                    geo.setColors(layer.colors)
+
+                    xmatLine = new THREE.LineMaterial({
+                        linewidth: 6, // in pixels
+                        //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
+                        vertexColors: THREE.VertexColors,
+                    });
+                    xmatLine.resolution.set(gcodeWid, gcodeHei);
+
+                    var line = new THREE.Line2(geo, xmatLine);
+                    line.name = 'layer#' + layers.length;
+                    object.add(line);
+                }
+
+
+            }
             function delta(v1, v2) {
                 return state.relative ? v2 : v2 - v1;
             }
@@ -129,7 +182,8 @@ $(function () {
 
             var previousPiece = "";
             this.parse = function (chunk) {
-                var lines = chunk.replace(/;.+/g, '').split('\n');
+//                var lines = chunk.replace(/;.+/g, '').split('\n');
+                var lines = chunk.split('\n');
 
                 //handle partial lines from previous chunk.
                 lines[0] = previousPiece + lines[0];
@@ -158,6 +212,36 @@ $(function () {
 
                     //Process commands
                     //G0/G1 - Linear Movement
+                    if (cmd.startsWith(";TYPE")) {
+                        if (cmd.indexOf("INNER") > -1) {
+                            curColor = new THREE.Color('green');
+
+                            curColorHex = 0xff0000;
+                        }
+                        else if (cmd.indexOf("OUTER") > -1) {
+                            curColor = new THREE.Color('blue');
+                            curColorHex = 0x0000ff;
+                        }
+                        else if (cmd.indexOf("FILL") > -1) {
+                            curColor = new THREE.Color('yellow');
+                            curColorHex = 0x00ffff;
+                        }
+                        else if (cmd.indexOf("SKIN") > -1) {
+                            curColor = new THREE.Color('red');
+                            curColorHex = 0xff00ff;
+                        }
+                        else if (cmd.indexOf("SUPPORT") > -1) {
+                            curColor = new THREE.Color('skyblue');
+                            curColorHex = 0xff00ff;
+                        }
+                        else
+                        {
+                            curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
+                            curColor = new THREE.Color(curColorHex);
+                        }
+                        console.log(cmd + ' ' + curColorHex.toString(16))
+                        //console.log(lines[i])
+                    }
                     if (cmd === 'G0' || cmd === 'G1') {
                         var line = {
                             x: args.x !== undefined ? absolute(state.x, args.x) : state.x,
@@ -200,58 +284,6 @@ $(function () {
                 }
             }
 
-            var rainbow = new THREE.Lut("rainbow", 64);
-            rainbow.setMax(64);
-
-
-            function addObject(vertex, extruding) {
-
-                //var geometry = new THREE.BufferGeometry();
-                //geometry.addAttribute('position', new THREE.Float32BufferAttribute(vertex, 3));
-
-                //var segments = new THREE.LineSegments(geometry, extruding ? extrudingMaterial : pathMaterial);
-                //segments.name = 'layer' + layers.length;
-                //object.add(segments);
-
-                if (vertex.length > 2) {
-
-                    geo = new THREE.LineGeometry();
-                    geo.setPositions(vertex);
-
-                    xmatLine = new THREE.LineMaterial({
-                        linewidth: 6, // in pixels
-                        color: rainbow.getColor(layers.length%64).getHex()
-                    });
-                    xmatLine.resolution.set(gcodeWid, gcodeHei);
-
-
-                    var line = new THREE.Line2(geo, xmatLine);
-                    line.name = 'layer' + layers.length;
-                    object.add(line);
-                }
-
-
-
-                //var curPath = [];
-                //for (i = 0; i < vertex.length; i+=2) {
-                //    if (curPath.length == 0) {
-                //        curPath.push(vertex[i]);
-                //        curPath.push(vertex[i + 1]);
-                //    }
-                //    else {
-                //        if (curPath[curPath.length - 1].x != vertex[i].x && curPath[curPath.length - 1].y != vertex[i].y && curPath[curPath.length - 1].z != vertex[i].z) {//new path?
-                //            //create tube from current.
-                //            console.log(curPath)
-
-                //            //start new path
-                //            curPath = [];
-
-                //        }
-                //        else
-                //            curPath.push(vertex[i + 1]);
-                //    }
-                //} 
-            }
 
             var object = new THREE.Group();
             object.name = 'gcode';
@@ -274,43 +306,36 @@ $(function () {
         var gcodeWid = 1280 ;
         var gcodeHei = 960;
         var visLayer = 1;
+        var gui;
+
+
 
         var LayerDisplay = function () {
             this.start = 0;
             this.end = 100;
             this.displayOutline = false;
-            this.explode = function () {alert(1) };
+            this.explode = function () { alert(1) };
         };
+        var layerDisplay = new LayerDisplay();
 
-        var gui = new dat.GUI();
-        gui.add(LayerDisplay, 'start', 0, 100);
-        gui.add(LayerDisplay, 'end', 0, 100);
-        gui.add(LayerDisplay, 'displayOutline');
-        gui.add(LayerDisplay, 'explode');
 
         function loadGcode(url) {
             function animate() {
 
-                if (false) {
+                if (true) {
                     var somethingVis = false;
                     scene.traverse(function (child) {
-                        if (child.name.startsWith("layer")
-                            && visLayer == 1
-                                  /* instanceof THREE.LineSegments*/) {
-                            child.visible = false;
-                        }
-                        if (child.name === "layer" + visLayer) {
-                            child.visible = true;
-                            somethingVis = true;
+                        if (child.name.startsWith("layer#")) {
+                            var num = child.name.split("#")[1]
+                            if (num < layerDisplay.end) {
+                                child.visible = true;
+
+                            }
+                            else {
+                                child.visible = false;
+                            }
                         }
                     });
-                    //wrap
-                    if (!somethingVis
-                        //|| visLayer>30
-                    ) {
-                        visLayer = 1;
-                    } else
-                        visLayer++;
                 }
 
                 const delta = clock.getDelta();
@@ -328,7 +353,7 @@ $(function () {
                 var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
                 gwin.append(handle);
 
-                container = $("<div class='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
+                container = $("<div class='gcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
                 gwin.append(container);
                 $("body").append(gwin);
 
@@ -395,6 +420,54 @@ window.mycamera = cameraControls;
                 color: new THREE.Color(0xff0000)
             });
             xmatLine.resolution.set(gcodeWid, gcodeHei);
+
+/*            gui = new dat.GUI({ autoPlace: false });
+
+            var guielem = $("<div id='mygui' style='position:absolute;right:0px;top:0px;opacity:0.8;z-index=5;'></div>");
+
+            $('.gwin').prepend(guielem)
+
+            $('#mygui').prepend(gui.domElement);
+
+            gui.add(layerDisplay, 'start', 0, 100);
+            gui.add(layerDisplay, 'end', 0, 100);
+            gui.add(layerDisplay, 'displayOutline');
+            gui.add(layerDisplay, 'explode');
+*/
+            //$('.gwin').append($('<p><label for="amount">Volume:</label><input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;"></p>'));
+
+            $('.gwin').append($('<div id="slider-vertical" style=""></div>'));
+
+            $("#slider-vertical").slider({
+                orientation: "vertical",
+                reversed: true,
+                range: "min",
+                min: 0,
+                max: 100,
+                value: 100,
+            }).on("slide", function (event, ui) {
+                layerDisplay.end = event.value;
+            });;
+
+            //$("#slider-vertical").slider({
+            //    //id: "xxgcode_layer_slider",
+            //    reversed: true,
+            //    selection: "after",
+            //    orientation: "vertical",
+            //    min: 0,
+            //    max: 1,
+            //    step: 1,
+            //    value: 0,
+            //    enabled: true,
+            //    formatter: function (value) { return "Layer #" + (value + 1) ; }
+            //}).on("slide", function (event, ui) {
+            //    console.log(1111);
+            //});
+
+            $(".slider-vertical").attr("style", "height:80%;position:absolute;top:5%;right:30px")
+
+            //$("#amount").val($("#slider-vertical").slider("value"));
+
             //geo = new THREE.LineGeometry();
             //geo.setPositions([0, 0, 0, 100, 100, 100]);
             //var line = new THREE.Line2(geo, xmatLine);

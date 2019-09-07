@@ -11,57 +11,63 @@ THREE.LineGeometry = function () {
 
 };
 
-THREE.LineGeometry.prototype = Object.assign( Object.create( THREE.LineSegmentsGeometry.prototype ), {
+THREE.LineGeometry.prototype = Object.assign(Object.create(THREE.LineSegmentsGeometry.prototype), {
 
-	constructor: THREE.LineGeometry,
+    constructor: THREE.LineGeometry,
 
-	isLineGeometry: true,
+    isLineGeometry: true,
 
-	setPositions: function ( array ) {
+    setPositions: function (array, unpack = false ) {
 
 		// converts [ x1, y1, z1,  x2, y2, z2, ... ] to pairs format
+        if (unpack) {
+            var length = array.length - 3;
+            var points = new Float32Array(2 * length);
 
-		var length = array.length - 3;
-		var points = new Float32Array( 2 * length );
+            for (var i = 0; i < length; i += 3) {
 
-		for ( var i = 0; i < length; i += 3 ) {
+                points[2 * i] = array[i];
+                points[2 * i + 1] = array[i + 1];
+                points[2 * i + 2] = array[i + 2];
 
-			points[ 2 * i ] = array[ i ];
-			points[ 2 * i + 1 ] = array[ i + 1 ];
-			points[ 2 * i + 2 ] = array[ i + 2 ];
+                points[2 * i + 3] = array[i + 3];
+                points[2 * i + 4] = array[i + 4];
+                points[2 * i + 5] = array[i + 5];
 
-			points[ 2 * i + 3 ] = array[ i + 3 ];
-			points[ 2 * i + 4 ] = array[ i + 4 ];
-			points[ 2 * i + 5 ] = array[ i + 5 ];
+            }
 
-		}
-
-		THREE.LineSegmentsGeometry.prototype.setPositions.call( this, points );
-
+            THREE.LineSegmentsGeometry.prototype.setPositions.call(this, points);
+        }
+        else
+            THREE.LineSegmentsGeometry.prototype.setPositions.call(this, array);
 		return this;
 
 	},
 
-	setColors: function ( array ) {
+    setColors: function (array, unpack = false  ) {
 
 		// converts [ r1, g1, b1,  r2, g2, b2, ... ] to pairs format
 
-		var length = array.length - 3;
-		var colors = new Float32Array( 2 * length );
+        if (unpack) {
+		    var length = array.length - 3;
+		    var colors = new Float32Array( 2 * length );
 
-		for ( var i = 0; i < length; i += 3 ) {
+		    for ( var i = 0; i < length; i += 3 ) {
 
-			colors[ 2 * i ] = array[ i ];
-			colors[ 2 * i + 1 ] = array[ i + 1 ];
-			colors[ 2 * i + 2 ] = array[ i + 2 ];
+			    colors[ 2 * i ] = array[ i ];
+			    colors[ 2 * i + 1 ] = array[ i + 1 ];
+			    colors[ 2 * i + 2 ] = array[ i + 2 ];
 
-			colors[ 2 * i + 3 ] = array[ i + 3 ];
-			colors[ 2 * i + 4 ] = array[ i + 4 ];
-			colors[ 2 * i + 5 ] = array[ i + 5 ];
+			    colors[ 2 * i + 3 ] = array[ i + 3 ];
+			    colors[ 2 * i + 4 ] = array[ i + 4 ];
+			    colors[ 2 * i + 5 ] = array[ i + 5 ];
 
-		}
+		    }
 
-		THREE.LineSegmentsGeometry.prototype.setColors.call( this, colors );
+		    THREE.LineSegmentsGeometry.prototype.setColors.call( this, colors );
+        }
+        else
+            THREE.LineSegmentsGeometry.prototype.setColors.call(this, array);
 
 		return this;
 
