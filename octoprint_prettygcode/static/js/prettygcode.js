@@ -1,8 +1,8 @@
 $(function () {
-    console.log("Create UIInjector View Model");
-    function UIInjectorViewModel(parameters) {
+    console.log("Create PrettyGCode View Model");
+    function PrettyGCodeViewModel(parameters) {
         var self = this;
-        console.log("UIInjector View Model");
+        console.log("PrettyGCode View Model");
 
 
 
@@ -24,10 +24,10 @@ $(function () {
 
         self.onTabChange = function (current, previous) {
             // replaced #control with #tab_plugin_webcamtab
-            if (current == "#tab_plugin_uiinjector") {
+            if (current == "#tab_plugin_prettygcode") {
                 //console.log("TAB GOT FOCUS")
                 //self.control._enableWebcam();
-            } else if (previous == "#tab_plugin_uiinjector") {
+            } else if (previous == "#tab_plugin_prettygcode") {
                 //self.control._disableWebcam();
             }
         };
@@ -786,7 +786,7 @@ $(function () {
     // information to the global variable OCTOPRINT_VIEWMODELS
     OCTOPRINT_VIEWMODELS.push([
         // This is the constructor to call for instantiating the plugin
-        UIInjectorViewModel,
+        PrettyGCodeViewModel,
 
         // This is a list of dependencies to inject into the plugin, the order which you request
         // here is the order in which the dependencies will be injected into your view model upon

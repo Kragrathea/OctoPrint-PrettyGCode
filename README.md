@@ -1,3 +1,3 @@
-OctoPrint UI Injector
+OctoPrint Pretty GCode Viewer
 =========================
 
