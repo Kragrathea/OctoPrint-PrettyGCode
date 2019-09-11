@@ -4,6 +4,10 @@ $(function () {
         var self = this;
         console.log("UIInjector View Model");
 
+
+
+
+
         self.onAfterBinding = function () {
             console.log("onAfterBinding")
             //var tab = $("#tab_plugin_webcamtab");
@@ -21,7 +25,7 @@ $(function () {
         self.onTabChange = function (current, previous) {
             // replaced #control with #tab_plugin_webcamtab
             if (current == "#tab_plugin_uiinjector") {
-                console.log("TAB GOT FOCUS")
+                //console.log("TAB GOT FOCUS")
                 //self.control._enableWebcam();
             } else if (previous == "#tab_plugin_uiinjector") {
                 //self.control._disableWebcam();
@@ -110,14 +114,16 @@ $(function () {
                     addObject(currentLayer, true);
                 }
 
-                currentLayer = { vertex: [], pathVertex: [], z: line.z,colors:[]};
+                currentLayer = { vertex: [], pathVertex: [], z: line.z, colors: [] };
                 layers.push(currentLayer);
                 console.log("layer #" + layers.length + " z:" + line.z);
 
                 //update ui.
-                $("#myslider-vertical").slider("setMax", layers.length)
-                $("#myslider-vertical").slider("setValue", layers.length)
-                layerDisplay.end = layers.length;
+                if ($("#myslider-vertical").length) {
+                    $("#myslider-vertical").slider("setMax", layers.length)
+                    $("#myslider-vertical").slider("setValue", layers.length)
+                    layerDisplay.end = layers.length;
+                }
             }
 
             function addSegment(p1, p2) {
@@ -333,36 +339,67 @@ $(function () {
 
             //add gcode window to page.
             if ($(".gwin").length < 1) {
-                if (false) {
-                    var gwin = $("<div class='gwin' style='position:absolute;right:0px;bottom:0px;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;z-index=5;'></div>");
+                if (true) {
+                    var gwin = $("<div class='gwin' id='gwin' style='position:absolute;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;'></div>");
 
                     var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
                     gwin.append(handle);
 
-                    container = $("<div class='gcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
+                    container = $("<div class='xgcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
                     gwin.append(container);
-                    $("body").append(gwin);
+                    $("#sexygcode").append(gwin);
+                    //$("body").append(gwin);
 
-                    //$('.gwin').resizable({
-                    //    resize: function (event, ui) {
-                    //        camera.aspect = ui.size.width / ui.size.height;
-                    //        camera.updateProjectionMatrix();
-                    //        renderer.setSize(ui.size.width, ui.size.height);
-                    //    }
-                    //});
-                    //$('.gwin').draggable({
-                    //    handle: "#handle",
-                    //    appendTo: 'body',
-                    //});
+                    //gcodeWid = $(container).width();
+                    //gcodeHei = $(container).height()
+
+
+                    $('.gwin').resizable({
+                        resize: function (event, ui) {
+                            camera.aspect = ui.size.width / ui.size.height;
+                            camera.updateProjectionMatrix();
+                            renderer.setSize(ui.size.width, ui.size.height);
+                            cameraControls.setViewport(0, 0, ui.size.width, ui.size.height);
+
+                        }
+                    });
+                    $('.gwin').draggable({
+                        handle: "#handle",
+                        appendTo: 'body',
+                        stack: 'div',
+                    });
+                    //$('.gwin').css({ 'top': 10, 'left': 20})
+
+
+                    $("#state_wrapper,#files_wrapper").draggable({
+                        appendTo: 'body',
+                        stack: 'div',
+                    });
+
+
+                } else {
+
+                    var gwin = $("<div class='gwin' id='gwin' style=''></div>");
+
+                    //                container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
+                    container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:1280px;height:720px'></div>");
+                    gwin.append(container);
+                    $("#sexygcode").append(gwin);
+
+                    gcodeWid = $(container).width();
+                    gcodeHei = $(container).height()
+
+                    container.resize(function (event, ui) {
+                        gcodeWid = $(container).width();
+                        gcodeHei = $(container).height()
+                        console.log([gcodeWid, gcodeHei]);
+
+                        camera.aspect = gcodeWid / gcodeHei;
+                        camera.updateProjectionMatrix();
+                        //renderer.setSize(gcodeWid, gcodeHei);
+                    });
+
                 }
-
-                var gwin = $("<div class='gwin' style='position:absolute;;z-index=5;'></div>");
-
-                container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
-                gwin.append(container);
-                $("#sexygcode").append(gwin);
-
-
 
                 //todo allow save/pos camera at start. 
                 camera = new THREE.PerspectiveCamera(60, gcodeWid / gcodeHei, 0.1, 10000);
@@ -382,7 +419,9 @@ $(function () {
                 //cameraControls.mouseButtons = { ORBIT: THREE.MOUSE.RIGHT, /*ZOOM: THREE.MOUSE.MIDDLE,*/ PAN: THREE.MOUSE.MIDDLE };
 
                 renderer = new THREE.WebGLRenderer();
+                //todo. is this right?
                 renderer.setPixelRatio(window.devicePixelRatio);
+
                 renderer.setSize(gcodeWid, gcodeHei);
                 container.append(renderer.domElement);
 
@@ -414,6 +453,7 @@ $(function () {
             light.position.copy(camera.position);
             scene.add(light);
 
+
             //simple gui
 /*            gui = new dat.GUI({ autoPlace: false });
 
@@ -429,23 +469,23 @@ $(function () {
             gui.add(layerDisplay, 'explode');
 */
             //$('.gwin').append($('<p><label for="amount">Volume:</label><input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;"></p>'));
+            if (true) {
+                $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
 
-            $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
-
-            //note this is an octoprint version of a bootstrap slider. not a jquery ui slider. 
-            $("#myslider-vertical").slider({
-                id:"myslider",
-                orientation: "vertical",
-                reversed: true,
-                range: "min",
-                min: 0,
-                max: 100,
-                value: 100,
-            }).on("slide", function (event, ui) {
-                layerDisplay.end = event.value;
-            });;
-            $("#myslider").attr("style", "display:inline-block;height:90%;float:left;position:absolute;top:5%;")
-
+                //note this is an octoprint version of a bootstrap slider. not a jquery ui slider. 
+                $("#myslider-vertical").slider({
+                    id: "myslider",
+                    orientation: "vertical",
+                    reversed: true,
+                    range: "min",
+                    min: 0,
+                    max: 100,
+                    value: 100,
+                }).on("slide", function (event, ui) {
+                    layerDisplay.end = event.value;
+                });;
+                $("#myslider").attr("style", "display:inline-block;height:90%;float:left;position:absolute;top:5%;")
+            }
 
 
             animate();

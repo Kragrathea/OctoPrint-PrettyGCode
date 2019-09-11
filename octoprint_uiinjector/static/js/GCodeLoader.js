@@ -142,8 +142,8 @@ THREE.GCodeLoader.prototype = {
 					}
 
 				}
-
-				addSegment( state, line );
+                if (cmd === 'G1')
+				    addSegment( state, line );
 				state = line;
 
 			} else if ( cmd === 'G2' || cmd === 'G3' ) {
