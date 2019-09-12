@@ -306,6 +306,27 @@ $(function () {
         var visLayer = 1;
         var gui;
 
+        function resizeCanvasToDisplaySize() {
+            const canvas = renderer.domElement;
+            // look up the size the canvas is being displayed
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+
+            // adjust displayBuffer size to match
+            if (canvas.width !== width || canvas.height !== height) {
+ //console.log([width, height]);
+
+                // you must pass false here or three.js sadly fights the browser
+                renderer.setSize(width, height, false);
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                gcodeWid = width;
+                gcodeHei = height;
+                cameraControls.setViewport(0, 0, width, height);
+
+            }
+        }
+
         var LayerDisplay = function () {
             this.start = 0;
             this.end = 100;
@@ -336,17 +357,19 @@ $(function () {
                 const updated = cameraControls.update(delta);
                 cameraControls.dollyToCursor = true;
 
+                resizeCanvasToDisplaySize();
+
                 renderer.render(scene, camera);
                 requestAnimationFrame(animate);
             }
 
             //add gcode window to page.
             if ($(".gwin").length < 1) {
-                if (true) {
+                if (false) {
                     var gwin = $("<div class='gwin' id='gwin' style='position:absolute;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;'></div>");
 
-                    var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
-                    gwin.append(handle);
+//                    var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
+//                    gwin.append(handle);
 
                     container = $("<div class='xgcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
                     gwin.append(container);
@@ -357,20 +380,20 @@ $(function () {
                     //gcodeHei = $(container).height()
 
 
-                    $('.gwin').resizable({
-                        resize: function (event, ui) {
-                            camera.aspect = ui.size.width / ui.size.height;
-                            camera.updateProjectionMatrix();
-                            renderer.setSize(ui.size.width, ui.size.height);
-                            cameraControls.setViewport(0, 0, ui.size.width, ui.size.height);
+                    //$('.gwin').resizable({
+                    //    resize: function (event, ui) {
+                    //        camera.aspect = ui.size.width / ui.size.height;
+                    //        camera.updateProjectionMatrix();
+                    //        renderer.setSize(ui.size.width, ui.size.height);
+                    //        cameraControls.setViewport(0, 0, ui.size.width, ui.size.height);
 
-                        }
-                    });
-                    $('.gwin').draggable({
-                        handle: "#handle",
-                        appendTo: 'body',
-                        stack: 'div',
-                    });
+                    //    }
+                    //});
+                    //$('.gwin').draggable({
+                    //    handle: "#handle",
+                    //    appendTo: 'body',
+                    //    stack: 'div',
+                    //});
                     //$('.gwin').css({ 'top': 10, 'left': 20})
 
 
@@ -382,36 +405,41 @@ $(function () {
 
                 } else {
 
-                    var gwin = $("<div class='gwin' id='gwin' style=''></div>");
+                    var gwin = $("<div class='gwin' id='gwin' style='position:relative;width:100%;height:100%'></div>");
 
                     //                container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
-                    container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:1280px;height:720px'></div>");
-                    gwin.append(container);
+                    container = $("<div class='mygcode' id='mygcode' style='display:inline-block;min-width:640px;min-height:360px'></div>");
+
+                    var canvas = $("<canvas  id='mycanvas' style='width:100%;height:100%'></canvas>");
+                    gwin.append(canvas);
+
+                    //$("#sexygcode").append(canvas);
                     $("#sexygcode").append(gwin);
 
-                    gcodeWid = $(container).width();
-                    gcodeHei = $(container).height()
+                    //gcodeWid = $(container).width();
+                    //gcodeHei = $(container).height()
 
-                    container.resize(function (event, ui) {
-                        gcodeWid = $(container).width();
-                        gcodeHei = $(container).height()
-                        console.log([gcodeWid, gcodeHei]);
+                    //container.resize(function (event, ui) {
+                    //    gcodeWid = $(container).width();
+                    //    gcodeHei = $(container).height()
+                    //    console.log([gcodeWid, gcodeHei]);
 
-                        camera.aspect = gcodeWid / gcodeHei;
-                        camera.updateProjectionMatrix();
-                        //renderer.setSize(gcodeWid, gcodeHei);
-                    });
+                    //    camera.aspect = gcodeWid / gcodeHei;
+                    //    camera.updateProjectionMatrix();
+                    //    //renderer.setSize(gcodeWid, gcodeHei);
+                    //});
 
                 }
 
-                //todo allow save/pos camera at start. 
-                camera = new THREE.PerspectiveCamera(60, gcodeWid / gcodeHei, 0.1, 10000);
+                //todo allow save/pos camera at start.
+                camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
+                //camera = new THREE.PerspectiveCamera(60, gcodeWid / gcodeHei, 0.1, 10000);
                 camera.position.set(310, 50, 0);
 
 
                 CameraControls.install({ THREE: THREE });
                 clock = new THREE.Clock();
-                cameraControls = new CameraControls(camera, container[0]);
+                cameraControls = new CameraControls(camera, canvas[0]);
                 cameraControls.setTarget(150, 0, -150, true);;
 
                 //for debugging
@@ -421,12 +449,14 @@ $(function () {
                 //!!are now set in camera-controls.js 
                 //cameraControls.mouseButtons = { ORBIT: THREE.MOUSE.RIGHT, /*ZOOM: THREE.MOUSE.MIDDLE,*/ PAN: THREE.MOUSE.MIDDLE };
 
-                renderer = new THREE.WebGLRenderer();
+                renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas") });
+
+                //renderer = new THREE.WebGLRenderer();
                 //todo. is this right?
                 renderer.setPixelRatio(window.devicePixelRatio);
 
-                renderer.setSize(gcodeWid, gcodeHei);
-                container.append(renderer.domElement);
+                //renderer.setSize(gcodeWid, gcodeHei);
+                //container.append(renderer.domElement);
 
 
             }
@@ -487,7 +517,7 @@ $(function () {
                 }).on("slide", function (event, ui) {
                     layerDisplay.end = event.value;
                 });;
-                $("#myslider").attr("style", "display:inline-block;height:90%;float:left;position:absolute;top:5%;")
+                $("#myslider").attr("style", "height:90%;position:absolute;top:5%;right:20px")
             }
 
 
@@ -498,22 +528,28 @@ $(function () {
             fetch(myRequest)
                 .then(function (response) {
                     var contentLength = response.headers.get('Content-Length');
-                    var myReader = response.body.getReader();
-                    var decoder = new TextDecoder();
-                    var buffer = '';
-                    var received = 0;
-                    myReader.read().then(function processResult(result) {
-                        if (result.done) {
-                            return;
-                        }
-                        received += result.value.length;
-                        //                buffer += decoder.decode(result.value, {stream: true});
-                        /* process the buffer string */
-                        loader.parse(decoder.decode(result.value, { stream: true }));
+                    if (!response.body) {
+                        response.text().then(function (text) {
+                            loader.parse(text);
+                        });;
+                    } else {
+                        var myReader = response.body.getReader();
+                        var decoder = new TextDecoder();
+                        var buffer = '';
+                        var received = 0;
+                        myReader.read().then(function processResult(result) {
+                            if (result.done) {
+                                return;
+                            }
+                            received += result.value.length;
+                            //                buffer += decoder.decode(result.value, {stream: true});
+                            /* process the buffer string */
+                            loader.parse(decoder.decode(result.value, { stream: true }));
 
-                        // read the next piece of the stream and process the result
-                        return myReader.read().then(processResult);
-                    })
+                            // read the next piece of the stream and process the result
+                            return myReader.read().then(processResult);
+                        })
+                    }
                 })
 
 
