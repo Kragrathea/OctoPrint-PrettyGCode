@@ -21,13 +21,16 @@ $(function () {
             //}
         };
 
-
+        var gcodeUpdateWatcher = 0;
         self.onTabChange = function (current, previous) {
             // replaced #control with #tab_plugin_webcamtab
             if (current == "#tab_plugin_prettygcode") {
-                //console.log("TAB GOT FOCUS")
+                gcodeUpdateWatcher=setInterval(function () {
+                    updateStatus();
+                }, 1000);
                 //self.control._enableWebcam();
             } else if (previous == "#tab_plugin_prettygcode") {
+                clearInterval(gcodeUpdateWatcher);
                 //self.control._disableWebcam();
             }
         };
@@ -555,9 +558,7 @@ $(function () {
             //    });
         }
 
-        setInterval(function () {
-            updateStatus();
-        }, 1000);
+
 
 
         //////////old drawing experiments.
