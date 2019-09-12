@@ -22,15 +22,61 @@ $(function () {
         };
 
         var gcodeUpdateWatcher = 0;
+
+        var viewInitialized = false;
         self.onTabChange = function (current, previous) {
             // replaced #control with #tab_plugin_webcamtab
             if (current == "#tab_plugin_prettygcode") {
-                gcodeUpdateWatcher=setInterval(function () {
-                    updateStatus();
+
+                if (!viewInitialized) {
+                    viewInitialized = true;
+                    var stateView = $("#state_wrapper").clone()
+                    $(".gwin").append(stateView)
+                    $('.gwin #state_wrapper').draggable({
+                        //    handle: "#handle",
+                        //    appendTo: 'body',
+                        //    stack: 'div',
+                        containment: "parent",
+                    });
+
+
+
+                    var camView = $("#webcam_rotator").clone();
+                    $(".gwin").append(camView)
+                    $('.gwin #webcam_rotator').draggable({
+                    //    handle: "#handle",
+                    //    appendTo: 'body',
+                    //    stack: 'div',
+                        containment: "parent",
+                        start: function (event, ui) {
+                            $(this).css({
+                                right: "auto",
+                                bottom: "auto"
+                            });
+                        }
+                    });
+
+                    //check url for fullscreen mode
+                    if (urlParam("fullscreen"))
+                        $("#gwin").addClass("fullscreen");
+
+                    $(".fstoggle").on("click", function () {
+                        $("#gwin").toggleClass("fullscreen");
+                    });
+                }
+
+                $(".gwin #webcam_image").attr("src", "/webcam/?action=stream&" + Math.random())
+
+                updateStatus();//Do at once.
+                //and then to every second.
+                gcodeUpdateWatcher = setInterval(function () {
+                    updateStatus();//
                 }, 1000);
+
                 //self.control._enableWebcam();
             } else if (previous == "#tab_plugin_prettygcode") {
                 clearInterval(gcodeUpdateWatcher);
+                $(".gwin #webcam_image").attr("src", "")
                 //self.control._disableWebcam();
             }
         };
@@ -79,14 +125,25 @@ $(function () {
             
             var currentLayer = undefined;
 
-            var curColor = new THREE.Color('black');
+            var defaultColor = new THREE.Color('black');
+            var curColor = defaultColor;
             var curMaterial = new THREE.LineMaterial({
                 linewidth: 6, // in pixels
                 //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
                 vertexColors: THREE.VertexColors,
+                //transparent: true,
+                //opacity:0.35,
             });
+            //var shadowMaterial = new THREE.LineMaterial({
+            //    linewidth: 6, // in pixels
+            //    color: new THREE.Color("blue"),// rainbow.getColor(layers.length % 64).getHex()
+            //    //vertexColors: THREE.VertexColors,
+            //    transparent: false,
+            //    opacity: 0.1,
+            //});
             //todo. handle window resize
             curMaterial.resolution.set(gcodeWid, gcodeHei);
+            //shadowMaterial.resolution.set(gcodeWid, gcodeHei);
 
             function addObject(layer, extruding) {
 
@@ -105,9 +162,22 @@ $(function () {
 
                     var line = new THREE.Line2(geo, curMaterial);
                     line.name = 'layer#' + layers.length;
+                    //line.renderOrder = 2;
+                    
                     object.add(line);
 
+                    //geo = new THREE.LineGeometry();
+                    //geo.setPositions(layer.vertex.slice(0));
+                    ////geo.setColors(layer.colors.slice(0))
+
+                    //var line = new THREE.Line2(geo, shadowMaterial);
+                    //line.name = 'shadow-layer#' + layers.length;
+                    //line.renderOrder = 1;
+                    //object.add(line);
+
                 }
+               
+
             }
 
 
@@ -119,7 +189,7 @@ $(function () {
 
                 currentLayer = { vertex: [], pathVertex: [], z: line.z, colors: [] };
                 layers.push(currentLayer);
-                console.log("layer #" + layers.length + " z:" + line.z);
+                //console.log("layer #" + layers.length + " z:" + line.z);
 
                 //update ui.
                 if ($("#myslider-vertical").length) {
@@ -136,6 +206,10 @@ $(function () {
                 currentLayer.vertex.push(p1.x, p1.y, p1.z);
                 currentLayer.vertex.push(p2.x, p2.y, p2.z);
 
+                if (curColor != defaultColor) {
+                    sceneBounds.expandByPoint(p1);
+                    sceneBounds.expandByPoint(p2);
+                }
 
                     //add mirror version
                 currentLayer.vertex.push(p1.x, p1.y, -p1.z);
@@ -284,11 +358,23 @@ $(function () {
                         //console.warn( 'THREE.GCodeLoader: Command not supported:' + cmd );
                     }
                 }
+
+                var bsize=sceneBounds.getSize();
+
+
+                 
+                var dist = Math.max(Math.abs(bsize.x), Math.abs(bsize.y)) / 2;
+                console.log(dist)
+                cameraControls.dollyTo(dist * 2.0 ,true);
+
+
             }
 
             var object = new THREE.Group();
             object.name = 'gcode';
             object.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
+
+
 
             this.getObject = function () {
                 return object;
@@ -296,9 +382,10 @@ $(function () {
 
         };
 
-        var container;
+        //var container;
         var camera, cameraControls, scene, renderer, loader,light;
         var clock;
+        var sceneBounds = new THREE.Box3();
         //var gcodeWid = 1280 ;
         //var gcodeHei = 960;
         var gcodeWid = 580;
@@ -364,22 +451,8 @@ $(function () {
             }
 
             //add gcode window to page.
-            if ($(".gwin").length < 1) {
+            if (true||$(".gwin").length < 1) {
                 if (false) {
-                    var gwin = $("<div class='gwin' id='gwin' style='position:absolute;width:" + gcodeWid + "px;height:" + gcodeHei + "px;opacity:1.0;'></div>");
-
-//                    var handle = $("<div id='handle' style='position:absolute;width:32px;height:32px;border:1px solid gray;background-color:yellow;cursor:pointer;text-align:center'></div>");
-//                    gwin.append(handle);
-
-                    container = $("<div class='xgcode' id='gcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
-                    gwin.append(container);
-                    $("#sexygcode").append(gwin);
-                    //$("body").append(gwin);
-
-                    //gcodeWid = $(container).width();
-                    //gcodeHei = $(container).height()
-
-
                     //$('.gwin').resizable({
                     //    resize: function (event, ui) {
                     //        camera.aspect = ui.size.width / ui.size.height;
@@ -405,29 +478,11 @@ $(function () {
 
                 } else {
 
-                    var gwin = $("<div class='gwin' id='gwin' style='position:relative;width:100%;height:100%'></div>");
+                    //var gwin = $(".gwin");
 
-                    //                container = $("<div class='mygcode' id='mygcode' style='display:inline-block;width:" + gcodeWid + "px;height;" + gcodeHei + "px'></div>");
-                    container = $("<div class='mygcode' id='mygcode' style='display:inline-block;min-width:640px;min-height:360px'></div>");
+                    //var canvas = $("<canvas  id='mycanvas' style='width:100%;height:100%'></canvas>");
+                    //gwin.append(canvas);
 
-                    var canvas = $("<canvas  id='mycanvas' style='width:100%;height:100%'></canvas>");
-                    gwin.append(canvas);
-
-                    //$("#sexygcode").append(canvas);
-                    $("#sexygcode").append(gwin);
-
-                    //gcodeWid = $(container).width();
-                    //gcodeHei = $(container).height()
-
-                    //container.resize(function (event, ui) {
-                    //    gcodeWid = $(container).width();
-                    //    gcodeHei = $(container).height()
-                    //    console.log([gcodeWid, gcodeHei]);
-
-                    //    camera.aspect = gcodeWid / gcodeHei;
-                    //    camera.updateProjectionMatrix();
-                    //    //renderer.setSize(gcodeWid, gcodeHei);
-                    //});
 
                 }
 
@@ -439,8 +494,11 @@ $(function () {
 
                 CameraControls.install({ THREE: THREE });
                 clock = new THREE.Clock();
+
+                var canvas = $("#mycanvas");
                 cameraControls = new CameraControls(camera, canvas[0]);
-                cameraControls.setTarget(150, 0, -150, true);;
+                cameraControls.setTarget(150, 0, -150, false);;
+
 
                 //for debugging
                 window.myCameraControls = cameraControls;
@@ -457,6 +515,8 @@ $(function () {
 
                 //renderer.setSize(gcodeWid, gcodeHei);
                 //container.append(renderer.domElement);
+
+
 
 
             }

@@ -1,6 +1,46 @@
-#tab_plugin_prettygcode .gwin .fullscreen{
+#tab_plugin_prettygcode .gwin {
     width: 100%;
     height: 100%;
-    position:absolute;
+    position: relative;
+    border: 1px solid green;
+}
+
+#tab_plugin_prettygcode .gwin.fullscreen {
+    top:0px;
+    left:0px;
+    width: 100%;
+    height: 100%;
+    position: absolute;
     border: 1px solid red;
 }
+#tab_plugin_prettygcode .fstoggle {
+    top: 20px;
+    right: 60px;
+    position: absolute;
+    z-index:10;
+}
+#tab_plugin_prettygcode #state_wrapper {
+    top: 20px;
+    left: 20px;
+    width: 300px;
+    position: absolute;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    display: none;
+}
+#tab_plugin_prettygcode .fullscreen #state_wrapper {
+    display: unset;
+}
+
+#tab_plugin_prettygcode #webcam_rotator {
+    bottom: 20px;
+    right: 40px;
+    width:360px;
+    position: absolute;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    display: none;
+}
+
+#tab_plugin_prettygcode .fullscreen #webcam_rotator {
+    display: unset;
+}
+
