@@ -594,7 +594,7 @@ $(function () {
             fetch(myRequest)
                 .then(function (response) {
                     var contentLength = response.headers.get('Content-Length');
-                    if (!response.body) {
+                    if (!response.body || (!TextDecoder)) {
                         response.text().then(function (text) {
                             loader.parse(text);
                         });;
