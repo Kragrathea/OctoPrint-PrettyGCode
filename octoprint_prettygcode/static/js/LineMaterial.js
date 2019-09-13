@@ -180,7 +180,7 @@ THREE.ShaderLib[ 'line' ] = {
 	fragmentShader:
 		`
 		uniform vec3 diffuse;
-		uniform float opacity=0.2;
+		uniform float opacity;
 
 		#ifdef USE_DASH
 

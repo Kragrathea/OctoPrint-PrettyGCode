@@ -32,29 +32,35 @@ $(function () {
                     viewInitialized = true;
                     var stateView = $("#state_wrapper").clone()
                     $(".gwin").append(stateView)
-                    $('.gwin #state_wrapper').draggable({
-                        //    handle: "#handle",
-                        //    appendTo: 'body',
-                        //    stack: 'div',
-                        containment: "parent",
-                    });
+
+
+                    if ($('.gwin #state_wrapper').draggable) {//todo Why is draggable not defined in some browsers.
+                        $('.gwin #state_wrapper').draggable({
+                            //    handle: "#handle",
+                            //    appendTo: 'body',
+                            //    stack: 'div',
+                            containment: "parent",
+                        });
+                    }
 
 
 
-                    var camView = $("#webcam_rotator").clone();
-                    $(".gwin").append(camView)
-                    $('.gwin #webcam_rotator').draggable({
-                    //    handle: "#handle",
-                    //    appendTo: 'body',
-                    //    stack: 'div',
-                        containment: "parent",
-                        start: function (event, ui) {
-                            $(this).css({
-                                right: "auto",
-                                bottom: "auto"
-                            });
-                        }
-                    });
+                        var camView = $("#webcam_rotator").clone();
+                        $(".gwin").append(camView)
+                    if ($('.gwin #state_wrapper').draggable) {//todo Why is draggable not defined in some browsers.
+                        $('.gwin #webcam_rotator').draggable({
+                            //    handle: "#handle",
+                            //    appendTo: 'body',
+                            //    stack: 'div',
+                            containment: "parent",
+                            start: function (event, ui) {
+                                $(this).css({
+                                    right: "auto",
+                                    bottom: "auto"
+                                });
+                            }
+                        });
+                    }
 
                     //check url for fullscreen mode
                     if (urlParam("fullscreen"))
@@ -624,7 +630,7 @@ $(function () {
                 success: function (d) {
                     if (curJobName != d.job.file.path) {
                         curJobName = d.job.file.path;
-                        loadGcode('http://192.168.1.5/downloads/files/local/' + curJobName);
+                        loadGcode('/downloads/files/local/' + curJobName);
                     }
 
                     //var div = $("#status");
