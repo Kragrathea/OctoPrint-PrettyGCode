@@ -172,14 +172,14 @@ $(function () {
                     
                     object.add(line);
 
-                    //geo = new THREE.LineGeometry();
-                    //geo.setPositions(layer.vertex.slice(0));
-                    ////geo.setColors(layer.colors.slice(0))
+                    // geo = new THREE.LineGeometry();
+                    // geo.setPositions(layer.vertex.slice(0));
+                    // //geo.setColors(layer.colors.slice(0))
 
-                    //var line = new THREE.Line2(geo, shadowMaterial);
-                    //line.name = 'shadow-layer#' + layers.length;
-                    //line.renderOrder = 1;
-                    //object.add(line);
+                    // var line = new THREE.Line2(geo, shadowMaterial);
+                    // line.name = 'shadow-layer#' + layers.length;
+                    // line.renderOrder = 1;
+                    // object.add(line);
 
                 }
                
@@ -366,6 +366,54 @@ $(function () {
                 }
 
                 var bsize=sceneBounds.getSize();
+
+                var loader = new THREE.FontLoader();
+				loader.load( '/static/gcodeviewer/js/helvetiker_regular.typeface.json', function ( font ) {
+					var xMid, text;
+					var color = 0x006699;
+					var matDark = new THREE.LineBasicMaterial( {
+						color: color,
+						side: THREE.DoubleSide
+					} );
+					var matLite = new THREE.MeshBasicMaterial( {
+						color: color,
+						transparent: true,
+						opacity: 0.4,
+						side: THREE.DoubleSide
+					} );
+					var message = "   Three.js\nSimple text.";
+					var shapes = font.generateShapes( message, 100 );
+					var geometry = new THREE.ShapeBufferGeometry( shapes );
+					geometry.computeBoundingBox();
+					xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
+					geometry.translate( xMid, 0, 0 );
+					// make shape ( N.B. edge view not visible )
+					text = new THREE.Mesh( geometry, matLite );
+					text.position.z = - 150;
+					scene.add( text );
+					// make line shape ( N.B. edge view remains visible )
+					var holeShapes = [];
+					for ( var i = 0; i < shapes.length; i ++ ) {
+						var shape = shapes[ i ];
+						if ( shape.holes && shape.holes.length > 0 ) {
+							for ( var j = 0; j < shape.holes.length; j ++ ) {
+								var hole = shape.holes[ j ];
+								holeShapes.push( hole );
+							}
+						}
+					}
+					shapes.push.apply( shapes, holeShapes );
+					var lineText = new THREE.Object3D();
+					for ( var i = 0; i < shapes.length; i ++ ) {
+						var shape = shapes[ i ];
+						var points = shape.getPoints();
+						var geometry = new THREE.BufferGeometry().setFromPoints( points );
+						geometry.translate( xMid, 0, 0 );
+						var lineMesh = new THREE.Line( geometry, matDark );
+						lineText.add( lineMesh );
+					}
+					scene.add( lineText );
+				} ); //end load function
 
 
                  
