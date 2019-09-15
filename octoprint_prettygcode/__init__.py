@@ -13,7 +13,7 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
     def get_assets(self):
         return dict(
             js=["js/prettygcode.js","js/three.min.js","js/OrbitControls.js","js/GCodeLoader.js",
-                "js/LineSegmentsGeometry.js","js/LineGeometry.js","js/ColladaLoader.js",
+                "js/LineSegmentsGeometry.js","js/LineGeometry.js","js/ColladaLoader.js","js/OBJLoader.js",
                 "js/LineMaterial.js","js/LineSegments2.js","js/Line2.js","js/camera-controls.js","js/Lut.js","js/dat.gui.min.js"],
             css=["css/prettygcode.css"]
         )
