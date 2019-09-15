@@ -7,6 +7,23 @@ $(function () {
 
 
 
+        // self.fromHistoryData= function (data) {
+        //     console.log("fromHistoryData")
+        // };
+
+        self.fromCurrentData= function (data) {
+            //console.log(["fromCurrentData",data])
+            if(data.logs.length){
+                data.logs.forEach(function(e,i)
+                {
+                    if(e.startsWith("Send:"))
+                    {
+                        console.log(["sendCommand:",e]);
+                        //e.indexOf("G0")
+                    }
+                })
+            }
+        };
 
         self.onAfterBinding = function () {
             console.log("onAfterBinding")
@@ -367,8 +384,9 @@ $(function () {
 
                 var bsize=sceneBounds.getSize();
 
+
                 var loader = new THREE.FontLoader();
-				loader.load( '/static/gcodeviewer/js/helvetiker_regular.typeface.json', function ( font ) {
+				loader.load( '/plugin/prettygcode/static/js/helvetiker_bold.typeface.json', function ( font ) {
 					var xMid, text;
 					var color = 0x006699;
 					var matDark = new THREE.LineBasicMaterial( {
@@ -378,44 +396,105 @@ $(function () {
 					var matLite = new THREE.MeshBasicMaterial( {
 						color: color,
 						transparent: true,
-						opacity: 0.4,
+						opacity: 0.8,
 						side: THREE.DoubleSide
-					} );
-					var message = "   Three.js\nSimple text.";
-					var shapes = font.generateShapes( message, 100 );
+                    } );
+                    var center =new THREE.Vector3(0,0,0);
+                    sceneBounds.getCenter(center);
+                    //console.log(["center",center]);
+
+                    var textHeight=3;
+                    var textZ=0.2;
+					var message = bsize.x.toFixed(2)+ " MM";
+					var shapes = font.generateShapes( message, textHeight );
 					var geometry = new THREE.ShapeBufferGeometry( shapes );
 					geometry.computeBoundingBox();
 					xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
 					geometry.translate( xMid, 0, 0 );
 					// make shape ( N.B. edge view not visible )
 					text = new THREE.Mesh( geometry, matLite );
-					text.position.z = - 150;
-					scene.add( text );
-					// make line shape ( N.B. edge view remains visible )
-					var holeShapes = [];
-					for ( var i = 0; i < shapes.length; i ++ ) {
-						var shape = shapes[ i ];
-						if ( shape.holes && shape.holes.length > 0 ) {
-							for ( var j = 0; j < shape.holes.length; j ++ ) {
-								var hole = shape.holes[ j ];
-								holeShapes.push( hole );
-							}
-						}
-					}
-					shapes.push.apply( shapes, holeShapes );
-					var lineText = new THREE.Object3D();
-					for ( var i = 0; i < shapes.length; i ++ ) {
-						var shape = shapes[ i ];
-						var points = shape.getPoints();
-						var geometry = new THREE.BufferGeometry().setFromPoints( points );
-						geometry.translate( xMid, 0, 0 );
-						var lineMesh = new THREE.Line( geometry, matDark );
-						lineText.add( lineMesh );
-					}
-					scene.add( lineText );
-				} ); //end load function
+					text.position.set(center.x,sceneBounds.min.y-(textHeight*2),textZ);
+                    scene.add( text );
+
+                    var lineMat = new THREE.LineMaterial({
+                        linewidth: 6, // in pixels
+                        color: color
+                    });
+                    lineMat.resolution.set(gcodeWid, gcodeHei);
+
+                    var lineGeo = new THREE.LineGeometry();
+                    var lineVerts=[
+                        sceneBounds.min.x,sceneBounds.min.y-(textHeight*0.8),textZ,
+                        sceneBounds.max.x,sceneBounds.min.y-(textHeight*0.8),textZ,
+
+                        sceneBounds.min.x,sceneBounds.min.y-1,textZ,
+                        sceneBounds.min.x,sceneBounds.min.y-(textHeight*1.2),textZ,
+
+                        sceneBounds.max.x,sceneBounds.min.y-1,textZ,
+                        sceneBounds.max.x,sceneBounds.min.y-(textHeight*1.2),textZ,
+                    ];
+                    lineGeo.setPositions(lineVerts);
+                    var line = new THREE.Line2(lineGeo, lineMat);
+                    scene.add(line);
+
+                    var textHeight=3;
+					var message = bsize.y.toFixed(2)+ " MM";
+					var shapes = font.generateShapes( message, textHeight );
+					var geometry = new THREE.ShapeBufferGeometry( shapes );
+					geometry.computeBoundingBox();
+                    xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
+					geometry.translate( xMid, 0, 0 );
+                    geometry.rotateZ(Math.PI / 2);
+					// make shape ( N.B. edge view not visible )
+					text = new THREE.Mesh( geometry, matLite );
+					text.position.set(sceneBounds.max.x+(textHeight*2),center.y,textZ);
+                    scene.add( text );
+
+                    var lineGeo = new THREE.LineGeometry();
+                    var lineVerts=[
+                        sceneBounds.max.x+(textHeight*0.8),sceneBounds.min.y,textZ,
+                        sceneBounds.max.x+(textHeight*0.8),sceneBounds.max.y,textZ,
+
+                        sceneBounds.max.x+1,sceneBounds.min.y,               textZ,
+                        sceneBounds.max.x+(textHeight*1.2),sceneBounds.min.y,textZ,
+
+                        sceneBounds.max.x+1,sceneBounds.max.y,               textZ,
+                        sceneBounds.max.x+(textHeight*1.2),sceneBounds.max.y,textZ,
+                    ];
+                    lineGeo.setPositions(lineVerts);
+                    var line = new THREE.Line2(lineGeo, lineMat);
+                    scene.add(line);
 
 
+                    var textHeight=3;
+					var message = bsize.z.toFixed(2)+ " MM";
+					var shapes = font.generateShapes( message, textHeight );
+					var geometry = new THREE.ShapeBufferGeometry( shapes );
+					geometry.computeBoundingBox();
+                    xMid =0;// - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
+					geometry.translate( xMid, 0, 0 );
+                    geometry.rotateX(Math.PI / 2);
+					// make shape ( N.B. edge view not visible )
+					text = new THREE.Mesh( geometry, matLite );
+					text.position.set(sceneBounds.max.x+(textHeight*1),sceneBounds.max.y,center.z);
+                    scene.add( text );
+
+                    var lineGeo = new THREE.LineGeometry();
+                    var lineVerts=[
+                        sceneBounds.max.x+(textHeight*0.8),sceneBounds.max.y+(textHeight*0.8),0,
+                        sceneBounds.max.x+(textHeight*0.8),sceneBounds.max.y+(textHeight*0.8),bsize.z,
+
+                        // sceneBounds.max.x+1,sceneBounds.min.y,               textZ,
+                        // sceneBounds.max.x+(textHeight*1.2),sceneBounds.min.y,textZ,
+
+                        // sceneBounds.max.x+1,sceneBounds.max.y,               textZ,
+                        // sceneBounds.max.x+(textHeight*1.2),sceneBounds.max.y,textZ,
+                    ];
+                    lineGeo.setPositions(lineVerts);
+                    var line = new THREE.Line2(lineGeo, lineMat);
+                    scene.add(line);
+
+				} ); 
                  
                 var dist = Math.max(Math.abs(bsize.x), Math.abs(bsize.y)) / 2;
                 console.log(dist)
@@ -426,7 +505,7 @@ $(function () {
 
             var object = new THREE.Group();
             object.name = 'gcode';
-            object.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
+            //object.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
 
 
 
@@ -439,6 +518,7 @@ $(function () {
         //var container;
         var camera, cameraControls, scene, renderer, loader,light;
         var clock;
+        var dimensionsGroup;
         var sceneBounds = new THREE.Box3();
         //var gcodeWid = 1280 ;
         //var gcodeHei = 960;
@@ -543,7 +623,8 @@ $(function () {
                 //todo allow save/pos camera at start.
                 camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
                 //camera = new THREE.PerspectiveCamera(60, gcodeWid / gcodeHei, 0.1, 10000);
-                camera.position.set(310, 50, 0);
+                camera.up.set(0,0,1);
+                camera.position.set(310, 0, 50);
 
 
                 CameraControls.install({ THREE: THREE });
@@ -551,7 +632,7 @@ $(function () {
 
                 var canvas = $("#mycanvas");
                 cameraControls = new CameraControls(camera, canvas[0]);
-                cameraControls.setTarget(150, 0, -150, false);;
+                cameraControls.setTarget(150, 150, 0, false);;
 
 
                 //for debugging
@@ -583,9 +664,10 @@ $(function () {
 
             //todo. make bed sized. 
             var grid = new THREE.GridHelper(300, 30, 0x000000, 0x888888);
-            grid.position.set(150,0, -150);
+            grid.position.set(150,150,0);
             grid.material.opacity = 0.2;
             grid.material.transparent = true;
+            grid.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
             scene.add(grid);
 
 
@@ -599,6 +681,11 @@ $(function () {
             light = new THREE.PointLight(0xffffff);
             light.position.copy(camera.position);
             scene.add(light);
+
+            var loader = new THREE.ColladaLoader();
+                loader.load( '/plugin/prettygcode/static/js/models/ExtruderNozzle.dae', function ( collada ) {
+                scene.add( collada.scene );
+                } );
 
 
             //simple gui
