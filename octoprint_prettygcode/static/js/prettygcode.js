@@ -11,6 +11,8 @@ $(function () {
         //     console.log("fromHistoryData")
         // };
 
+        var printHeadPosition=new THREE.Vector3(0,0,0);
+        var newPrintHeadPosition=new THREE.Vector3(0,0,0);
         self.fromCurrentData= function (data) {
             //console.log(["fromCurrentData",data])
             if(data.logs.length){
@@ -18,7 +20,20 @@ $(function () {
                 {
                     if(e.startsWith("Send:"))
                     {
-                        console.log(["sendCommand:",e]);
+                        if(e.indexOf(" G")>-1)
+                        {
+                            var x= parseFloat(e.split("X")[1])
+                            if(!Number.isNaN(x))
+                                newPrintHeadPosition.x=x;
+                            var y= parseFloat(e.split("Y")[1])
+                            if(!Number.isNaN(y))
+                                newPrintHeadPosition.y=y;
+                            var z= parseFloat(e.split("Z")[1])
+                            if(!Number.isNaN(z))
+                                newPrintHeadPosition.z=z;
+                            nozzleModel.position.copy(newPrintHeadPosition);
+                        }
+                            //console.log(["GCmd:",e]);
                         //e.indexOf("G0")
                     }
                 })
@@ -47,7 +62,13 @@ $(function () {
 
                 if (!viewInitialized) {
                     viewInitialized = true;
-                    var stateView = $("#state_wrapper").clone()
+                    //var origStateView = $("#state_wrapper").clone()
+                    //$(".accordion").append(origStateView)
+
+                    var stateView = $("#state_wrapper").first().clone()
+                    //var stateView = $("<iframe id='state_wrapper' style='height:900px' src='/?focus=.accordion'></iframe>").clone()
+
+
                     $(".gwin").append(stateView)
 
 
@@ -56,7 +77,7 @@ $(function () {
                             //    handle: "#handle",
                             //    appendTo: 'body',
                             //    stack: 'div',
-                            containment: "parent",
+                            containment: "#gwin",
                         });
                     }
 
@@ -517,6 +538,7 @@ $(function () {
 
         //var container;
         var camera, cameraControls, scene, renderer, loader,light;
+        var nozzleModel;
         var clock;
         var dimensionsGroup;
         var sceneBounds = new THREE.Box3();
@@ -657,18 +679,31 @@ $(function () {
             }
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xe0e0e0);
+            scene.background = new THREE.Color(0xd0d0d0);
 
             //for debugging
             window.myScene = scene;
 
+            var planeGeometry = new THREE.PlaneGeometry( 300, 300 );
+            var planeMaterial = new THREE.MeshBasicMaterial( {color: 0x909090, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity:0.2,
+            });
+            var plane = new THREE.Mesh( planeGeometry, planeMaterial );
+            plane.position.set(150,150,-0.1);
+            //plane.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
+            scene.add( plane );
+
+
             //todo. make bed sized. 
             var grid = new THREE.GridHelper(300, 30, 0x000000, 0x888888);
             grid.position.set(150,150,0);
-            grid.material.opacity = 0.2;
+            grid.material.opacity = 0.6;
             grid.material.transparent = true;
             grid.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
             scene.add(grid);
+
 
 
             loader = new GCodeParser();
@@ -679,12 +714,38 @@ $(function () {
 
             //add a light. might not be needed.
             light = new THREE.PointLight(0xffffff);
+            light.position.set(160,160,10);
+            scene.add(light);
+
+            light = new THREE.PointLight(0xffffff);
             light.position.copy(camera.position);
             scene.add(light);
 
-            var loader = new THREE.ColladaLoader();
-                loader.load( '/plugin/prettygcode/static/js/models/ExtruderNozzle.dae', function ( collada ) {
-                scene.add( collada.scene );
+            //light = new THREE.AmbientLight( 0x808080 ); // soft white light
+            //scene.add( light );
+
+            var objloader = new THREE.OBJLoader();
+
+                var nozzleMaterial = new THREE.MeshStandardMaterial( {
+                    metalness: 1,   // between 0 and 1
+                    roughness: 0.5, // between 0 and 1
+                    //envMap: envMap,
+                    color: new THREE.Color(0xba971b),
+                } );
+
+
+                objloader.load( '/plugin/prettygcode/static/js/models/ExtruderNozzle.obj', function ( obj ) {
+                obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
+                obj.scale.setScalar(0.1)
+                obj.position.set(150, 150, 10);
+                obj.name="nozzle";
+                obj.children.forEach(function(e,i){
+                    if ( e instanceof THREE.Mesh ) {
+                        e.material = nozzleMaterial;
+                    }
+                })
+                nozzleModel=obj;
+                scene.add( obj );
                 } );
 
 
