@@ -81,8 +81,6 @@ $(function () {
                         });
                     }
 
-
-
                         var camView = $("#webcam_rotator").clone();
                         $(".gwin").append(camView)
                     if ($('.gwin #state_wrapper').draggable) {//todo Why is draggable not defined in some browsers.
@@ -178,6 +176,13 @@ $(function () {
                 //transparent: true,
                 //opacity:0.35,
             });
+
+            var curLineBasicMaterial = new THREE.LineBasicMaterial( {
+                color: 0xffffff,
+                vertexColors: THREE.VertexColors
+            } );
+            
+
             //var shadowMaterial = new THREE.LineMaterial({
             //    linewidth: 6, // in pixels
             //    color: new THREE.Color("blue"),// rainbow.getColor(layers.length % 64).getHex()
@@ -200,15 +205,26 @@ $(function () {
 
                 if (layer.vertex.length > 2) {
 
-                    geo = new THREE.LineGeometry();
-                    geo.setPositions(layer.vertex);
-                    geo.setColors(layer.colors)
 
-                    var line = new THREE.Line2(geo, curMaterial);
-                    line.name = 'layer#' + layers.length;
-                    //line.renderOrder = 2;
-                    
-                    object.add(line);
+                    if(layerDisplay.fatLines){
+                        var geo = new THREE.LineGeometry();
+                        geo.setPositions(layer.vertex);
+                        geo.setColors(layer.colors)
+                        var line = new THREE.Line2(geo, curMaterial);
+                        line.name = 'layer#' + layers.length;
+                        object.add(line);
+                        //line.renderOrder = 2;
+                    }else{
+                        var geo = new THREE.BufferGeometry();
+                        geo.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array(layer.vertex), 3 ) );
+                        geo.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array(layer.colors), 3 ) );
+                        var line = new THREE.LineSegments( geo, curLineBasicMaterial );
+                        line.name = 'layer#' + layers.length;
+                        object.add(line);
+
+                    }
+
+
 
                     // geo = new THREE.LineGeometry();
                     // geo.setPositions(layer.vertex.slice(0));
@@ -255,10 +271,11 @@ $(function () {
                     sceneBounds.expandByPoint(p2);
                 }
 
-                    //add mirror version
-                currentLayer.vertex.push(p1.x, p1.y, -p1.z);
-                currentLayer.vertex.push(p2.x, p2.y, -p2.z);
-
+                if(layerDisplay.showMirror){
+                        //add mirror version
+                    currentLayer.vertex.push(p1.x, p1.y, -p1.z);
+                    currentLayer.vertex.push(p2.x, p2.y, -p2.z);
+                }
 
                 if (true)//faux shading. Darken line color based on angle
                 {
@@ -279,11 +296,12 @@ $(function () {
                     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
                     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
 
-                    //add mirror version
-                    drawColor.setHSL(hsl.h, hsl.s, hsl.l/2);
-                    currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
-                    currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
-
+                    if(layerDisplay.showMirror){
+                        //add mirror version
+                        drawColor.setHSL(hsl.h, hsl.s, hsl.l/2);
+                        currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+                        currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
+                    }
                 }
                 else {
 
@@ -573,10 +591,31 @@ $(function () {
         var LayerDisplay = function () {
             this.start = 0;
             this.end = 100;
+            this.showMirror=false;
+            this.fatLines=false;
+            this.transparency=false;
             //this.displayOutline = false;
             //this.explode = function () { alert(1) };
         };
         var layerDisplay = new LayerDisplay();
+
+        if(true){
+            //simple gui
+            gui = new dat.GUI({ autoPlace: false });
+
+            var guielem = $("<div id='mygui' style='position:absolute;right:50px;top:0px;opacity:0.8;z-index=5;'></div>");
+
+            $('.gwin').prepend(guielem)
+
+            $('#mygui').prepend(gui.domElement);
+
+            gui.add(layerDisplay, 'start', 0, 100);
+            gui.add(layerDisplay, 'end', 0, 100);
+            gui.add(layerDisplay, 'showMirror');
+            gui.add(layerDisplay, 'fatLines');
+            gui.add(layerDisplay, 'transparency');
+            //gui.add(layerDisplay, 'explode');
+        }
 
         function loadGcode(url) {
             function animate() {
@@ -687,7 +726,7 @@ $(function () {
             var planeGeometry = new THREE.PlaneGeometry( 300, 300 );
             var planeMaterial = new THREE.MeshBasicMaterial( {color: 0x909090, 
                 side: THREE.DoubleSide,
-                transparent: true,
+                transparent: layerDisplay.transparency,
                 opacity:0.2,
             });
             var plane = new THREE.Mesh( planeGeometry, planeMaterial );
@@ -699,8 +738,10 @@ $(function () {
             //todo. make bed sized. 
             var grid = new THREE.GridHelper(300, 30, 0x000000, 0x888888);
             grid.position.set(150,150,0);
-            grid.material.opacity = 0.6;
-            grid.material.transparent = true;
+            if(layerDisplay.transparency){
+                grid.material.opacity = 0.6;
+                grid.material.transparent = true;
+            }
             grid.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
             scene.add(grid);
 
@@ -749,20 +790,8 @@ $(function () {
                 } );
 
 
-            //simple gui
-/*            gui = new dat.GUI({ autoPlace: false });
 
-            var guielem = $("<div id='mygui' style='position:absolute;right:0px;top:0px;opacity:0.8;z-index=5;'></div>");
 
-            $('.gwin').prepend(guielem)
-
-            $('#mygui').prepend(gui.domElement);
-
-            gui.add(layerDisplay, 'start', 0, 100);
-            gui.add(layerDisplay, 'end', 0, 100);
-            gui.add(layerDisplay, 'displayOutline');
-            gui.add(layerDisplay, 'explode');
-*/
             //$('.gwin').append($('<p><label for="amount">Volume:</label><input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;"></p>'));
             if (true) {
                 $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
