@@ -123,15 +123,6 @@ $(function () {
             }
         };
 
-
-        urlParam = function (name) {
-            var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
-            if (results == null) {
-                return null;
-            }
-            return decodeURI(results[1]) || 0;
-        }
-
         String.prototype.hashCode = function () {
             var hash = 0, i, chr;
             if (this.length === 0) return hash;
@@ -143,9 +134,17 @@ $(function () {
             return hash;
         };
 
+
+        urlParam = function (name) {
+            var results = new RegExp('[\?&]' + name + '=([^&#]*)').exec(window.location.href);
+            if (results == null) {
+                return null;
+            }
+            return decodeURI(results[1]) || 0;
+        }
+
         var focus = urlParam("focus");
         if (focus != null) {
-
             console.log("Focusing on:" + focus);
             $("body").children().hide();
             $("#webcam_container").hide();
@@ -153,7 +152,6 @@ $(function () {
                 focus = "#" + focus;
             var el = $(focus)[0];
             $("body").prepend(el);
-
         }
 
         //todo. parser rewrite. build per "extrude" or travel. Change when extrude or type or layer changes.
@@ -424,6 +422,13 @@ $(function () {
                 var bsize=sceneBounds.getSize();
 
 
+                if(dimensionsGroup===undefined)
+                {
+                    dimensionsGroup = new THREE.Group();
+                    dimensionsGroup.name = 'dimensions';
+                    scene.add(dimensionsGroup);
+                }
+
                 var loader = new THREE.FontLoader();
 				loader.load( '/plugin/prettygcode/static/js/helvetiker_bold.typeface.json', function ( font ) {
 					var xMid, text;
@@ -442,6 +447,11 @@ $(function () {
                     sceneBounds.getCenter(center);
                     //console.log(["center",center]);
 
+                    //clear out any old lines
+                    for (var i = dimensionsGroup.children.length - 1; i >= 0; i--) {
+                        dimensionsGroup.remove(dimensionsGroup.children[i]);
+                    }
+
                     var textHeight=3;
                     var textZ=0.2;
 					var message = bsize.x.toFixed(2)+ " MM";
@@ -453,7 +463,7 @@ $(function () {
 					// make shape ( N.B. edge view not visible )
 					text = new THREE.Mesh( geometry, matLite );
 					text.position.set(center.x,sceneBounds.min.y-(textHeight*2),textZ);
-                    scene.add( text );
+                    dimensionsGroup.add( text );
 
                     var lineMat = new THREE.LineMaterial({
                         linewidth: 6, // in pixels
@@ -474,7 +484,7 @@ $(function () {
                     ];
                     lineGeo.setPositions(lineVerts);
                     var line = new THREE.Line2(lineGeo, lineMat);
-                    scene.add(line);
+                    dimensionsGroup.add(line);
 
                     var textHeight=3;
 					var message = bsize.y.toFixed(2)+ " MM";
@@ -487,7 +497,7 @@ $(function () {
 					// make shape ( N.B. edge view not visible )
 					text = new THREE.Mesh( geometry, matLite );
 					text.position.set(sceneBounds.max.x+(textHeight*2),center.y,textZ);
-                    scene.add( text );
+                    dimensionsGroup.add( text );
 
                     var lineGeo = new THREE.LineGeometry();
                     var lineVerts=[
@@ -502,7 +512,7 @@ $(function () {
                     ];
                     lineGeo.setPositions(lineVerts);
                     var line = new THREE.Line2(lineGeo, lineMat);
-                    scene.add(line);
+                    dimensionsGroup.add(line);
 
 
                     var textHeight=3;
@@ -516,7 +526,7 @@ $(function () {
 					// make shape ( N.B. edge view not visible )
 					text = new THREE.Mesh( geometry, matLite );
 					text.position.set(sceneBounds.max.x+(textHeight*1),sceneBounds.max.y,center.z);
-                    scene.add( text );
+                    dimensionsGroup.add( text );
 
                     var lineGeo = new THREE.LineGeometry();
                     var lineVerts=[
@@ -531,7 +541,7 @@ $(function () {
                     ];
                     lineGeo.setPositions(lineVerts);
                     var line = new THREE.Line2(lineGeo, lineMat);
-                    scene.add(line);
+                    dimensionsGroup.add(line);
 
 				} ); 
                  
@@ -595,7 +605,7 @@ $(function () {
             this.fatLines=false;
             this.transparency=false;
             //this.displayOutline = false;
-            //this.explode = function () { alert(1) };
+            this.reload = function () { loadGcode('/downloads/files/local/' + curJobName); };
         };
         var layerDisplay = new LayerDisplay();
 
@@ -609,12 +619,12 @@ $(function () {
 
             $('#mygui').prepend(gui.domElement);
 
-            gui.add(layerDisplay, 'start', 0, 100);
-            gui.add(layerDisplay, 'end', 0, 100);
+            //gui.add(layerDisplay, 'start', 0, 100);
+            //gui.add(layerDisplay, 'end', 0, 100);
             gui.add(layerDisplay, 'showMirror');
             gui.add(layerDisplay, 'fatLines');
             gui.add(layerDisplay, 'transparency');
-            //gui.add(layerDisplay, 'explode');
+            gui.add(layerDisplay, 'reload');
         }
 
         function loadGcode(url) {
@@ -778,7 +788,7 @@ $(function () {
                 objloader.load( '/plugin/prettygcode/static/js/models/ExtruderNozzle.obj', function ( obj ) {
                 obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
                 obj.scale.setScalar(0.1)
-                obj.position.set(150, 150, 10);
+                obj.position.set(0, 0, 10);
                 obj.name="nozzle";
                 obj.children.forEach(function(e,i){
                     if ( e instanceof THREE.Mesh ) {
