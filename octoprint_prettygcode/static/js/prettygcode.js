@@ -74,17 +74,24 @@ $(function () {
             // replaced #control with #tab_plugin_webcamtab
             if (current == "#tab_plugin_prettygcode") {
 
+
                 if (!viewInitialized) {
                     viewInitialized = true;
                     //var origStateView = $("#state_wrapper").clone()
                     //$(".accordion").append(origStateView)
 
+
+
+/*                    
+
+
                     var stateView = $("#state_wrapper").first().clone()
+                    //stateView.attr("id","state_wrapper");
+
                     //var stateView = $("<iframe id='state_wrapper' style='height:900px' src='/?focus=.accordion'></iframe>").clone()
 
 
                     $(".gwin").append(stateView)
-
 
                     if ($('.gwin #state_wrapper').draggable) {//todo Why is draggable not defined in some browsers.
                         $('.gwin #state_wrapper').draggable({
@@ -111,13 +118,16 @@ $(function () {
                             }
                         });
                     }
+*/
+                    var camView = $("#webcam_rotator").clone();
+                    $(".gwin").append(camView)
 
                     //check url for fullscreen mode
                     if (urlParam("fullscreen"))
-                        $("#gwin").addClass("fullscreen");
+                        $(".page-container").addClass("pgfullscreen");
 
                     $(".fstoggle").on("click", function () {
-                        $("#gwin").toggleClass("fullscreen");
+                        $(".page-container").toggleClass("pgfullscreen");
                     });
                 }
 
@@ -1152,4 +1162,6 @@ $(function () {
         // Finally, this is the list of selectors for all elements we want this view model to be bound to.
         ["#injector_link"]
     ]);
+
+
 });

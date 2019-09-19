@@ -5,7 +5,7 @@
     border: 1px solid green;
 }
 
-#tab_plugin_prettygcode .gwin.fullscreen {
+.pgfullscreen #tab_plugin_prettygcode .gwin {
     top:0px;
     left:0px;
     width: 100%;
@@ -19,28 +19,47 @@
     position: absolute;
     z-index:10;
 }
-#tab_plugin_prettygcode #state_wrapper {
+.pgfullscreen #state_wrapper {
     top: 20px;
     left: 20px;
     width: 300px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    display: none;
-}
-#tab_plugin_prettygcode .fullscreen #state_wrapper {
-    display: unset;
+    z-index:5;
 }
 
-#tab_plugin_prettygcode #webcam_rotator {
+/* .pgfullscreen #files_wrapper {
+    left: 20px;
+    bottom: 20px;
+    max-width: 80%;
+    position: absolute;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.70);
+    background: rgba(204, 204, 204, 0.9);
+    z-index:6;
+}
+.pgfullscreen #files .gcode_files .entry {
+    padding: 5px;
+    line-height: 20px;
+    border-bottom: 1px solid #ddd;
+    position: relative;
+    width: 220px;
+    display: inline-grid;
+    background: white;
+    height: 100px;
+} */
+/* .pgfullscreen #files.collapse {
+    width:0px;
+} */
+
+.gwin #webcam_rotator {
     bottom: 20px;
     right: 40px;
     width:360px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    display: none;
+    z-index:5;
+    display:none;
 }
-
-#tab_plugin_prettygcode .fullscreen #webcam_rotator {
-    display: unset;
+.pgfullscreen .gwin #webcam_rotator {
+    display:unset;
 }
-
