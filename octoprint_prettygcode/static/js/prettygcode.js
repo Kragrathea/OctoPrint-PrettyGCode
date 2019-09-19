@@ -30,8 +30,22 @@ $(function () {
                                 newPrintHeadPosition.y=y;
                             var z= parseFloat(e.split("Z")[1])
                             if(!Number.isNaN(z))
+                            {
                                 newPrintHeadPosition.z=z;
+                                if(layerDisplay.sync){
+                                    scene.traverse(function (child) {
+                                        if (child.name.startsWith("layer#")) {
+                                            if (child.userData.layerZ <= newPrintHeadPosition.z) {
+                                                layerDisplay.end=child.userData.layerNumber;
+                    
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+
                             nozzleModel.position.copy(newPrintHeadPosition);
+
                         }
                             //console.log(["GCmd:",e]);
                         //e.indexOf("G0")
@@ -210,6 +224,7 @@ $(function () {
                         geo.setColors(layer.colors)
                         var line = new THREE.Line2(geo, curMaterial);
                         line.name = 'layer#' + layers.length;
+                        line.userData={layerZ:layer.z,layerNumber:layers.length+1};
                         object.add(line);
                         //line.renderOrder = 2;
                     }else{
@@ -218,6 +233,7 @@ $(function () {
                         geo.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array(layer.colors), 3 ) );
                         var line = new THREE.LineSegments( geo, curLineBasicMaterial );
                         line.name = 'layer#' + layers.length;
+                        line.userData={layerZ:layer.z,layerNumber:layers.length+1};
                         object.add(line);
 
                     }
@@ -604,6 +620,7 @@ $(function () {
             this.showMirror=false;
             this.fatLines=false;
             this.transparency=false;
+            this.sync=false;
             //this.displayOutline = false;
             this.reload = function () { loadGcode('/downloads/files/local/' + curJobName); };
         };
@@ -625,6 +642,7 @@ $(function () {
             gui.add(layerDisplay, 'fatLines');
             gui.add(layerDisplay, 'transparency');
             gui.add(layerDisplay, 'reload');
+            gui.add(layerDisplay, 'sync');
         }
 
         function loadGcode(url) {
