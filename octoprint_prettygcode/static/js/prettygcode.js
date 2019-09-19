@@ -638,9 +638,11 @@ $(function () {
 
         if(true){
             //simple gui
-            gui = new dat.GUI({ autoPlace: false });
+            dat.GUI.TEXT_OPEN="View Options"
+            dat.GUI.TEXT_CLOSED="View Options"
+            gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:true,closeOnTop:true });
 
-            var guielem = $("<div id='mygui' style='position:absolute;right:50px;top:0px;opacity:0.8;z-index=5;'></div>");
+            var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
 
             $('.gwin').prepend(guielem)
 
@@ -648,6 +650,7 @@ $(function () {
 
             //gui.add(layerDisplay, 'start', 0, 100);
             //gui.add(layerDisplay, 'end', 0, 100);
+            gui.remember(layerDisplay);
             gui.add(layerDisplay, 'showMirror');
             gui.add(layerDisplay, 'fatLines');
             gui.add(layerDisplay, 'transparency');
