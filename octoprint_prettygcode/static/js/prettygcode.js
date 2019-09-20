@@ -230,6 +230,10 @@ $(function () {
                         pgSettings.showFiles=!pgSettings.showFiles;
                         updateWindowStates();
                     });
+                    $(".pgcameratoggle").on("click", function () {
+                        pgSettings.showWebcam=!pgSettings.showWebcam;
+                        updateWindowStates();
+                    });                    
                     updateWindowStates();
                 }
 
