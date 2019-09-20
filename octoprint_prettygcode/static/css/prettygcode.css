@@ -28,16 +28,17 @@
     z-index:5;
 }
 
-/* .pgfullscreen #files_wrapper {
+.pgfullscreen #files_wrapper {
     left: 20px;
     bottom: 20px;
     max-width: 80%;
+    width: 300px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.70);
     background: rgba(204, 204, 204, 0.9);
     z-index:6;
 }
-.pgfullscreen #files .gcode_files .entry {
+/* .pgfullscreen #files .gcode_files .entry {
     padding: 5px;
     line-height: 20px;
     border-bottom: 1px solid #ddd;
@@ -60,7 +61,38 @@
     z-index:5;
     display:none;
 }
-/*test branch undo*/
+
 .pgfullscreen .gwin #webcam_rotator {
     display:unset;
 }
+.pgfullscreen .gwin #webcam_rotator.pghidden {
+    display:none;
+}
+
+.pgfullscreen .pghidden {
+    display:none;
+}
+
+/*dat gui*/
+.gwin .dg li.save-row{
+    background:black;
+    color:yellow;
+}
+.gwin .dg li.save-row .button
+{
+    background:black;
+    color:yellow;    
+}
+.gwin .dg li.save-row select{
+    height: 100%;
+}
+.gwin .dg li.save-row .button.gears{
+    display:none;
+}
+.gwin .dg li.save-row .button.revert{
+    display:none;
+}
+.gwin .has-save .save-row::before {
+    content: "Preset: ";
+  }
+
