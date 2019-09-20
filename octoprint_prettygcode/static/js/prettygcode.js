@@ -758,7 +758,13 @@ $(function () {
 
             var canvas = $("#mycanvas");
             cameraControls = new CameraControls(camera, canvas[0]);
-            cameraControls.setTarget(bedVolume.width/2, bedVolume.depth/2, 0, false);;
+
+            //todo handle other than lowerleft
+            if(bedVolume.origin=="lowerleft")
+                cameraControls.setTarget(bedVolume.width/2, bedVolume.depth/2, 0, false);
+            else
+                cameraControls.setTarget(0, 0, 0, false);
+
 
             //for debugging
             window.myCameraControls = cameraControls;
@@ -799,7 +805,9 @@ $(function () {
             //todo. make bed sized. 
 
             var grid = new THREE.GridHelper(bedVolume.width, bedVolume.width/10, 0x000000, 0x888888);
-            grid.position.set(bedVolume.width/2, bedVolume.depth/2,0);
+            //todo handle other than lowerleft
+            if(bedVolume.origin=="lowerleft")
+                grid.position.set(bedVolume.width/2, bedVolume.depth/2,0);
 
             //if (pgSettings.transparency){
             grid.material.opacity = 0.6;
