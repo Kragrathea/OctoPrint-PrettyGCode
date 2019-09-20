@@ -2,6 +2,7 @@ $(function () {
     console.log("Create PrettyGCode View Model");
     function PrettyGCodeViewModel(parameters) {
         var self = this;
+        self.printerProfiles = parameters[2];
         
         //Parse terminal data for file and pos updates.
         var printHeadPosition=new THREE.Vector3(0,0,0);
@@ -123,13 +124,38 @@ $(function () {
             
         }
 
-
+        var bedVolume = undefined;
         var viewInitialized = false;
         self.onTabChange = function (current, previous) {
             // replaced #control with #tab_plugin_webcamtab
             if (current == "#tab_plugin_prettygcode") {
                 if (!viewInitialized) {
                     viewInitialized = true;
+
+                    //get printer build volume.
+                    //console.log(["self.printerProfiles",self.printerProfiles.currentProfileData()]);
+                    var volume = self.printerProfiles.currentProfileData().volume;
+                    if(typeof volume.custom_box ==="function")//check for custom bounds.
+                    {
+                        bedVolume={
+                            width:volume.width(),
+                            height:volume.height(),
+                            depth:volume.depth(),
+                            origin:volume.origin(),
+                            formFactor:volume.formFactor(),
+                        }
+                    }else{
+                        //console.log(["volume.custom_box",volume.custom_box]);
+                        bedVolume={
+                            width:volume.custom_box.x_max()-volume.custom_box.x_min(),
+                            height:volume.custom_box.z_max()-volume.custom_box.z_min(),
+                            depth:volume.custom_box.y_max()-volume.custom_box.y_min(),
+                            origin:volume.origin(),
+                            formFactor:volume.formFactor(),
+                        }
+                    }
+
+                    console.log(["bedVolume",bedVolume]);
 
                     if(true){
                         //simple gui
@@ -725,14 +751,14 @@ $(function () {
             //todo allow save/pos camera at start.
             camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
             camera.up.set(0,0,1);
-            camera.position.set(310, 0, 50);
+            camera.position.set(bedVolume.width, 0, 50);
 
             CameraControls.install({ THREE: THREE });
             clock = new THREE.Clock();
 
             var canvas = $("#mycanvas");
             cameraControls = new CameraControls(camera, canvas[0]);
-            cameraControls.setTarget(150, 150, 0, false);;
+            cameraControls.setTarget(bedVolume.width/2, bedVolume.depth/2, 0, false);;
 
             //for debugging
             window.myCameraControls = cameraControls;
@@ -755,20 +781,25 @@ $(function () {
                        
 
             //Semi-transparent plane to represent the bed. 
-            var planeGeometry = new THREE.PlaneGeometry( 300, 300 );
+            var planeGeometry = new THREE.PlaneGeometry( bedVolume.width, bedVolume.depth );
             var planeMaterial = new THREE.MeshBasicMaterial( {color: 0x909090, 
                 side: THREE.DoubleSide,
                 transparent: true,//pgSettings.transparency,
                 opacity:0.2,
             });
             var plane = new THREE.Mesh( planeGeometry, planeMaterial );
-            plane.position.set(150,150,-0.1);
+            
+            //todo handle other than lowerleft
+            if(bedVolume.origin=="lowerleft")
+                plane.position.set(bedVolume.width/2, bedVolume.depth/2,-0.1);
+
             //plane.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
             scene.add( plane );
 
             //todo. make bed sized. 
-            var grid = new THREE.GridHelper(300, 30, 0x000000, 0x888888);
-            grid.position.set(150,150,0);
+
+            var grid = new THREE.GridHelper(bedVolume.width, bedVolume.width/10, 0x000000, 0x888888);
+            grid.position.set(bedVolume.width/2, bedVolume.depth/2,0);
 
             //if (pgSettings.transparency){
             grid.material.opacity = 0.6;
@@ -850,15 +881,11 @@ $(function () {
 
     }
 
-    OCTOPRINT_VIEWMODELS.push([
-        PrettyGCodeViewModel,
-
-        // This is a list of dependencies to inject into the plugin, the order which you request
-        // here is the order in which the dependencies will be injected into your view model upon
-        // instantiation via the parameters argument
-        ["settingsViewModel"],
-        ["#injector_link"]
-    ]);
+    OCTOPRINT_VIEWMODELS.push({
+        construct: PrettyGCodeViewModel,
+        dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel"],
+        elements: ["#injector_link"]
+    });
 
 
 });
