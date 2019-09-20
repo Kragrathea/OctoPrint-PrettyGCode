@@ -19,18 +19,37 @@
     position: absolute;
     z-index:10;
 }
+#tab_plugin_prettygcode .pgsettingstoggle {
+    top: 20px;
+    right: 95px;
+    position: absolute;
+    z-index:10;
+}
+#tab_plugin_prettygcode .pgstatetoggle {
+    top: 20px;
+    left: 20px;
+    position: absolute;
+    z-index:10;
+}
+#tab_plugin_prettygcode .pgfilestoggle {
+    top: 20px;
+    left: 95px;
+    position: absolute;
+    z-index:10;
+}
 .pgfullscreen #state_wrapper {
     top: 20px;
     left: 20px;
     width: 300px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    background: rgba(255, 255, 255, 0.2);
     z-index:5;
 }
 
 .pgfullscreen #files_wrapper {
-    left: 20px;
-    bottom: 20px;
+    left: 95px;
+    top: 20px;
     max-width: 80%;
     width: 300px;
     position: absolute;
@@ -72,8 +91,20 @@
 .pgfullscreen .pghidden {
     display:none;
 }
-
+.gwin .pghidden {
+    display:none;
+}
 /*dat gui*/
+#tab_plugin_prettygcode #mygui
+{ 
+    position:absolute;
+    right:95px;
+    top:20px;
+    opacity:1.0;
+    z-index:5;
+    background:white;
+}
+
 .gwin .dg li.save-row{
     background:black;
     color:yellow;
@@ -86,10 +117,13 @@
 .gwin .dg li.save-row select{
     height: 100%;
 }
-.gwin .dg li.save-row .button.gears{
+.gwin .dg .close-button{
     display:none;
 }
 .gwin .dg li.save-row .button.revert{
+    display:none;
+}
+.gwin .dg li.save-row .button.gears{
     display:none;
 }
 .gwin .has-save .save-row::before {

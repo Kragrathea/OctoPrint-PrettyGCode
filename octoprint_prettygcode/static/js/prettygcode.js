@@ -67,7 +67,7 @@ $(function () {
             //console.log("onAfterBinding")
         };
         self.onEventFileSelected = function (payload){
-            console.log(["onEventFileSelected ",payload])
+            //console.log(["onEventFileSelected ",payload])
         }
 
         //var gcodeUpdateWatcher = 0;
@@ -135,13 +135,14 @@ $(function () {
                         //simple gui
                         dat.GUI.TEXT_OPEN="View Options"
                         dat.GUI.TEXT_CLOSED="View Options"
-                        gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:true,closeOnTop:true });
+                        gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
             
-                        var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
+                        gui.useLocalStorage=true;
+                        // var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
             
-                        $('.gwin').prepend(guielem)
+                        // $('.gwin').prepend(guielem)
             
-                        $('#mygui').prepend(gui.domElement);
+                        $('#mygui').append(gui.domElement);
 
                         gui.remember(pgSettings);
                         gui.add(pgSettings, 'syncToProgress');
@@ -151,9 +152,9 @@ $(function () {
                         folder.add(pgSettings, 'reloadGcode');
                         //gui.add(layerDisplay, 'transparency');
                         folder = gui.addFolder('Windows');
-                        folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates);
-                        folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates);
-                        folder.add(pgSettings, 'showFiles').onFinishChange(updateWindowStates);
+                        folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
+                        folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
+                        folder.add(pgSettings, 'showFiles').onFinishChange(updateWindowStates).listen();
 
                     } 
 
@@ -218,7 +219,17 @@ $(function () {
                     $(".fstoggle").on("click", function () {
                         $(".page-container").toggleClass("pgfullscreen");
                     });
-
+                    $(".pgsettingstoggle").on("click", function () {
+                        $("#mygui").toggleClass("pghidden");
+                    });
+                    $(".pgstatetoggle").on("click", function () {
+                        pgSettings.showState=!pgSettings.showState;
+                        updateWindowStates();
+                    });
+                    $(".pgfilestoggle").on("click", function () {
+                        pgSettings.showFiles=!pgSettings.showFiles;
+                        updateWindowStates();
+                    });
                     updateWindowStates();
                 }
 
