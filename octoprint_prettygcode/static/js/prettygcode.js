@@ -546,12 +546,15 @@ $(function () {
 
                     //Process commands
                     //figure out line color from comments.
-                    if (cmd.startsWith(";") ) {
+                    if (lines[i].indexOf(";")>-1 ) {
                         var cmdLower=lines[i].toLowerCase();
                         if (cmdLower.indexOf("inner") > -1) {
                             curColor = new THREE.Color(0x00ff00);//green
                         }
                         else if (cmdLower.indexOf("outer") > -1) {
+                            curColor = new THREE.Color('red');
+                        }
+                        else if (cmdLower.indexOf("perimeter") > -1) {
                             curColor = new THREE.Color('red');
                         }
                         else if (cmdLower.indexOf("fill") > -1) {
@@ -561,6 +564,9 @@ $(function () {
                             curColor = new THREE.Color('yellow');
                         }
                         else if (cmdLower.indexOf("support") > -1) {
+                            curColor = new THREE.Color('skyblue');
+                        }
+                        else if (cmdLower.indexOf("skirt") > -1) {
                             curColor = new THREE.Color('skyblue');
                         }
                         else
@@ -590,8 +596,11 @@ $(function () {
                         }
 
                         //make sure extruding is updated. might not be needed.
-                        line.extruding = delta(state.e, line.e) > 0;
-                        if (line.extruding)
+                        //line.extruding = delta(state.e, line.e) > 0;
+                        //if (line.extruding)
+
+                        //If E is defined in the args then extruding. Todo. is this right?
+                        if(args.e !== undefined)
                             addSegment(state, line);//only if extruding right now.
                         state = line;
                     } else if (cmd === 'G2' || cmd === 'G3') {
