@@ -121,7 +121,11 @@
     top:20px;
     opacity:1.0;
     z-index:5;
-    background:white;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    z-index:4;
+    background: rgba(255, 255, 255, 1.0);
+    opacity: 0.8;
+
 }
 
 .gwin .dg li.save-row{
@@ -149,3 +153,102 @@
     content: "Preset: ";
   }
 
+  .gwin .dg li.save-row {
+    display:none;
+}
+
+.gwin .dg.main.taller-than-window .close-button {
+    border-top: 1px solid #ddd;
+}
+
+.gwin .dg.main .close-button {
+    background-color: #ccc;
+}
+ 
+.gwin .dg.main .close-button:hover {
+    background-color: #ddd;
+}
+
+.gwin .dg {
+    color: #555;
+    text-shadow: none !important;
+}
+
+.gwin .dg.main::-webkit-scrollbar {
+    background: #fafafa;
+}
+
+.gwin .dg.main::-webkit-scrollbar-thumb {
+    background: #bbb;
+}
+ 
+.gwin .dg li:not(.folder) {
+    background: #fafafa;
+    border-bottom: 1px solid #ddd;
+}
+ 
+.gwin .dg li.save-row .button {
+    text-shadow: none !important;
+}
+
+.gwin .dg li.title {
+    background: #e8e8e8 url(data:image/gif;base64,R0lGODlhBQAFAJEAAP////Pz8////////yH5BAEAAAIALAAAAAAFAAUAAAIIlI+hKgFxoCgAOw==) 6px 10px no-repeat;
+}
+
+.gwin .dg .cr.function:hover,.dg .cr.boolean:hover {
+    background: #fff;
+}
+ 
+.gwin .dg .c input[type=text] {
+    background: #e9e9e9;
+}
+ 
+.gwin .dg .c input[type=text]:hover {
+    background: #eee;
+}
+ 
+.gwin .dg .c input[type=text]:focus {
+    background: #eee;
+    color: #555;
+}
+ 
+.gwin .dg .c .slider {
+    background: #e9e9e9;
+}
+
+.gwin .dg .c .slider:hover {
+    background: #eee;
+}
+
+
+
+
+  /*Support Octoprint Dashboard plugin*/
+
+  
+.pgfullscreen #tab_plugin_dashboard {
+    display: unset;
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    z-index:4;
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 0.8;
+    /* width: 300px;  */
+    /* transform: scale(0.8); */
+}
+
+.pgfullscreen #tab_plugin_prettygcode .pgdashtoggle {
+    left: 20px;
+    bottom: 20px;
+    position: absolute;
+    z-index:10;
+    display:unset;
+}
+#tab_plugin_prettygcode .pgdashtoggle {
+    display:none;
+}
+.pgfullscreen #tab_plugin_dashboard.pghidden {
+    display:none;
+}

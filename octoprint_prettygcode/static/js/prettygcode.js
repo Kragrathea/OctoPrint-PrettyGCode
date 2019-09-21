@@ -42,13 +42,7 @@ $(function () {
                                 newPrintHeadPosition.z=z;
                                 //if z change and sync view is on update visible layers.
                                 if(pgSettings.syncToProgress){
-                                    scene.traverse(function (child) {
-                                        if (child.name.startsWith("layer#")) {
-                                            if (child.userData.layerZ <= newPrintHeadPosition.z) {
-                                                currentLayerNumber=child.userData.layerNumber;
-                                            }
-                                        }
-                                    });
+                                    syncLayerToZ();
                                 }
                             }
                             if(nozzleModel){
@@ -124,6 +118,16 @@ $(function () {
             
         }
 
+        function syncLayerToZ()
+        {
+            scene.traverse(function (child) {
+                if (child.name.startsWith("layer#")) {
+                    if (child.userData.layerZ <= newPrintHeadPosition.z) {
+                        currentLayerNumber=child.userData.layerNumber;
+                    }
+                }
+            });
+        }
         var bedVolume = undefined;
         var viewInitialized = false;
         self.onTabChange = function (current, previous) {
@@ -171,16 +175,23 @@ $(function () {
                         $('#mygui').append(gui.domElement);
 
                         gui.remember(pgSettings);
-                        gui.add(pgSettings, 'syncToProgress');
-                        var folder = gui.addFolder('3D View');
-                        folder.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
-                        folder.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
-                        folder.add(pgSettings, 'reloadGcode');
+                        gui.add(pgSettings, 'syncToProgress').onFinishChange(function(){
+                            if(pgSettings.syncToProgress){
+                                syncLayerToZ();
+                            }
+                        });
+                        //var folder = gui.addFolder('3D View');
+                        gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
+                        gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
+                        gui.add(pgSettings, 'reloadGcode');
                         //gui.add(layerDisplay, 'transparency');
-                        folder = gui.addFolder('Windows');
+                        var folder = gui.addFolder('Windows');
                         folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showFiles').onFinishChange(updateWindowStates).listen();
+
+                        //dont show Windows. Automatically handled elsewhere
+                        $(folder.domElement).attr("hidden", true);
 
                     } 
 
@@ -259,7 +270,11 @@ $(function () {
                     $(".pgcameratoggle").on("click", function () {
                         pgSettings.showWebcam=!pgSettings.showWebcam;
                         updateWindowStates();
-                    });                    
+                    }); 
+                    $(".pgdashtoggle").on("click", function () {
+                        $("#tab_plugin_dashboard").toggleClass("pghidden");
+                        //updateWindowStates();
+                    });                                         
                     updateWindowStates();
                 }
 
