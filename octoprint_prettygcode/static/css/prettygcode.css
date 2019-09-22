@@ -2,7 +2,6 @@
     width: 100%;
     height: 100%;
     position: relative;
-    border: 1px solid green;
 }
 
 .pgfullscreen #tab_plugin_prettygcode .gwin {
@@ -11,7 +10,6 @@
     width: 100%;
     height: 100%;
     position: absolute;
-    border: 1px solid red;
 }
 #tab_plugin_prettygcode .fstoggle {
     top: 20px;

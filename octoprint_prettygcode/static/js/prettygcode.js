@@ -5,8 +5,6 @@ $(function () {
         self.printerProfiles = parameters[2];
         
         //Parse terminal data for file and pos updates.
-        var printHeadPosition=new THREE.Vector3(0,0,0);
-        var newPrintHeadPosition=new THREE.Vector3(0,0,0);
         var curJobName="";
         function updateJob(job){
             if (curJobName != job.file.path) {
@@ -20,39 +18,121 @@ $(function () {
             updateJob(data.job);
         };
 
+
+        //used to animate the nozzle position in response to terminal messages
+        function PrintHeadSimulator()
+        {
+            var buffer=[];
+            var HeadState =function(){
+                this.position=new THREE.Vector3(0,0,0);
+                this.rate=50.0*60;
+                this.extrude=0;
+                this.clone=function(){
+                    var newState=new HeadState();
+                    newState.position.copy(this.position);
+                    newState.rate=this.rate;
+                    return(newState);
+                }
+            };
+            var curState= new HeadState();
+            var curEnd= new HeadState();
+            var parserCurState= new HeadState();;
+
+            this.getCurPosition=function(){
+                return(curState.position);
+            }
+
+            //add gcode command to the buffer
+            this.addCommand= function(cmd)
+            {
+                if(buffer.length>1000)
+                {
+                    console.log("PrintHeadSimulator buffer overflow")
+                    return;
+                }
+                if(cmd.indexOf(" G")>-1)
+                {
+                    var x= parseFloat(cmd.split("X")[1])
+                    if(!Number.isNaN(x))
+                        parserCurState.position.x=x;
+                    var y= parseFloat(cmd.split("Y")[1])
+                    if(!Number.isNaN(y))
+                        parserCurState.position.y=y;
+                    var z= parseFloat(cmd.split("Z")[1])
+                    if(!Number.isNaN(z))
+                    {
+                        parserCurState.position.z=z;
+                    }
+                    var f= parseFloat(cmd.split("F")[1])
+                    if(!Number.isNaN(f))
+                    {
+                        parserCurState.rate=f;
+                    }
+                    buffer.push(parserCurState.clone());
+                }
+            }
+            //Update the printhead position based on time elapsed.
+            this.updatePosition=function(timeStep){
+
+                //Convert the gcode feed rate (in MM/per min?) to rate per second.
+                var rate = curState.rate/60.0;
+
+                //adapt rate to keep up with buffer.
+                if(buffer.length>10)
+                {
+                    rate=rate*(buffer.length/5.0);
+                    //console.log(["Too Slow ",rate,buffer.length])
+                }
+                if(buffer.length<5)
+                {
+                    rate=rate*(1.0/(buffer.length*5.0));
+                    //console.log(["Too fast ",rate,buffer.length])
+                }
+
+                //dist head needs to travel this frame
+                var dist = rate*timeStep
+                while(buffer.length>0 && dist >0)//while some place to go and some dist left.
+                {
+                    //direction
+                    var vectToCurEnd=curEnd.position.clone().sub(curState.position);
+                    var distToEnd=vectToCurEnd.length();
+                    if(dist<distToEnd)//Inside current line?
+                    {
+                        //move pos the distance along line
+                        vectToCurEnd.setLength(dist);
+                        curState.position.add(vectToCurEnd);  
+                        dist=0;//all done 
+                    }else{
+                        //move pos to end point.
+                        curState.position.copy(curEnd.position);
+                        curState.rate=curEnd.rate;
+                        //subract dist for next loop.
+                        dist=dist-distToEnd;
+
+                        //start on next buffer command
+                        buffer.shift();
+                        if(buffer.length>0)
+                            curEnd=buffer[0];
+                        //draw segment
+                        //todo.
+                    }
+                }
+            }
+        }
+
+        var printHeadSim=new PrintHeadSimulator();
         self.fromCurrentData= function (data) {
+            //update current loaded model.
             updateJob(data.job);
 
+            //parse logs position data for simulator
             if(data.logs.length){
                 data.logs.forEach(function(e,i)
                 {
                     if(e.startsWith("Send:"))
                     {
-                        if(e.indexOf(" G")>-1)
-                        {
-                            var x= parseFloat(e.split("X")[1])
-                            if(!Number.isNaN(x))
-                                newPrintHeadPosition.x=x;
-                            var y= parseFloat(e.split("Y")[1])
-                            if(!Number.isNaN(y))
-                                newPrintHeadPosition.y=y;
-                            var z= parseFloat(e.split("Z")[1])
-                            if(!Number.isNaN(z))
-                            {
-                                newPrintHeadPosition.z=z;
-                                //if z change and sync view is on update visible layers.
-                                if(pgSettings.syncToProgress){
-                                    syncLayerToZ();
-                                }
-                            }
-                            if(nozzleModel){
-                                if(pgSettings.syncToProgress)
-                                    nozzleModel.position.copy(newPrintHeadPosition);
-                                else
-                                    nozzleModel.position.set(0,0,0);
-                            }
-                        }
-                            //console.log(["GCmd:",e]);
+                        //console.log(["GCmd:",e]);
+                        printHeadSim.addCommand(e);
                     }
                 })
             }
@@ -65,26 +145,28 @@ $(function () {
             //console.log(["onEventFileSelected ",payload])
         }
 
-        //var gcodeUpdateWatcher = 0;
-        //var container;
-        var camera, cameraControls, scene, renderer, gcodeProxy,light;
+        //Scene globals
+        var camera, cameraControls,cameraLight; 
+        var scene, renderer; 
+        var gcodeProxy;
+        var cubeCamera;
         var nozzleModel;
         var clock;
         var dimensionsGroup;
         var sceneBounds = new THREE.Box3();
-        //todo. Are these needed.
+        //todo. Are these needed?
         var gcodeWid = 580;
         var gcodeHei = 580;
         var gui;
 
         var currentLayerNumber=0;
 
+        //settings that are saved between sessions
         var PGSettings = function () {
             this.showMirror=true;
             this.fatLines=false;
-//            this.transparency=false;
+            this.reflections=false;
             this.syncToProgress=false;
-            //this.displayOutline = false;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
                     gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
@@ -92,6 +174,7 @@ $(function () {
             this.showState=true;
             this.showWebcam=true;
             this.showFiles=false;
+            this.showDash=true;
         };
 
         var pgSettings = new PGSettings();
@@ -115,23 +198,19 @@ $(function () {
             else {
                 $(".gwin #webcam_rotator").addClass("pghidden");
             }
-            
+            if (pgSettings.showDash) {
+                $("#tab_plugin_dashboard").removeClass("pghidden");
+            }
+            else {
+                $("#tab_plugin_dashboard").addClass("pghidden");
+            }
         }
 
-        function syncLayerToZ()
-        {
-            scene.traverse(function (child) {
-                if (child.name.startsWith("layer#")) {
-                    if (child.userData.layerZ <= newPrintHeadPosition.z) {
-                        currentLayerNumber=child.userData.layerNumber;
-                    }
-                }
-            });
-        }
+
         var bedVolume = undefined;
         var viewInitialized = false;
         self.onTabChange = function (current, previous) {
-            // replaced #control with #tab_plugin_webcamtab
+
             if (current == "#tab_plugin_prettygcode") {
                 if (!viewInitialized) {
                     viewInitialized = true;
@@ -177,20 +256,22 @@ $(function () {
                         gui.remember(pgSettings);
                         gui.add(pgSettings, 'syncToProgress').onFinishChange(function(){
                             if(pgSettings.syncToProgress){
-                                syncLayerToZ();
+//                                syncLayerToZ();
                             }
                         });
-                        //var folder = gui.addFolder('3D View');
+
                         gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
+                        gui.add(pgSettings, 'reflections');
                         gui.add(pgSettings, 'reloadGcode');
-                        //gui.add(layerDisplay, 'transparency');
-                        var folder = gui.addFolder('Windows');
+                        
+                        var folder = gui.addFolder('Windows');//hidden.
                         folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showFiles').onFinishChange(updateWindowStates).listen();
+                        folder.add(pgSettings, 'showDash').onFinishChange(updateWindowStates).listen();
 
-                        //dont show Windows. Automatically handled elsewhere
+                        //dont show Windows. Automatically handled by toggle buttons
                         $(folder.domElement).attr("hidden", true);
 
                     } 
@@ -207,12 +288,14 @@ $(function () {
                         var nozzleMaterial = new THREE.MeshStandardMaterial( {
                             metalness: 1,   // between 0 and 1
                             roughness: 0.5, // between 0 and 1
-                            //envMap: envMap,
+                            envMap: cubeCamera.renderTarget.texture,
                             color: new THREE.Color(0xba971b),
+                            //flatShading:false,
                         } );
                         obj.children.forEach(function(e,i){
                             if ( e instanceof THREE.Mesh ) {
                                 e.material = nozzleMaterial;
+                                //e.geometry.computeVertexNormals();
                             }
                         })
                         nozzleModel=obj;
@@ -253,6 +336,7 @@ $(function () {
                     if (urlParam("fullscreen"))
                         $(".page-container").addClass("pgfullscreen");
 
+                    //setup window toggle buttons
                     $(".fstoggle").on("click", function () {
                         $(".page-container").toggleClass("pgfullscreen");
                     });
@@ -272,8 +356,8 @@ $(function () {
                         updateWindowStates();
                     }); 
                     $(".pgdashtoggle").on("click", function () {
-                        $("#tab_plugin_dashboard").toggleClass("pghidden");
-                        //updateWindowStates();
+                        pgSettings.showDash=!pgSettings.showDash;;
+                        updateWindowStates();
                     });                                         
                     updateWindowStates();
                 }
@@ -598,6 +682,7 @@ $(function () {
                         //make sure extruding is updated. might not be needed.
                         //line.extruding = delta(state.e, line.e) > 0;
                         //if (line.extruding)
+                        //    addSegment(state, line);//only if extruding right now.
 
                         //If E is defined in the args then extruding. Todo. is this right?
                         if(args.e !== undefined)
@@ -801,13 +886,24 @@ $(function () {
             window.myScene = scene;
 
             //add a light. might not be needed.
-            light = new THREE.PointLight(0xffffff);
-            light.position.set(160,160,10);
+            var light = new THREE.PointLight(0xffffff);
+            light.position.set(0, 0,-bedVolume.height);
             scene.add(light);
+            
+            // light = new THREE.PointLight(0xffffff);
+            // light.position.set(bedVolume.width/2, bedVolume.depth/2,bedVolume.height);
+            // scene.add(light);
 
-            light = new THREE.PointLight(0xffffff);
-            light.position.copy(camera.position);
-            scene.add(light);
+            cameraLight = new THREE.PointLight(0xffffff);
+            cameraLight.position.copy(camera.position);
+            scene.add(cameraLight);
+
+            // light = new THREE.AmbientLight( 0xffffff ); // soft white light
+            // scene.add( light );
+
+            // light = new THREE.PointLight(0xffffff);
+            // light.position.copy(camera.position);
+            // scene.add(light);
                        
 
             //Semi-transparent plane to represent the bed. 
@@ -840,14 +936,56 @@ $(function () {
             grid.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
             scene.add(grid);
 
+            cubeCamera = new THREE.CubeCamera( 1, 100000, 128 );
+            cubeCamera.position.set(bedVolume.width/2, bedVolume.depth/2,10);
+            scene.add( cubeCamera );
+            cubeCamera.update( renderer, scene );
+
             function animate() {
+
+                const delta = clock.getDelta();
+                const elapsed = clock.getElapsedTime();
+
+                if(printHeadSim)
+                {
+                    printHeadSim.updatePosition(delta);
+                    if(pgSettings.syncToProgress)
+                    {
+                        var curPos=printHeadSim.getCurPosition();
+
+                        if(nozzleModel)
+                            nozzleModel.position.copy(curPos);
+
+                        //todo. factor this out?
+                        scene.traverse(function (child) {
+                            if (child.name.startsWith("layer#")) {
+                                if (child.userData.layerZ <=curPos.z) {
+                                    currentLayerNumber=child.userData.layerNumber;
+                                }
+                            }
+                        });
+                    }else{
+                        if(nozzleModel)
+                            nozzleModel.position.set(0,0,0);//todo. hide instead/also?
+                    }
+
+                }
+
+                //do real time reflections. Probably overkill. Certianly overkill.
+                if(pgSettings.reflections && cubeCamera && nozzleModel){
+                    cubeCamera.position.copy( nozzleModel.position );
+                    cubeCamera.position.z=cubeCamera.position.z+10;
+                    nozzleModel.visible=false;
+                    cubeCamera.update( renderer, scene );
+                    nozzleModel.visible=true;
+                }
+
                 //set visible layers
                 scene.traverse(function (child) {
                     if (child.name.startsWith("layer#")) {
                         var num = child.name.split("#")[1]
                         if (num < currentLayerNumber) {
                             child.visible = true;
-
                         }
                         else {
                             child.visible = false;
@@ -855,11 +993,15 @@ $(function () {
                     }
                 });
 
-                const delta = clock.getDelta();
-                const elapsed = clock.getElapsedTime();
+
                 const updated = cameraControls.update(delta);
                 cameraControls.dollyToCursor = true;
 
+                if(cameraLight)
+                {
+                    cameraLight.position.copy(camera.position);
+                }
+                
                 resizeCanvasToDisplaySize();
 
                 renderer.render(scene, camera);
@@ -868,49 +1010,6 @@ $(function () {
 
             animate();
         }
-        // function clearGcode()
-        // {
-        //     //var gcodeObjscene.getObjectByName( "gcode" );
-        //     var gcodeObject = loader.getObject();
-        //     for (var i = gcodeObject.children.length - 1; i >= 0; i--) {
-        //         gcodeObject.remove(gcodeObject.children[i]);
-        //     }
-
-        // }
-        // function oldloadGcode(url) {
-        //     clearGcode();
-        //     var file_url = url;//'/downloads/files/local/xxx.gcode';
-        //     var myRequest = new Request(file_url);
-        //     fetch(myRequest)
-        //         .then(function (response) {
-        //             var contentLength = response.headers.get('Content-Length');
-        //             if (!response.body || (!TextDecoder)) {
-        //                 response.text().then(function (text) {
-        //                     loader.parse(text);
-        //                 });;
-        //             } else {
-        //                 var myReader = response.body.getReader();
-        //                 var decoder = new TextDecoder();
-        //                 var buffer = '';
-        //                 var received = 0;
-        //                 myReader.read().then(function processResult(result) {
-        //                     if (result.done) {
-        //                         return;
-        //                     }
-        //                     received += result.value.length;
-        //                     //                buffer += decoder.decode(result.value, {stream: true});
-        //                     /* process the buffer string */
-        //                     loader.parse(decoder.decode(result.value, { stream: true }));
-
-        //                     // read the next piece of the stream and process the result
-        //                     return myReader.read().then(processResult);
-        //                 })
-        //             }
-        //         })
-
-        // }
-
-
     }
 
     OCTOPRINT_VIEWMODELS.push({
