@@ -572,7 +572,13 @@ $(function () {
                     var drawColor = new THREE.Color(curColor)
                     var hsl = {}
                     drawColor.getHSL(hsl);
-                    hsl.l = per+0.25;
+
+                    //darken every other line to make the layers easier to see.
+                    if((layers.length%2)==0)
+                        hsl.l = per+0.2;
+                    else
+                        hsl.l = per+0.25;
+
                     drawColor.setHSL(hsl.h,hsl.s,hsl.l);
                     //console.log(drawColor.r + " " + drawColor.g + " " + drawColor.b )
                     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
