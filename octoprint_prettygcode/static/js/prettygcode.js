@@ -947,6 +947,7 @@ $(function () {
             scene.add( cubeCamera );
             cubeCamera.update( renderer, scene );
 
+            var syncSavedZ=0;
             function animate() {
 
                 const delta = clock.getDelta();
@@ -962,14 +963,18 @@ $(function () {
                         if(nozzleModel)
                             nozzleModel.position.copy(curPos);
 
-                        //todo. factor this out?
-                        scene.traverse(function (child) {
-                            if (child.name.startsWith("layer#")) {
-                                if (child.userData.layerZ <=curPos.z) {
-                                    currentLayerNumber=child.userData.layerNumber;
+
+                        //todo. figure out another way of syncing z?
+                        if(syncSavedZ!=curPos.z){
+                            syncSavedZ=curPos.z;
+                            scene.traverse(function (child) {
+                                if (child.name.startsWith("layer#")) {
+                                    if (child.userData.layerZ <=curPos.z) {
+                                        currentLayerNumber=child.userData.layerNumber;
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }else{
                         if(nozzleModel)
                             nozzleModel.position.set(0,0,0);//todo. hide instead/also?
