@@ -19,6 +19,9 @@ $(function () {
 
         }
         self.fromHistoryData = function(data) {
+            if(!viewInitialized)
+                return;
+
             updateJob(data.job);
         };
 
@@ -183,6 +186,11 @@ $(function () {
         var printHeadSim=new PrintHeadSimulator();
         var curPrinterState=null;
         self.fromCurrentData= function (data) {
+
+            //Dont do anything if view not initalized
+            if(!viewInitialized)
+                return;
+
             //update current loaded model.
             updateJob(data.job);
             if(curPrinterState && curPrinterState.text!=data.state.text)
@@ -195,7 +203,6 @@ $(function () {
                 }
             }
             curPrinterState=data.state;
-            //todo. Dont do anything if view not initalized
 
             //parse logs position data for simulator
             if(data.logs.length){
@@ -210,10 +217,10 @@ $(function () {
                         //Strip out the extra stuff in the terminal line.
                         //match second space to * character. I hate regexp.
                         if(terminalGcodeProxy){
-                            var reg=/(?<=\s\S*\s).[^*]*/g
-                            var matches=e.match(reg);
-                            if(matches && matches.length>0)
-                                terminalGcodeProxy.parse(matches[0]+'\n');
+                            // var reg=/(?<=\s\S*\s).[^*]*/g
+                            // var matches=e.match(reg);
+                            // if(matches && matches.length>0)
+                            //     terminalGcodeProxy.parse(matches[0]+'\n');
                         }
                     }
                 })
@@ -624,10 +631,11 @@ $(function () {
                 fetch(myRequest)
                     .then(function (response) {
                         var contentLength = response.headers.get('Content-Length');
-                        if (!response.body || (!TextDecoder)) {
+                        if (!response.body || !window['TextDecoder']) {
                             response.text().then(function (text) {
                                 parserObject.parse(text);
-                            });;
+                                parserObject.finishLoading();
+                            });
                         } else {
                             var myReader = response.body.getReader();
                             var decoder = new TextDecoder();
