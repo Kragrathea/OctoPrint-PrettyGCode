@@ -10,7 +10,11 @@ $(function () {
             if (curJobName != job.file.path) {
                 curJobName = job.file.path;
                 if(viewInitialized && gcodeProxy)
-                    gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                    {
+                        gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        printHeadSim=new PrintHeadSimulator();
+                        //terminalGcodeProxy;//used to display gcode actualy sent to printer.
+                    }
             }
 
         }
@@ -68,7 +72,7 @@ $(function () {
                     console.log("PrintHeadSimulator buffer overflow")
                     return;
                 }
-                if(cmd.indexOf(" G")>-1)
+                if(cmd.indexOf(" G0")>-1 || cmd.indexOf(" G1")>-1)
                 {
                     var x= parseFloat(cmd.split("X")[1])
                     if(!Number.isNaN(x))
@@ -181,7 +185,17 @@ $(function () {
         self.fromCurrentData= function (data) {
             //update current loaded model.
             updateJob(data.job);
+            if(curPrinterState && curPrinterState.text!=data.state.text)
+            {
+                //console.log(["Printer state changed: ",curPrinterState.text," -> ",data.state.text])
+                if(data.state.text.startsWith("Operational"))
+                {
+                    //console.log("Resetting print simulation");
+                    printHeadSim=new PrintHeadSimulator();
+                }
+            }
             curPrinterState=data.state;
+            //todo. Dont do anything if view not initalized
 
             //parse logs position data for simulator
             if(data.logs.length){
@@ -198,7 +212,7 @@ $(function () {
                         if(terminalGcodeProxy){
                             var reg=/(?<=\s\S*\s).[^*]*/g
                             var matches=e.match(reg);
-                            if(matches.length>0)
+                            if(matches && matches.length>0)
                                 terminalGcodeProxy.parse(matches[0]+'\n');
                         }
                     }
@@ -382,12 +396,13 @@ $(function () {
                     if(curJobName!="")
                         gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
 
-                    //terminal parser
-                    terminalGcodeProxy = new GCodeParser();
-                    var terminalGcodeObject = terminalGcodeProxy.getObject();
-                    terminalGcodeObject.position.set(100, -0, 0);
-                    scene.add(terminalGcodeObject);
-
+                    if(false){
+                        //terminal parser
+                        terminalGcodeProxy = new GCodeParser();
+                        var terminalGcodeObject = terminalGcodeProxy.getObject();
+                        terminalGcodeObject.position.set(100, -0, 0);
+                        scene.add(terminalGcodeObject);
+                    }
        
                     //note this is an octoprint version of a bootstrap slider. not a jquery ui slider. 
                     $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
@@ -1114,7 +1129,8 @@ $(function () {
                 if(printHeadSim)
                 {
                     printHeadSim.updatePosition(delta);
-                    if(curPrinterState && curPrinterState.flags.printing && 
+                    if(curPrinterState && 
+                        (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
                         pgSettings.syncToProgress && (!forceNoSync))
                     {
                         var curState=printHeadSim.getCurPosition();
