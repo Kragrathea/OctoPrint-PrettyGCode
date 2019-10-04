@@ -105,6 +105,12 @@
     display:none;
 }
 
+/* Hide notifications in fullscreen mode.*/ 
+/* todo. only do this if not logged in or as admin. 
+.pgfullscreen .ui-notify {
+    display:none;
+}
+*/
 .pgfullscreen .pghidden {
     display:none;
 }

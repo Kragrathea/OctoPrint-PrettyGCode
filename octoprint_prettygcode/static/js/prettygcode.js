@@ -6,13 +6,18 @@ $(function () {
         
         //Parse terminal data for file and pos updates.
         var curJobName="";
+        var durJobDate=0;//use date of file to check for update. 
         function updateJob(job){
-            if (curJobName != job.file.path) {
+            
+            if (durJobDate != job.file.date) {
                 curJobName = job.file.path;
+                durJobDate = job.file.date;
                 if(viewInitialized && gcodeProxy)
                     {
                         gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
                         printHeadSim=new PrintHeadSimulator();
+
+                        //terminalGcodeProxy = new GCodeParser();
                         //terminalGcodeProxy;//used to display gcode actualy sent to printer.
                     }
             }
@@ -126,7 +131,7 @@ $(function () {
                 //Convert the gcode feed rate (in MM/per min?) to rate per second.
                 var rate = curState.rate/60.0;
 
-        rate=rate/2;//todo. why still too fast?
+        //rate=rate/2;//todo. why still too fast?
 
                 //adapt rate to keep up with buffer.
                 //todo. Make dist based rather than just buffer size.
@@ -185,6 +190,7 @@ $(function () {
 
         var printHeadSim=new PrintHeadSimulator();
         var curPrinterState=null;
+        var curPrintFilePos=0;
         self.fromCurrentData= function (data) {
 
             //Dont do anything if view not initalized
@@ -204,6 +210,9 @@ $(function () {
             }
             curPrinterState=data.state;
 
+
+            curPrintFilePos=data.progress.filepos;
+
             //parse logs position data for simulator
             if(data.logs.length){
                 data.logs.forEach(function(e,i)
@@ -217,10 +226,10 @@ $(function () {
                         //Strip out the extra stuff in the terminal line.
                         //match second space to * character. I hate regexp.
                         if(terminalGcodeProxy){
-                            // var reg=/(?<=\s\S*\s).[^*]*/g
-                            // var matches=e.match(reg);
-                            // if(matches && matches.length>0)
-                            //     terminalGcodeProxy.parse(matches[0]+'\n');
+                             var reg=new RegExp('(?<=\\s\\S*\\s).[^*]*','g');
+                             var matches=e.match(reg);
+                             if(matches && matches.length>0)
+                                 terminalGcodeProxy.parse(matches[0]+'\n');
                         }
                     }
                 })
@@ -406,6 +415,12 @@ $(function () {
                     if(false){
                         //terminal parser
                         terminalGcodeProxy = new GCodeParser();
+                        terminalGcodeProxy.addSegment= function(p1, p2) {
+                            //console.log(["addSegment",p1,p2])
+                            if (currentLayer === undefined) {
+                                newLayer(p1);
+                            }
+                        }
                         var terminalGcodeObject = terminalGcodeProxy.getObject();
                         terminalGcodeObject.position.set(100, -0, 0);
                         scene.add(terminalGcodeObject);
@@ -520,6 +535,9 @@ $(function () {
 
             var defaultColor = new THREE.Color('white');
             var curColor = defaultColor;
+            var filePos=0;//used for syncing when printing.
+
+            var previousPiece = "";//used for parsing gcode in chunks.
 
             //material for fatlines
             var curMaterial = new THREE.LineMaterial({
@@ -540,6 +558,7 @@ $(function () {
             var gcodeGroup = new THREE.Group();
             gcodeGroup.name = 'gcode';
 
+            //reset parser for another object.
             this.reset=function()
             {
                 this.clearObject();
@@ -547,6 +566,8 @@ $(function () {
                 layers = [];
                 currentLayer = undefined;
                 curColor = defaultColor;
+                filePos=0;
+                previousPiece = "";
             }
             this.getObject = function () {
                 return gcodeGroup;
@@ -571,14 +592,9 @@ $(function () {
                         if (child.userData.layerNumber<layerNumber) {
                             child.visible = true;
 
-//            if(child.geometry.maxInstancedCount>child.userData.numLines)
-//                alert("this shouldn't happen")
                             child.geometry.maxInstancedCount=child.userData.numLines;
                         }else if (child.userData.layerNumber==layerNumber) {
                             child.visible = true;
-//            if(child.geometry.maxInstancedCount>child.userData.numLines)
-//                alert("this shouldn't happen")
-
                             child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
 //                        if(lineNumber>child.userData.numLines-50)    
 //                            console.log([layerNumber,lineNumber,child.userData.numLines])
@@ -601,13 +617,9 @@ $(function () {
                         if (child.userData.layerZ<layerZ) {
                             child.visible = true;
 
-//            if(child.geometry.maxInstancedCount>child.userData.numLines)
-//                alert("this shouldn't happen")
                             child.geometry.maxInstancedCount=child.userData.numLines;
                         }else if (child.userData.layerZ==layerZ) {
                             child.visible = true;
-//            if(child.geometry.maxInstancedCount>child.userData.numLines)
-//                alert("this shouldn't happen")
                             child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
 //                        if(lineNumber>child.userData.numLines-20)  
  //                           console.log([layerZ,lineNumber,child.userData.numLines])
@@ -618,7 +630,38 @@ $(function () {
                     }
                 });
             }
+            this.syncGcodeObjToFilePos=function (filePosition)
+            {
+                gcodeGroup.traverse(function (child) {
+                    if (child.name.startsWith("layer#")) {
+                        var filePositions=child.userData.filePositions;
+                        var fpMin=filePositions[0];
+                        var fpMax = filePositions[filePositions.length];
+                        if (fpMax<filePosition) { //way before.
+                            child.visible = true;
 
+                            child.geometry.maxInstancedCount=child.userData.numLines;
+                        }else if (fpMin>filePosition) { //way after
+                            child.visible = false;
+                        }else //must be during. right?
+                        {
+                            child.visible = true;
+
+                            //count number of lines before filePos
+                            var count =0;
+                            while(count<filePositions.length && filePositions[count]<filePosition)
+                                count++;
+                            
+                            //hack comp for mirror.
+                            //todo. better handle of mirror object so this isnt needed. 
+                            if(pgSettings.showMirror)
+                                count=count*2;
+
+                            child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
+                        }
+                    }
+                });
+            }
             this.currentUrl="";
             this.loadGcode=function(url) {
                 this.reset();
@@ -674,6 +717,10 @@ $(function () {
                     $("#myslider-vertical").slider("setValue", layers.length)
                     currentLayerNumber = layers.length;
                 }
+
+                console.log("Finished loading GCode object.")
+                console.log(["layers:",layers.length,"size:",filePos])
+                //console.log([sceneBounds,layers])
                 
                 //gcodeProxy.syncGcodeObjTo(Infinity);
 
@@ -695,7 +742,7 @@ $(function () {
                         geo.setColors(layer.colors)
                         var line = new THREE.Line2(geo, curMaterial);
                         line.name = 'layer#' + layers.length;
-                        line.userData={layerZ:layer.z,layerNumber:layers.length+1,numLines:layer.vertex.length/6};// 6 because 2 x triplets
+                        line.userData={layerZ:layer.z,layerNumber:layers.length,numLines:layer.vertex.length/6,filePositions:layer.filePositions};// 6 because 2 x triplets
                         gcodeGroup.add(line);
                         //line.renderOrder = 2;
                     }else{//plain lines
@@ -704,7 +751,7 @@ $(function () {
                         geo.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array(layer.colors), 3 ) );
                         var line = new THREE.LineSegments( geo, curLineBasicMaterial );
                         line.name = 'layer#' + layers.length;
-                        line.userData={layerZ:layer.z,layerNumber:layers.length+1,numLines:layer.vertex.length/6};
+                        line.userData={layerZ:layer.z,layerNumber:layers.length,numLines:layer.vertex.length/6,filePositions:layer.filePositions};
                         gcodeGroup.add(line);
 
                     }
@@ -716,18 +763,25 @@ $(function () {
                     addObject(currentLayer, true);
                 }
 
-                currentLayer = { vertex: [], pathVertex: [], z: line.z, colors: [] };
+                currentLayer = { vertex: [], pathVertex: [], z: line.z, colors: [], filePositions:[] };
                 layers.push(currentLayer);
                 //console.log("layer #" + layers.length + " z:" + line.z);
 
             }
 
-            function addSegment(p1, p2) {
+            this.addSegment= function(p1, p2) {
                 if (currentLayer === undefined) {
                     newLayer(p1);
                 }
+                if(Number.isNaN(p1.x) ||Number.isNaN(p1.y) ||Number.isNaN(p1.z) ||Number.isNaN(p2.x) ||Number.isNaN(p2.y) ||Number.isNaN(p2.z))
+                {
+                    console.log(["Bad line segment",p1,p2]);
+                    return;
+                }
+
                 currentLayer.vertex.push(p1.x, p1.y, p1.z);
                 currentLayer.vertex.push(p2.x, p2.y, p2.z);
+                currentLayer.filePositions.push(filePos);//save for syncing.
 
                 if (curColor != defaultColor) {
                     sceneBounds.expandByPoint(p1);
@@ -800,7 +854,6 @@ $(function () {
                 return state.relative ? v1 + v2 : v2;
             }
 
-            var previousPiece = "";
             this.parse = function (chunk) {
 
                 //remove comments from chunk.
@@ -816,20 +869,9 @@ $(function () {
                 //Todo process the last line. Probably not needed since last line is usually gcode cleanup and not extruded lines.
                 for (var i = 0; i < lines.length - 1; i++) {
 
-                    var tokens = lines[i].split(' ');
-                    var cmd = tokens[0].toUpperCase();
-
-                    //Arguments
-                    var args = {};
-                    tokens.splice(1).forEach(function (token) {
-                        if (token[0] !== undefined) {
-                            var key = token[0].toLowerCase();
-                            var value = parseFloat(token.substring(1));
-                            args[key] = value;
-                        }
-                    });
-
-                    //Process commands
+                    filePos+=lines[i].length+1;//+1 because of split \n. 
+                    
+                    //Process comments
                     //figure out line color from comments.
                     if (lines[i].indexOf(";")>-1 ) {
                         var cmdLower=lines[i].toLowerCase();
@@ -856,12 +898,31 @@ $(function () {
                         }
                         else
                         {
-                            var curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
+                            //var curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
                             //curColor = new THREE.Color(curColorHex);
                             //console.log(cmd + ' ' + curColorHex.toString(16))
                         }
                         //console.log(lines[i])
                     }
+
+
+                    //remove comments and process command part of line.
+                    var tokens = lines[i].replace(/;.+/g, '').split(' ');
+                    if(tokens.length<1)
+                        continue; //nothing left to process.
+
+                    var cmd = tokens[0].toUpperCase();
+
+                    //Arguments
+                    var args = {};
+                    tokens.splice(1).forEach(function (token) {
+                        if (token[0] !== undefined) {
+                            var key = token[0].toLowerCase();
+                            var value = parseFloat(token.substring(1));
+                            args[key] = value;
+                        }
+                    });
+
                     //G0/G1 - Linear Movement
                     if (cmd === 'G0' || cmd === 'G1') {
                         var line = {
@@ -887,7 +948,7 @@ $(function () {
 
                         //If E is defined in the args then extruding. Todo. is this right?
                         if(args.e !== undefined)
-                            addSegment(state, line);//only if extruding right now.
+                            this.addSegment(state, line);//only if extruding right now.
                         state = line;
                     } else if (cmd === 'G2' || cmd === 'G3') {
                         //G2/G3 - Arc Movement ( G2 clock wise and G3 counter clock wise )
@@ -1148,25 +1209,15 @@ $(function () {
 
 
                         if(gcodeProxy)
-                            gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.
-                        
-
-                        // //todo. figure out another way of syncing z?
-                        // if(syncSavedZ!=curPos.z){
-                        //     syncSavedZ=curPos.z;
-                        //     scene.traverse(function (child) {
-                        //         if (child.name.startsWith("layer#")) {
-                        //             if (child.userData.layerZ <=curPos.z) {
-                        //                 currentLayerNumber=child.userData.layerNumber;
-                        //             }
-                        //         }
-                        //     });
-                        // }
+                        {
+                            gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        //    gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.
+                        }
                     }else{
                         if(nozzleModel)
                             nozzleModel.position.set(0,0,0);//todo. hide instead/also?
                         if(gcodeProxy)
-                            gcodeProxy.syncGcodeObjToLayer(currentLayerNumber);//todo. figure out why *2 is needed.
+                            gcodeProxy.syncGcodeObjToLayer(currentLayerNumber);
                     }
 
                 }
@@ -1179,20 +1230,6 @@ $(function () {
                     cubeCamera.update( renderer, scene );
                     nozzleModel.visible=true;
                 }
-
-                // //set visible layers
-                // scene.traverse(function (child) {
-                //     if (child.name.startsWith("layer#")) {
-                //         var num = child.name.split("#")[1]
-                //         if (num < currentLayerNumber) {
-                //             child.visible = true;
-                //         }
-                //         else {
-                //             child.visible = false;
-                //         }
-                //     }
-                // });
-
 
                 const updated = cameraControls.update(delta);
                 cameraControls.dollyToCursor = true;
