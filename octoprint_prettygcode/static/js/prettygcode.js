@@ -364,7 +364,7 @@ $(function () {
                         gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'reflections');
-                        gui.add(pgSettings, 'reloadGcode');
+                        //gui.add(pgSettings, 'reloadGcode');
                         
                         var folder = gui.addFolder('Windows');//hidden.
                         folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
@@ -596,8 +596,6 @@ $(function () {
                         }else if (child.userData.layerNumber==layerNumber) {
                             child.visible = true;
                             child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
-//                        if(lineNumber>child.userData.numLines-50)    
-//                            console.log([layerNumber,lineNumber,child.userData.numLines])
                         }
                         else {
                             child.visible = false;
@@ -621,8 +619,6 @@ $(function () {
                         }else if (child.userData.layerZ==layerZ) {
                             child.visible = true;
                             child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
-//                        if(lineNumber>child.userData.numLines-20)  
- //                           console.log([layerZ,lineNumber,child.userData.numLines])
                         }
                         else {
                             child.visible = false;

@@ -14,14 +14,14 @@ plugin_package = "octoprint_%s" % plugin_identifier
 plugin_name = "OctoPrint-PrettyGCode"
 
 # The plugin's version. Can be overwritten within OctoPrint's internal data via __plugin_version__ in the plugin module
-plugin_version = "0.1"
+plugin_version = "0.3"
 
 # The plugin's description. Can be overwritten within OctoPrint's internal data via __plugin_description__ in the plugin
 # module
-plugin_description = "TODO"
+plugin_description = "Pretty GCode Visualizer"
 
 # The plugin's author. Can be overwritten within OctoPrint's internal data via __plugin_author__ in the plugin module
-plugin_author = "Krag"
+plugin_author = "Kragrathea"
 
 # The plugin's author's mail address.
 plugin_author_email = "todo@example.com"
