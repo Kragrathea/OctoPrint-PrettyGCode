@@ -224,8 +224,11 @@
     background: #eee;
 }
 
-
-
+#tab_plugin_prettygcode code 
+{ 
+    border: 1px black;
+    white-space: pre; 
+}
 
   /*Support Octoprint Dashboard plugin*/
 

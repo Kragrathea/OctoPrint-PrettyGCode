@@ -236,9 +236,30 @@ $(function () {
             }
         };
 
+        self.updateCss = function (newCss)
+        {
+            //alert(this)
+            var newCss=$("#pg_add_css").val();
+            console.log(["Update css:",newCss]);
+            localStorage.setItem('pg_add_css_val',newCss)
+            $("#pgcss").html(newCss);
+
+        }
         self.onAfterBinding = function () {
-            //console.log("onAfterBinding")
-        };
+            console.log("onAfterBinding")
+
+            //var addCss=$("#add_css").val();
+            $("<style id='pgcss'>")
+            .prop("type", "text/css")
+            .html("")
+            .appendTo("head");
+
+            var css = localStorage.getItem('pg_add_css_val')
+            if(css){
+                $("#pgcss").html(css);
+                $("#pg_add_css").val(css);
+            }
+    };
         self.onEventFileSelected = function (payload){
             //console.log(["onEventFileSelected ",payload])
         }
@@ -268,6 +289,7 @@ $(function () {
             this.fatLines=false;
             this.reflections=false;
             this.syncToProgress=false;
+            this.orbitWhenIdle=true;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
                     gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
@@ -362,6 +384,7 @@ $(function () {
                         });
 
                         gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
+                        gui.add(pgSettings, 'orbitWhenIdle');
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'reflections');
                         //gui.add(pgSettings, 'reloadGcode');
@@ -542,6 +565,8 @@ $(function () {
             //material for fatlines
             var curMaterial = new THREE.LineMaterial({
                 linewidth: 3, // in pixels
+                //transparent: true,
+                //opacity: 0.5,
                 //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
                 vertexColors: THREE.VertexColors,
             });
@@ -580,28 +605,107 @@ $(function () {
                     }            
                 }
             }
+            easeOutBounce= function (t, b, c, d) {  
+                if ((t/=d) < (1/2.75)) {  
+                 return c*(7.5625*t*t) + b;  
+                } else if (t < (2/2.75)) {  
+                 return c*(7.5625*(t-=(1.5/2.75))*t + .75) + b;  
+                } else if (t < (2.5/2.75)) {  
+                 return c*(7.5625*(t-=(2.25/2.75))*t + .9375) + b;  
+                } else {  
+                 return c*(7.5625*(t-=(2.625/2.75))*t + .984375) + b;  
+                }  
+               }
+            easeInBounce = function (t, b, c, d) {
+                return c - easeOutBounce (d-t, 0, c, d) + b;
+            };
+            easeOutExpo= function (t, b, c, d) {
+                return (t==d) ? b+c : c * (-Math.pow(2, -10 * t/d) + 1) + b;
+            }
+            easeOutFall= function (t, b, c, d) {
+                var dist = 0.5*9.8*(t*t)
+                var per = (dist+b)
+                return dist;
+            }
+            this.animateLayers=function(curTime,deltaTime)
+            {
+                if(true){
+                    var startZ=100;
+                    gcodeGroup.traverse(function (child) {
+                        if (child.name.startsWith("layer#")) {
+                            var udata=child.userData;
+
+                            var dist=(2.0-(curTime/2))*100.0;
+
+                            var newZ = Math.max(0,udata.layerNumber*dist);
+                            child.position.set(0,0,newZ);
+
+
+                            // var startTime = udata.layerNumber/8.0;
+                            // if(curTime>=startTime)
+                            // {
+                            //     var myTime = curTime-startTime;
+                            //     var dist = 9.8*(myTime*myTime)
+                            //     var newZ = Math.max(0,startZ-dist);
+                            //     child.position.set(0,0,newZ);
+                            // }
+                            // else{
+                            //     child.position.set(0,0,startZ);
+                            // }
+                        }
+                    });
+                }else{
+                    gcodeGroup.traverse(function (child) {
+                        if (child.name.startsWith("layer#")) {
+                            var udata=child.userData;
+                            var endTime = udata.layerNumber/4.0;
+                            if(curTime<endTime)
+                            {
+                                var z=easeOutExpo(curTime,0,100,endTime);
+                            //Math.sin(curTime+(udata.layerNumber*0.1))
+                                child.position.set(0,0,100-z);
+                            }
+                            else
+                                child.position.set(0,0,0);
+                        }
+                    });
+                    
+                }
+            }
             this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity)
             {
+                var needUpdate=false;//only need update if visiblity changes
+
                 //hack comp for mirror.
                 //todo. better handle of mirror object so this isnt needed. 
                 if(pgSettings.showMirror && lineNumber!=Infinity)
                     lineNumber=lineNumber*2;
 
-                    gcodeGroup.traverse(function (child) {
+                gcodeGroup.traverse(function (child) {
                     if (child.name.startsWith("layer#")) {
                         if (child.userData.layerNumber<layerNumber) {
-                            child.visible = true;
 
+                            if(!child.visible || child.geometry.maxInstancedCount!=child.userData.numLines)
+                                needUpdate = true;
+
+                            child.visible = true;
                             child.geometry.maxInstancedCount=child.userData.numLines;
                         }else if (child.userData.layerNumber==layerNumber) {
+                            if(!child.visible || child.geometry.maxInstancedCount!=Math.min(lineNumber,child.userData.numLines))
+                                needUpdate = true;
+
                             child.visible = true;
                             child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
                         }
                         else {
+                            if(child.visible)
+                                needUpdate = true;
+
                             child.visible = false;
                         }
                     }
                 });
+                return(needUpdate);
             }
             this.syncGcodeObjTo=function (layerZ,lineNumber=Infinity)
             {
@@ -1093,7 +1197,9 @@ $(function () {
                 gcodeWid = width;
                 gcodeHei = height;
                 cameraControls.setViewport(0, 0, width, height);
+                return true;//update needed. 
             }
+            return false;//no update needed
         }
 
         function initThree()
@@ -1101,6 +1207,11 @@ $(function () {
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas") });
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
+
+            //renderer2 = new THREE.WebGLRenderer({ canvas: document.getElementById("pipcanvas") });
+            //todo. is this right?
+            //renderer2.setPixelRatio(window.devicePixelRatio*3.0);
+
 
             //todo allow save/pos camera at start.
             camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
@@ -1186,58 +1297,109 @@ $(function () {
             cubeCamera.update( renderer, scene );
 
             var syncSavedZ=0;
+            var cameraIdleTime=0;
+            var firstFrame=true;                 /*possible bug fix. this might not be needed.*/
+
+
             function animate() {
 
                 const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
+                var needRender = false;
+
+                /*possible bug fix. this might not be needed.*/
+                if(firstFrame)
+                {
+                    needRender=true;
+                    firstFrame=false;
+                }
+
                 if(printHeadSim)
                 {
                     printHeadSim.updatePosition(delta);
-                    if(curPrinterState && 
-                        (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
-                        pgSettings.syncToProgress && (!forceNoSync))
+                }
+                if(curPrinterState && 
+                    (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
+                    pgSettings.syncToProgress && (!forceNoSync))
+                {
+                    if(nozzleModel && printHeadSim)
                     {
                         var curState=printHeadSim.getCurPosition();
+                        nozzleModel.position.copy(curState.position);
+                        needRender=true;
+                    }
+                    if(gcodeProxy)
+                    {
+                        gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        needRender=true;
+                    //    gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.
+                    }
+                }else{
+                    if(nozzleModel && nozzleModel.position.lengthSq()){
+                        nozzleModel.position.set(0,0,0);//todo. hide instead/also?
+                        needRender=true;
+                    }
 
-                        if(nozzleModel)
-                            nozzleModel.position.copy(curState.position);
-
-
-                        if(gcodeProxy)
-                        {
-                            gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
-                        //    gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.
-                        }
-                    }else{
-                        if(nozzleModel)
-                            nozzleModel.position.set(0,0,0);//todo. hide instead/also?
-                        if(gcodeProxy)
-                            gcodeProxy.syncGcodeObjToLayer(currentLayerNumber);
+                    if(gcodeProxy){
+                        if( gcodeProxy.syncGcodeObjToLayer(currentLayerNumber) )
+                            {
+                                needRender=true;
+                                //console.log("GCode Proxy needs update");
+                            }
                     }
 
                 }
 
-                //do real time reflections. Probably overkill. Certianly overkill.
-                if(pgSettings.reflections && cubeCamera && nozzleModel){
-                    cubeCamera.position.copy( nozzleModel.position );
-                    cubeCamera.position.z=cubeCamera.position.z+10;
-                    nozzleModel.visible=false;
-                    cubeCamera.update( renderer, scene );
-                    nozzleModel.visible=true;
-                }
 
-                const updated = cameraControls.update(delta);
-                cameraControls.dollyToCursor = true;
+                //if(gcodeProxy)
+                //    gcodeProxy.animateLayers(elapsed)
+
+
+
+                cameraControls.dollyToCursor = true;//todo. needed every frame?
+                const updated = cameraControls.update(delta);//handle mouse/keyboard etc.
+                if(updated)//did user move the camera?
+                {
+                    cameraIdleTime=0;
+                    needRender=true;
+                }
+                else{
+                    cameraIdleTime+=delta;
+                    if(pgSettings.orbitWhenIdle && cameraIdleTime>5)
+                    {
+                        cameraControls.rotate(delta/5.0,0,false);//auto orbit camera a bit.
+                        cameraControls.update(delta);//force update so it wont look like manual move next frame.
+                        needRender=true;
+                    }
+                }
 
                 if(cameraLight)
                 {
                     cameraLight.position.copy(camera.position);
                 }
                 
-                resizeCanvasToDisplaySize();
+                if(resizeCanvasToDisplaySize())
+                    needRender=true;
 
-                renderer.render(scene, camera);
+                if(needRender)
+                {
+                    //do real time reflections. Probably overkill. Certianly overkill.
+                    if(pgSettings.reflections && cubeCamera && nozzleModel)
+                    {
+                        cubeCamera.position.copy( nozzleModel.position );
+                        cubeCamera.position.z=cubeCamera.position.z+10;
+                        nozzleModel.visible=false;
+                        cubeCamera.update( renderer, scene );
+                        nozzleModel.visible=true;
+                    }
+
+                    renderer.render(scene, camera);
+                }else{
+                    //console.log("idle");
+                }
+
+                //renderer2.render(scene, camera);
                 requestAnimationFrame(animate);
             }
 
@@ -1248,7 +1410,7 @@ $(function () {
     OCTOPRINT_VIEWMODELS.push({
         construct: PrettyGCodeViewModel,
         dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel"],
-        elements: ["#injector_link"]
+        elements: ["#injector_link","#tab_plugin_prettygcode"]
     });
 
 
