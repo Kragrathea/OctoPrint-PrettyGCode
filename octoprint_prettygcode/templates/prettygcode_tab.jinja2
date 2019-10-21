@@ -38,6 +38,7 @@ Options:</h4>
 <li><b>Sync to progress.</b> Sync the 3d view to approximately where the printer is printing. See notes on syncing below.</li>
 <li><b>Fatlines.</b> Display lines with thickness. This looks much better but can cause a performance hit on slower machines.</li>
 <li><b>Mirror.</b> Display a mirrored version of the object below the print bed. This looks better and allows you to see additional parts of the GCode but is a bit slower.</li>
+<li><b>Orbit when idle.</b> After 5 seconds of no mouse/camera movement the camera will orbit around the center.</li>
 <li><b>Reflections.</b> Realtime reflections in the 3d nozzle. This is pure eye candy and can be disabled for more performance.</li>
 </ul>
 
@@ -63,14 +64,14 @@ PrettyGCode uses WebGL and Three.js for rendering. WebGL may not be supported on
 My primary use for this plugin is to visually show print status when I stream my prints on Twitch. I use OBSStudio for streaming, but to get the browser plugin to render the 3D view you need to launch OBS with the --enable-gpu flag:<br>
 
 <h4>
-UI:</h4>
-If you understand how to use CSS you can use the below section to customize the user interface. For example, to make the web camera bigger in fullscreen mode paste this code into the CSS window:
+UI modifications</h4>
+If you understand how to use CSS you can use the below section to customize the user interface. For example, to make the web camera smaller in fullscreen mode paste this code into the CSS window:
 
 <br>
 <code>
-/* Make webcam bigger in fullscreen mode. */
+/* Make webcam smaller in fullscreen mode. */
 .pgfullscreen .gwin #webcam_rotator {
-    width: 640px;
+    width: 360px;
 }
 </code>
 <br>
