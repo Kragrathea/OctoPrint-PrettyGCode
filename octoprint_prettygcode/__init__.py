@@ -9,7 +9,7 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
                        octoprint.plugin.AssetPlugin):
     def on_after_startup(self):
         self._logger.info("Pretty GCode.")
-    pass
+
     def get_assets(self):
         return dict(
             js=["js/prettygcode.js","js/three.min.js",
@@ -17,6 +17,11 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
                 "js/LineMaterial.js","js/LineSegments2.js","js/Line2.js","js/camera-controls.js","js/Lut.js","js/dat.gui.min.js"],
             css=["css/prettygcode.css"]
         )
+    def get_template_configs(self):
+        return [
+            dict(type="tab", template="prettygcode_tab.jinja2", replaces="gcodeviewer", name="GCode Viewer"),
+            dict(type="generic", template="prettygcode.jinja2")
+        ]
 
             ##~~ Softwareupdate hook
     def get_update_information(self):
