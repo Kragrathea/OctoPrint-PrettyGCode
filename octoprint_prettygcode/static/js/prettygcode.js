@@ -338,30 +338,22 @@ $(function () {
                 if (!viewInitialized) {
                     viewInitialized = true;
 
-                    //get printer build volume.
-                    //console.log(["self.printerProfiles",self.printerProfiles.currentProfileData()]);
-                    var volume = self.printerProfiles.currentProfileData().volume;
-                    if(typeof volume.custom_box ==="function")//check for custom bounds.
-                    {
-                        bedVolume={
-                            width:volume.width(),
-                            height:volume.height(),
-                            depth:volume.depth(),
-                            origin:volume.origin(),
-                            formFactor:volume.formFactor(),
-                        }
-                    }else{
-                        //console.log(["volume.custom_box",volume.custom_box]);
-                        bedVolume={
-                            width:volume.custom_box.x_max()-volume.custom_box.x_min(),
-                            height:volume.custom_box.z_max()-volume.custom_box.z_min(),
-                            depth:volume.custom_box.y_max()-volume.custom_box.y_min(),
-                            origin:volume.origin(),
-                            formFactor:volume.formFactor(),
-                        }
-                    }
+                    self.printerProfiles.currentProfileData.subscribe(
+                        function(){
+                            //get new build volume.
+                            updateBedVolume();
+                            //update scene if any
+                            updateGridMesh(); 
 
-                    console.log(["bedVolume",bedVolume]);
+                            //Needed in case center has changed.
+                            resetCamera();
+                        });
+
+
+                    //get printer build volume.
+                    updateBedVolume();
+
+                    //console.log(["bedVolume",bedVolume]);
 
                     if(true){
                         //simple gui
@@ -547,6 +539,34 @@ $(function () {
                 focus = "#" + focus;
             var el = $(focus)[0];
             $("body").prepend(el);
+        }
+
+        function updateBedVolume() {
+
+            //var volume = ko.mapping.toJS(self.printerProfiles.currentProfileData().volume);
+            var volume = self.printerProfiles.currentProfileData().volume;
+            console.log([arguments.callee.name,volume]);
+
+            if (typeof volume.custom_box === "function") //check for custom bounds.
+            {
+                bedVolume = {
+                    width: volume.width(),
+                    height: volume.height(),
+                    depth: volume.depth(),
+                    origin: volume.origin(),
+                    formFactor: volume.formFactor(),
+                };
+            }
+            else {
+                //console.log(["volume.custom_box",volume.custom_box]);
+                bedVolume = {
+                    width: volume.custom_box.x_max() - volume.custom_box.x_min(),
+                    height: volume.custom_box.z_max() - volume.custom_box.z_min(),
+                    depth: volume.custom_box.y_max() - volume.custom_box.y_min(),
+                    origin: volume.origin(),
+                    formFactor: volume.formFactor(),
+                };
+            }
         }
 
         function GCodeParser(data) {
@@ -1225,10 +1245,7 @@ $(function () {
             cameraControls = new CameraControls(camera, canvas[0]);
 
             //todo handle other than lowerleft
-            if(bedVolume.origin=="lowerleft")
-                cameraControls.setTarget(bedVolume.width/2, bedVolume.depth/2, 0, false);
-            else
-                cameraControls.setTarget(0, 0, 0, false);
+            resetCamera();
 
 
             //for debugging
@@ -1263,33 +1280,7 @@ $(function () {
                        
 
             //Semi-transparent plane to represent the bed. 
-            var planeGeometry = new THREE.PlaneGeometry( bedVolume.width, bedVolume.depth );
-            var planeMaterial = new THREE.MeshBasicMaterial( {color: 0x909090, 
-                side: THREE.DoubleSide,
-                transparent: true,//pgSettings.transparency,
-                opacity:0.2,
-            });
-            var plane = new THREE.Mesh( planeGeometry, planeMaterial );
-            
-            //todo handle other than lowerleft
-            if(bedVolume.origin=="lowerleft")
-                plane.position.set(bedVolume.width/2, bedVolume.depth/2,-0.1);
-
-            //plane.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
-            scene.add( plane );
-
-            //make bed sized grid. 
-            var grid = new THREE.GridHelper(bedVolume.width, bedVolume.width/10, 0x000000, 0x888888);
-            //todo handle other than lowerleft
-            if(bedVolume.origin=="lowerleft")
-                grid.position.set(bedVolume.width/2, bedVolume.depth/2,0);
-
-            //if (pgSettings.transparency){
-            grid.material.opacity = 0.6;
-            grid.material.transparent = true;
-
-            grid.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
-            scene.add(grid);
+            updateGridMesh();
 
             cubeCamera = new THREE.CubeCamera( 1, 100000, 128 );
             cubeCamera.position.set(bedVolume.width/2, bedVolume.depth/2,10);
@@ -1404,6 +1395,60 @@ $(function () {
             }
 
             animate();
+        }
+
+        function resetCamera() {
+
+            if(!cameraControls)//Make sure controls exist. 
+                return;
+
+            if (bedVolume.origin == "lowerleft")
+                cameraControls.setTarget(bedVolume.width / 2, bedVolume.depth / 2, 0, false);
+            else
+                cameraControls.setTarget(0, 0, 0, false);
+        }
+
+        function updateGridMesh(){
+            //console.log("updateGridMesh");
+            console.log(arguments.callee.name);
+
+            if(!scene)//scene loaded yet?
+                return;
+
+            var existingPlane = scene.getObjectByName("plane");
+            if(existingPlane)
+                scene.remove( existingPlane );
+            var existingGrid = scene.getObjectByName("grid");
+            if(existingGrid)
+                scene.remove( existingGrid );
+                
+            console.log([existingPlane,existingGrid]);
+            
+            var planeGeometry = new THREE.PlaneGeometry(bedVolume.width, bedVolume.depth);
+            var planeMaterial = new THREE.MeshBasicMaterial({
+            color: 0x909090,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.2,
+            });
+            var plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.name="plane";
+            //todo handle other than lowerleft
+            if (bedVolume.origin == "lowerleft")
+                plane.position.set(bedVolume.width / 2, bedVolume.depth / 2, -0.1);
+            //plane.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
+            scene.add(plane);
+            //make bed sized grid. 
+            var grid = new THREE.GridHelper(bedVolume.width, bedVolume.width / 10, 0x000000, 0x888888);
+            grid.name="grid";
+            //todo handle other than lowerleft
+            if (bedVolume.origin == "lowerleft")
+                grid.position.set(bedVolume.width / 2, bedVolume.depth / 2, 0);
+            //if (pgSettings.transparency){
+            grid.material.opacity = 0.6;
+            grid.material.transparent = true;
+            grid.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+            scene.add(grid);
         }
     }
 
