@@ -338,6 +338,7 @@ $(function () {
                 if (!viewInitialized) {
                     viewInitialized = true;
 
+                    //Watch for bed volume changes
                     self.printerProfiles.currentProfileData.subscribe(
                         function(){
                             //get new build volume.
@@ -350,7 +351,7 @@ $(function () {
                         });
 
 
-                    //get printer build volume.
+                    //get current (possibly default) printer build volume.
                     updateBedVolume();
 
                     //console.log(["bedVolume",bedVolume]);
