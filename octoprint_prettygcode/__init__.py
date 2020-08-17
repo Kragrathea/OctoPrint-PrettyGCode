@@ -39,6 +39,7 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
 __plugin_name__ = "PrettyGCode"
 __plugin_pythoncompat__ = ">=2.7,<4"
+
 def __plugin_load__():
     global __plugin_implementation__ 
     __plugin_implementation__ = PrettyGCodePlugin()
