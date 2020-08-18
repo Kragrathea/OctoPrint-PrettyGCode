@@ -298,6 +298,7 @@ $(function () {
             this.showWebcam=true;
             this.showFiles=false;
             this.showDash=true;
+            this.antialias=true;
         };
 
         var pgSettings = new PGSettings();
@@ -380,6 +381,7 @@ $(function () {
                         gui.add(pgSettings, 'orbitWhenIdle');
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'reflections');
+                        gui.add(pgSettings, 'antialias');
                         //gui.add(pgSettings, 'reloadGcode');
                         
                         var folder = gui.addFolder('Windows');//hidden.
@@ -1225,7 +1227,7 @@ $(function () {
 
         function initThree()
         {
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas"),antialias: true });
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas"),antialias: pgSettings.antialias });
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
 
