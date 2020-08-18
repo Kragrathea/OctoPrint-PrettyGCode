@@ -4,12 +4,16 @@
     {# <canvas  id='pipcanvas' style='position:absolute;right:0px;width:30%;height:30%'></canvas> #}
     <div id='mygui' class='pghidden'>View Settings</div>
     
-    <button class="pgstatetoggle"><i class="fa icon-black fa-info-circle"></i></button>
-    <button class="pgfilestoggle"><i class="fa icon-black fa-list"></i></button>
-    <button class="pgsettingstoggle">&#9881</button>
-    <button class="fstoggle">&#9974</button>
-    <button class="pgdashtoggle"><i class="fa fa-tachometer"></i></button>
-    <button class="pgcameratoggle">&#128247</button>
+    <div pg_top_buttons>
+      <button class="pgstatetoggle" title="Toggle state window"><i class="fa icon-black fa-info-circle"></i></button>
+      <button class="pgfilestoggle" title="Toggle file window"><i class="fa icon-black fa-list"></i></button>
+      <button class="pgsettingstoggle" title="Toggle settings window">&#9881</button>
+      <button class="fstoggle" title="Toggle fullscreen mode">&#9974</button>
+    </div>
+    <div pg_bottom_buttons>
+      <button class="pgdashtoggle" title="Toggle DashBoard window (if installed)"><i class="fa fa-tachometer"></i></button>
+      <button class="pgcameratoggle" title="Toggle webcam view window">&#128247</button>
+    </div>
   </div>
   
 
