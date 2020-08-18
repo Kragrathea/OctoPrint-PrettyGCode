@@ -12,34 +12,19 @@
     position: absolute;
 }
 #tab_plugin_prettygcode .fstoggle {
-    /*top: 20px;*/
+    top: 20px;
     right: 60px;
     position: absolute;
     z-index:10;
 }
-#tab_plugin_prettygcode .pg_top_buttons {
-    top: 20px;
-    left: 0px;
-    right: 0px;
-    position: absolute;
-    z-index:10;
-}
-#tab_plugin_prettygcode .pg_bottom_buttons {
-    bottom: 20px;
-    left: 0px;
-    right: 0px;
-    position: absolute;
-    z-index:10;
-}
-
 #tab_plugin_prettygcode .pgsettingstoggle {
-    /*top: 20px;*/
+    top: 20px;
     right: 95px;
     position: absolute;
     z-index:10;
 }
 .pgfullscreen #tab_plugin_prettygcode .pgstatetoggle {
-    /*top: 20px;*/
+    top: 20px;
     left: 20px;
     position: absolute;
     z-index:10;
@@ -49,7 +34,7 @@
     display:none;
 }
 .pgfullscreen #tab_plugin_prettygcode .pgfilestoggle {
-    /*top: 20px;*/
+    top: 20px;
     left: 95px;
     position: absolute;
     z-index:10;
@@ -59,7 +44,7 @@
     display:none;
 }
 .pgfullscreen #tab_plugin_prettygcode .pgcameratoggle {
-    /*bottom: 20px;*/
+    bottom: 20px;
     right: 40px;
     position: absolute;
     z-index:10;
@@ -262,7 +247,7 @@
 
 .pgfullscreen #tab_plugin_prettygcode .pgdashtoggle {
     left: 20px;
-    /*bottom: 20px;*/
+    bottom: 20px;
     position: absolute;
     z-index:10;
     display:unset;
