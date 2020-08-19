@@ -381,7 +381,9 @@ $(function () {
                         gui.add(pgSettings, 'orbitWhenIdle');
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'reflections');
-                        gui.add(pgSettings, 'antialias').onFinishChange(alert("Antialias chenges won't take effect until you refresh the page"));
+                        gui.add(pgSettings, 'antialias').onFinishChange(function(){
+                                alert("Antialias chenges won't take effect until you refresh the page");
+                            });
                         //gui.add(pgSettings, 'reloadGcode');
                         
                         var folder = gui.addFolder('Windows');//hidden.
