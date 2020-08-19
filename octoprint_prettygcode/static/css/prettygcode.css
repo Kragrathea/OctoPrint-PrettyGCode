@@ -33,6 +33,9 @@
 #tab_plugin_prettygcode .pgstatetoggle {
     display:none;
 }
+.pgfullscreen {
+    color:black;
+}
 .pgfullscreen #tab_plugin_prettygcode .pgfilestoggle {
     top: 20px;
     left: 95px;
