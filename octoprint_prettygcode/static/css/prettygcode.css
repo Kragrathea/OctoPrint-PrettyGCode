@@ -60,7 +60,8 @@
     width: 300px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    background: rgba(255, 255, 255, 0.2);
+    /*background: rgba(255, 255, 255, 0.2);*/
+    opacity: 0.5;
     z-index:5;
 }
 
@@ -71,7 +72,8 @@
     width: 300px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.70);
-    background: rgba(204, 204, 204, 0.9);
+    /*background: rgba(204, 204, 204, 0.9);*/
+    opacity: 0.5;
     z-index:6;
 }
 /* .pgfullscreen #files .gcode_files .entry {
@@ -239,7 +241,7 @@
     left: 20px;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     z-index:4;
-    background: rgba(255, 255, 255, 0.2);
+    /*background: rgba(255, 255, 255, 0.2);*/
     opacity: 0.8;
     /* width: 300px;  */
     /* transform: scale(0.8); */
