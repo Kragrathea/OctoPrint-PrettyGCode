@@ -893,7 +893,36 @@ $(function () {
                 //console.log("layer #" + layers.length + " z:" + line.z);
 
             }
-
+            /*this.addArc= function (arc, material ) {
+                // let geometry = new THREE.Geometry();
+        
+                // let start  = new THREE.Vector3(arc.x1, arc.y1, arc.z1);
+                // let center = new THREE.Vector3(arc.i,  arc.j,  arc.k);
+                // let end    = new THREE.Vector3(arc.x2, arc.y2, arc.z2);
+        
+                let radius = Math.sqrt(
+                    Math.pow((arc.x1 - arc.i), 2) + Math.pow((arc.y1 - arc.j), 2)
+                );
+                let arcCurve = new THREE.ArcCurve(
+                    arc.i, // aX
+                    arc.j, // aY
+                    radius, // aRadius
+                    Math.atan2(arc.y1 - arc.j, arc.x1 - arc.i), // aStartAngle
+                    Math.atan2(arc.y2 - arc.j, arc.x2 - arc.i), // aEndAngle
+                    !!arc.isClockwise // isClockwise
+                );
+                let divisions = 10;
+                let vertices = arcCurve.getPoints(divisions);
+                let vectorthrees = [];
+                for (var i = 0; i < vertices.length; i++) {
+                    vectorthrees.push(new THREE.Vector3(vertices[i].x, vertices[i].y, arc.z1));
+                }
+                if (vectorthrees.length) {
+                    let geometry = new THREE.Geometry();
+                    geometry.vertices = vectorthrees;
+                    object.add(new THREE.Line(geometry, material));
+                }
+            }*/
             this.addSegment= function(p1, p2) {
                 if (currentLayer === undefined) {
                     newLayer(p1);
@@ -1077,6 +1106,19 @@ $(function () {
                         state = line;
                     } else if (cmd === 'G2' || cmd === 'G3') {
                         //G2/G3 - Arc Movement ( G2 clock wise and G3 counter clock wise )
+                        /*var arc = {
+                            x: args.x !== undefined ? absolute( state.x, args.x ) : state.x,
+                            y: args.y !== undefined ? absolute( state.y, args.y ) : state.y,
+                            z: args.z !== undefined ? absolute( state.z, args.z ) : state.z,
+                            i: args.i !== undefined ? absolute( state.i, args.i ) : state.i,
+                            j: args.j !== undefined ? absolute( state.j, args.j ) : state.j,
+                            k: args.k !== undefined ? absolute( state.k, args.k ) : state.k,
+                            e: args.e !== undefined ? absolute( state.e, args.e ) : state.e,
+                            f: args.f !== undefined ? absolute( state.f, args.f ) : state.f,
+                        };*/
+                        
+
+
                         console.warn('THREE.GCodeLoader: Arc command not supported');
                     } else if (cmd === 'G90') {
                         //G90: Set to Absolute Positioning
