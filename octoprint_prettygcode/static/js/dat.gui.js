@@ -2113,6 +2113,7 @@ Common.extend(GUI.prototype,
     this.saveToLocalStorageIfPossible();
   },
   setLocalStorageHash:  function (key){
+    //console.log("Setting localStorageHash to:"+key);
     this.__localStorageHash=key;
   },
   revert: function revert(gui) {
@@ -2337,6 +2338,7 @@ function _add(gui, object, property, params) {
 }
 function getLocalStorageHash(gui, key) {
     if (typeof gui.__localStorageHash !== 'undefined') {
+        console.log("Overriding default localStorageHash with :"+gui.__localStorageHash);
         return gui.__localStorageHash + '.' + key;
     }
 

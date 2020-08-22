@@ -363,6 +363,8 @@ $(function () {
                         dat.GUI.TEXT_CLOSED="View Options"
                         gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
             
+                        //Override default storage location to fix bug with tabs.
+                        gui.setLocalStorageHash("PrettyGCodeSettings");
                         gui.useLocalStorage=true;
                         // var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
             
