@@ -2341,6 +2341,7 @@ function getLocalStorageHash(gui, key) {
         console.log("Overriding default localStorageHash with :"+gui.__localStorageHash);
         return gui.__localStorageHash + '.' + key;
     }
+  console.log("Using default localStorageHash with :"+document.location.href);
 
   return document.location.href + '.' + key;
 }

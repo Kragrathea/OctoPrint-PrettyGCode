@@ -39,6 +39,7 @@ $(function () {
                 this.position=new THREE.Vector3(0,0,0);
                 this.rate=5.0*60;
                 this.extrude=false;
+                this.relative=false;
                 //this.lastExtrudedZ=0;//used to better calc layer number
                 this.layerLineNumber=0;
                 this.clone=function(){
@@ -46,6 +47,7 @@ $(function () {
                     newState.position.copy(this.position);
                     newState.rate=this.rate;
                     newState.extrude=this.extrude;
+                    newState.relative=this.relative;
                     //newState.lastExtrudedZ=this.lastExtrudedZ;
                     newState.layerLineNumber=this.layerLineNumber;
                     return(newState);
@@ -84,14 +86,27 @@ $(function () {
                 {
                     var x= parseFloat(cmd.split("X")[1])
                     if(!Number.isNaN(x))
-                        parserCurState.position.x=x;
+                    {
+                        if(parserCurState.relative)
+                           parserCurState.position.x+=x;
+                        else
+                           parserCurState.position.x=x;
+                    }
                     var y= parseFloat(cmd.split("Y")[1])
                     if(!Number.isNaN(y))
-                        parserCurState.position.y=y;
+                    {
+                        if(parserCurState.relative)
+                           parserCurState.position.y+=y;
+                        else
+                           parserCurState.position.y=y;
+                    }
                     var z= parseFloat(cmd.split("Z")[1])
                     if(!Number.isNaN(z))
                     {
-                        parserCurState.position.z=z;
+                        if(parserCurState.relative)
+                           parserCurState.position.z+=z;
+                        else
+                           parserCurState.position.z=z;
                     }
                     var f= parseFloat(cmd.split("F")[1])
                     if(!Number.isNaN(f))
@@ -120,7 +135,14 @@ $(function () {
                     
                     buffer.push(parserCurState.clone());
  
+                } else if (cmd.indexOf(" G90")>-1) {
+                    //G90: Set to Absolute Positioning
+                    parserCurState.relative = false;
+                } else if (cmd.indexOf(" G91")>-1) {
+                    //G91: Set to state.relative Positioning
+                    parserCurState.relative = true;
                 }
+                
             }
 //window.myMaxRate=120.0; 
 //window.fudge=7; 
