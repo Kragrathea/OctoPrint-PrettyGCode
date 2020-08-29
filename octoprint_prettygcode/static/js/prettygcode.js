@@ -39,6 +39,7 @@ $(function () {
                 this.position=new THREE.Vector3(0,0,0);
                 this.rate=5.0*60;
                 this.extrude=false;
+                this.relative=false;
                 //this.lastExtrudedZ=0;//used to better calc layer number
                 this.layerLineNumber=0;
                 this.clone=function(){
@@ -46,6 +47,7 @@ $(function () {
                     newState.position.copy(this.position);
                     newState.rate=this.rate;
                     newState.extrude=this.extrude;
+                    newState.relative=this.relative;
                     //newState.lastExtrudedZ=this.lastExtrudedZ;
                     newState.layerLineNumber=this.layerLineNumber;
                     return(newState);
@@ -84,14 +86,27 @@ $(function () {
                 {
                     var x= parseFloat(cmd.split("X")[1])
                     if(!Number.isNaN(x))
-                        parserCurState.position.x=x;
+                    {
+                        if(parserCurState.relative)
+                           parserCurState.position.x+=x;
+                        else
+                           parserCurState.position.x=x;
+                    }
                     var y= parseFloat(cmd.split("Y")[1])
                     if(!Number.isNaN(y))
-                        parserCurState.position.y=y;
+                    {
+                        if(parserCurState.relative)
+                           parserCurState.position.y+=y;
+                        else
+                           parserCurState.position.y=y;
+                    }
                     var z= parseFloat(cmd.split("Z")[1])
                     if(!Number.isNaN(z))
                     {
-                        parserCurState.position.z=z;
+                        if(parserCurState.relative)
+                           parserCurState.position.z+=z;
+                        else
+                           parserCurState.position.z=z;
                     }
                     var f= parseFloat(cmd.split("F")[1])
                     if(!Number.isNaN(f))
@@ -120,7 +135,14 @@ $(function () {
                     
                     buffer.push(parserCurState.clone());
  
+                } else if (cmd.indexOf(" G90")>-1) {
+                    //G90: Set to Absolute Positioning
+                    parserCurState.relative = false;
+                } else if (cmd.indexOf(" G91")>-1) {
+                    //G91: Set to state.relative Positioning
+                    parserCurState.relative = true;
                 }
+                
             }
 //window.myMaxRate=120.0; 
 //window.fudge=7; 
@@ -285,22 +307,24 @@ $(function () {
 
         //settings that are saved between sessions
         var PGSettings = function () {
-            this.showMirror=true;
-            this.fatLines=false;
-            this.reflections=false;
-            this.syncToProgress=false;
-            this.orbitWhenIdle=true;
+            this.showMirror=false;//default changed
+            this.fatLines=true;//default changed
+            //this.reflections=false;//remove this
+            this.syncToProgress=true;
+            this.orbitWhenIdle=false;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
                     gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
                 };
             this.showState=true;
-            this.showWebcam=true;
+            this.showWebcam=false;
             this.showFiles=false;
-            this.showDash=true;
+            this.showDash=false;
             this.antialias=true;
-        };
 
+            this.showNozzle=true;
+            this.highlightCurrentLayer=true;
+        };
         var pgSettings = new PGSettings();
 
         function updateWindowStates() {
@@ -363,6 +387,10 @@ $(function () {
                         dat.GUI.TEXT_CLOSED="View Options"
                         gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
             
+                        //Override default storage location to fix bug with tabs.
+                        //Not working
+                        //gui.setLocalStorageHash("PrettyGCodeSettings");
+
                         gui.useLocalStorage=true;
                         // var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
             
@@ -380,12 +408,21 @@ $(function () {
                         gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'orbitWhenIdle');
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
-                        gui.add(pgSettings, 'reflections');
+                        //gui.add(pgSettings, 'reflections');
                         gui.add(pgSettings, 'antialias').onFinishChange(function(){
-                                alert("Antialias chenges won't take effect until you refresh the page");
+                            new PNotify({
+                                title: "Reload page required",
+                                text: "Antialias chenges won't take effect until you refresh the page",
+                                type: "info"
+
+                                });
+                                //alert("Antialias chenges won't take effect until you refresh the page");
                             });
+
+                        gui.add(pgSettings, 'showNozzle');
+                            
                         //gui.add(pgSettings, 'reloadGcode');
-                        
+                      
                         var folder = gui.addFolder('Windows');//hidden.
                         folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
@@ -458,6 +495,7 @@ $(function () {
                         value: 100,
                     }).on("slide", function (event, ui) {
                         currentLayerNumber = event.value;
+                        $("#myslider .slider-handle").text(currentLayerNumber);
                     }).on("slideStart", function (event, ui) {
                         //console.log("slideStart");
                         forceNoSync=true;
@@ -550,7 +588,7 @@ $(function () {
 
             //var volume = ko.mapping.toJS(self.printerProfiles.currentProfileData().volume);
             var volume = self.printerProfiles.currentProfileData().volume;
-            console.log([arguments.callee.name,volume]);
+            //console.log([arguments.callee.name,volume]);
 
             if (typeof volume.custom_box === "function") //check for custom bounds.
             {
@@ -697,6 +735,41 @@ $(function () {
                     
                 }
             }
+            this.highlightLayer=function (layerNumber,highlightMaterial)
+            {
+                var needUpdate=false;//only need update if visiblity changes
+                var defaultMat=curLineBasicMaterial;
+                if(pgSettings.fatLines){
+                    defaultMat=curMaterial;
+                }
+
+                gcodeGroup.traverse(function (child) {
+                    if (child.name.startsWith("layer#")) {
+                        if (child.userData.layerNumber<layerNumber) {
+                            if(child.material.uuid!=defaultMat.uuid)
+                            {
+                                child.material=defaultMat;
+                                needUpdate=true;
+                            }
+                        }else if (child.userData.layerNumber==layerNumber) {
+                            if(child.material.uuid!=highlightMaterial.uuid)
+                            {
+                                child.material=highlightMaterial;
+                                needUpdate=true;
+                            }
+                        }
+                        else {
+                            if(child.material.uuid!=defaultMat.uuid)
+                            {
+                                child.material=defaultMat;
+                                needUpdate=true;
+                            }
+                        }
+                    }
+                });
+                return(needUpdate);
+            }
+
             this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity)
             {
                 var needUpdate=false;//only need update if visiblity changes
@@ -757,6 +830,7 @@ $(function () {
             }
             this.syncGcodeObjToFilePos=function (filePosition)
             {
+                let syncLayerNumber = 0;//derived layer number based on pos and user data.
                 gcodeGroup.traverse(function (child) {
                     if (child.name.startsWith("layer#")) {
                         var filePositions=child.userData.filePositions;
@@ -783,9 +857,12 @@ $(function () {
                                 count=count*2;
 
                             child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
+
+                            syncLayerNumber = child.userData.layerNumber
                         }
                     }
                 });
+                return syncLayerNumber;//used to sync other elements.
             }
             this.currentUrl="";
             this.loadGcode=function(url) {
@@ -839,7 +916,9 @@ $(function () {
                 //update ui slider
                 if ($("#myslider-vertical").length) {
                     $("#myslider-vertical").slider("setMax", layers.length)
-                    $("#myslider-vertical").slider("setValue", layers.length)
+                    $("#myslider-vertical").slider("setValue", layers.length,false,true)
+                    $("#myslider .slider-handle").text(layers.length);
+
                     currentLayerNumber = layers.length;
                 }
 
@@ -893,7 +972,36 @@ $(function () {
                 //console.log("layer #" + layers.length + " z:" + line.z);
 
             }
-
+            /*this.addArc= function (arc, material ) {
+                // let geometry = new THREE.Geometry();
+        
+                // let start  = new THREE.Vector3(arc.x1, arc.y1, arc.z1);
+                // let center = new THREE.Vector3(arc.i,  arc.j,  arc.k);
+                // let end    = new THREE.Vector3(arc.x2, arc.y2, arc.z2);
+        
+                let radius = Math.sqrt(
+                    Math.pow((arc.x1 - arc.i), 2) + Math.pow((arc.y1 - arc.j), 2)
+                );
+                let arcCurve = new THREE.ArcCurve(
+                    arc.i, // aX
+                    arc.j, // aY
+                    radius, // aRadius
+                    Math.atan2(arc.y1 - arc.j, arc.x1 - arc.i), // aStartAngle
+                    Math.atan2(arc.y2 - arc.j, arc.x2 - arc.i), // aEndAngle
+                    !!arc.isClockwise // isClockwise
+                );
+                let divisions = 10;
+                let vertices = arcCurve.getPoints(divisions);
+                let vectorthrees = [];
+                for (var i = 0; i < vertices.length; i++) {
+                    vectorthrees.push(new THREE.Vector3(vertices[i].x, vertices[i].y, arc.z1));
+                }
+                if (vectorthrees.length) {
+                    let geometry = new THREE.Geometry();
+                    geometry.vertices = vectorthrees;
+                    object.add(new THREE.Line(geometry, material));
+                }
+            }*/
             this.addSegment= function(p1, p2) {
                 if (currentLayer === undefined) {
                     newLayer(p1);
@@ -1077,6 +1185,19 @@ $(function () {
                         state = line;
                     } else if (cmd === 'G2' || cmd === 'G3') {
                         //G2/G3 - Arc Movement ( G2 clock wise and G3 counter clock wise )
+                        /*var arc = {
+                            x: args.x !== undefined ? absolute( state.x, args.x ) : state.x,
+                            y: args.y !== undefined ? absolute( state.y, args.y ) : state.y,
+                            z: args.z !== undefined ? absolute( state.z, args.z ) : state.z,
+                            i: args.i !== undefined ? absolute( state.i, args.i ) : state.i,
+                            j: args.j !== undefined ? absolute( state.j, args.j ) : state.j,
+                            k: args.k !== undefined ? absolute( state.k, args.k ) : state.k,
+                            e: args.e !== undefined ? absolute( state.e, args.e ) : state.e,
+                            f: args.f !== undefined ? absolute( state.f, args.f ) : state.f,
+                        };*/
+                        
+
+
                         console.warn('THREE.GCodeLoader: Arc command not supported');
                     } else if (cmd === 'G90') {
                         //G90: Set to Absolute Positioning
@@ -1296,6 +1417,22 @@ $(function () {
             var cameraIdleTime=0;
             var firstFrame=true;                 /*possible bug fix. this might not be needed.*/
 
+            //material for fatline highlighter
+            var highlightMaterial = undefined;
+                        
+            if(pgSettings.fatLines)
+                {
+                    highlightMaterial=new THREE.LineMaterial({
+                        linewidth: 4, // in pixels
+                        //transparent: true,
+                        //opacity: 0.5,
+                        //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
+                        vertexColors: THREE.VertexColors,
+                    });
+                    highlightMaterial.resolution.set(500, 500);
+                }else{
+                    //highlightMaterial=
+                }
 
             function animate() {
 
@@ -1327,7 +1464,14 @@ $(function () {
                     }
                     if(gcodeProxy)
                     {
-                        gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        var calculatedLayer = gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        if(highlightMaterial!==undefined){
+                            gcodeProxy.highlightLayer(calculatedLayer,highlightMaterial);
+                        }
+
+                        $("#myslider-vertical").slider('setValue', calculatedLayer, false,true);
+                        $("#myslider .slider-handle").text(calculatedLayer);
+
                         needRender=true;
                     //    gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.
                     }
@@ -1340,11 +1484,31 @@ $(function () {
                     if(gcodeProxy){
                         if( gcodeProxy.syncGcodeObjToLayer(currentLayerNumber) )
                             {
+                                if(highlightMaterial!==undefined){
+                                    gcodeProxy.highlightLayer(currentLayerNumber,highlightMaterial);
+                                }
                                 needRender=true;
                                 //console.log("GCode Proxy needs update");
                             }
                     }
 
+                }
+
+                //show or hide nozzle based on settings.
+                if(nozzleModel && nozzleModel.visible!= pgSettings.showNozzle){
+                    nozzleModel.visible= pgSettings.showNozzle;
+                    needRender=true;
+                }
+
+                if(highlightMaterial!==undefined){
+                    //fake a glow by ramping the diffuse color.
+                    let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0); 
+                    //console.log(nv);
+                    //highlightMaterial.uniforms.linewidth.value=nv*15;
+                    nv=0.5;
+                    highlightMaterial.uniforms.diffuse.value.r=nv;
+                    highlightMaterial.uniforms.diffuse.value.g=nv;
+                    highlightMaterial.uniforms.diffuse.value.b=nv;
                 }
 
 
@@ -1380,15 +1544,15 @@ $(function () {
 
                 if(needRender)
                 {
-                    //do real time reflections. Probably overkill. Certianly overkill.
-                    if(pgSettings.reflections && cubeCamera && nozzleModel)
-                    {
-                        cubeCamera.position.copy( nozzleModel.position );
-                        cubeCamera.position.z=cubeCamera.position.z+10;
-                        nozzleModel.visible=false;
-                        cubeCamera.update( renderer, scene );
-                        nozzleModel.visible=true;
-                    }
+                    // //do real time reflections. Probably overkill. Certianly overkill.
+                    // if(pgSettings.reflections && cubeCamera && nozzleModel)
+                    // {
+                    //     cubeCamera.position.copy( nozzleModel.position );
+                    //     cubeCamera.position.z=cubeCamera.position.z+10;
+                    //     nozzleModel.visible=false;
+                    //     cubeCamera.update( renderer, scene );
+                    //     nozzleModel.visible=true;
+                    // }
 
                     renderer.render(scene, camera);
                 }else{
