@@ -307,20 +307,23 @@ $(function () {
 
         //settings that are saved between sessions
         var PGSettings = function () {
-            this.showMirror=true;
-            this.fatLines=false;
-            this.reflections=false;
-            this.syncToProgress=false;
-            this.orbitWhenIdle=true;
+            this.showMirror=false;//default changed
+            this.fatLines=true;//default changed
+            //this.reflections=false;//remove this
+            this.syncToProgress=true;
+            this.orbitWhenIdle=false;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
                     gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
                 };
             this.showState=true;
-            this.showWebcam=true;
+            this.showWebcam=false;
             this.showFiles=false;
-            this.showDash=true;
+            this.showDash=false;
             this.antialias=true;
+
+            this.showNozzle=true;
+            this.highlightCurrentLayer=true;
         };
 
         var pgSettings = new PGSettings();
@@ -406,10 +409,13 @@ $(function () {
                         gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
                         gui.add(pgSettings, 'orbitWhenIdle');
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
-                        gui.add(pgSettings, 'reflections');
+                        //gui.add(pgSettings, 'reflections');
                         gui.add(pgSettings, 'antialias').onFinishChange(function(){
                                 alert("Antialias chenges won't take effect until you refresh the page");
                             });
+
+                        gui.add(pgSettings, 'showNozzle');
+                            
                         //gui.add(pgSettings, 'reloadGcode');
                         
                         var folder = gui.addFolder('Windows');//hidden.
@@ -494,7 +500,7 @@ $(function () {
                     });
                     $("#myslider").attr("style", "height:90%;position:absolute;top:5%;right:20px")
 
-                    
+
                     //Create a web camera inset for the view. 
                     var camView = $("#webcam_rotator").clone();
                     $(".gwin").append(camView)
@@ -1412,7 +1418,7 @@ $(function () {
             if(pgSettings.fatLines)
                 {
                     highlightMaterial=new THREE.LineMaterial({
-                        linewidth: 5, // in pixels
+                        linewidth: 3, // in pixels
                         //transparent: true,
                         //opacity: 0.5,
                         //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
@@ -1483,6 +1489,12 @@ $(function () {
 
                 }
 
+                //show or hide nozzle based on settings.
+                if(nozzleModel && nozzleModel.visible!= pgSettings.showNozzle){
+                    nozzleModel.visible= pgSettings.showNozzle;
+                    needRender=true;
+                }
+
                 if(highlightMaterial!==undefined){
                     //fake a glow by ramping the diffuse color.
                     let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0); 
@@ -1525,15 +1537,15 @@ $(function () {
 
                 if(needRender)
                 {
-                    //do real time reflections. Probably overkill. Certianly overkill.
-                    if(pgSettings.reflections && cubeCamera && nozzleModel)
-                    {
-                        cubeCamera.position.copy( nozzleModel.position );
-                        cubeCamera.position.z=cubeCamera.position.z+10;
-                        nozzleModel.visible=false;
-                        cubeCamera.update( renderer, scene );
-                        nozzleModel.visible=true;
-                    }
+                    // //do real time reflections. Probably overkill. Certianly overkill.
+                    // if(pgSettings.reflections && cubeCamera && nozzleModel)
+                    // {
+                    //     cubeCamera.position.copy( nozzleModel.position );
+                    //     cubeCamera.position.z=cubeCamera.position.z+10;
+                    //     nozzleModel.visible=false;
+                    //     cubeCamera.update( renderer, scene );
+                    //     nozzleModel.visible=true;
+                    // }
 
                     renderer.render(scene, camera);
                 }else{
