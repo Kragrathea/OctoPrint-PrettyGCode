@@ -484,6 +484,7 @@ $(function () {
                         value: 100,
                     }).on("slide", function (event, ui) {
                         currentLayerNumber = event.value;
+                        $("#myslider .slider-handle").text(currentLayerNumber);
                     }).on("slideStart", function (event, ui) {
                         //console.log("slideStart");
                         forceNoSync=true;
@@ -493,7 +494,7 @@ $(function () {
                     });
                     $("#myslider").attr("style", "height:90%;position:absolute;top:5%;right:20px")
 
-
+                    
                     //Create a web camera inset for the view. 
                     var camView = $("#webcam_rotator").clone();
                     $(".gwin").append(camView)
@@ -904,7 +905,9 @@ $(function () {
                 //update ui slider
                 if ($("#myslider-vertical").length) {
                     $("#myslider-vertical").slider("setMax", layers.length)
-                    $("#myslider-vertical").slider("setValue", layers.length)
+                    $("#myslider-vertical").slider("setValue", layers.length,false,true)
+                    $("#myslider .slider-handle").text(layers.length);
+
                     currentLayerNumber = layers.length;
                 }
 
@@ -1454,6 +1457,9 @@ $(function () {
                         if(highlightMaterial!==undefined){
                             gcodeProxy.highlightLayer(calculatedLayer,highlightMaterial);
                         }
+
+                        $("#myslider-vertical").slider('setValue', calculatedLayer, false,true);
+                        $("#myslider .slider-handle").text(calculatedLayer);
 
                         needRender=true;
                     //    gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.

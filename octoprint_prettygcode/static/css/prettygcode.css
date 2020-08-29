@@ -226,6 +226,19 @@
     background: #eee;
 }
 
+/*style slider to be more progress bar like*/
+.gwin #myslider .slider-track {
+    background: green;
+}
+.gwin #myslider .slider-handle {
+    width:24px;
+}
+.gwin #myslider .tooltip {
+    display: none;
+}
+
+
+
 #tab_plugin_prettygcode code 
 { 
     border: 1px black;
