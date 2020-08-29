@@ -325,7 +325,6 @@ $(function () {
             this.showNozzle=true;
             this.highlightCurrentLayer=true;
         };
-        
         var pgSettings = new PGSettings();
 
         function updateWindowStates() {
@@ -423,7 +422,7 @@ $(function () {
                         gui.add(pgSettings, 'showNozzle');
                             
                         //gui.add(pgSettings, 'reloadGcode');
-                        
+                      
                         var folder = gui.addFolder('Windows');//hidden.
                         folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
@@ -1424,7 +1423,7 @@ $(function () {
             if(pgSettings.fatLines)
                 {
                     highlightMaterial=new THREE.LineMaterial({
-                        linewidth: 3, // in pixels
+                        linewidth: 4, // in pixels
                         //transparent: true,
                         //opacity: 0.5,
                         //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
@@ -1505,6 +1504,8 @@ $(function () {
                     //fake a glow by ramping the diffuse color.
                     let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0); 
                     //console.log(nv);
+                    //highlightMaterial.uniforms.linewidth.value=nv*15;
+                    nv=0.5;
                     highlightMaterial.uniforms.diffuse.value.r=nv;
                     highlightMaterial.uniforms.diffuse.value.g=nv;
                     highlightMaterial.uniforms.diffuse.value.b=nv;
