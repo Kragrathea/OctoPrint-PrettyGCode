@@ -325,7 +325,7 @@ $(function () {
             this.showNozzle=true;
             this.highlightCurrentLayer=true;
         };
-
+        
         var pgSettings = new PGSettings();
 
         function updateWindowStates() {
@@ -411,7 +411,13 @@ $(function () {
                         gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
                         //gui.add(pgSettings, 'reflections');
                         gui.add(pgSettings, 'antialias').onFinishChange(function(){
-                                alert("Antialias chenges won't take effect until you refresh the page");
+                            new PNotify({
+                                title: "Reload page required",
+                                text: "Antialias chenges won't take effect until you refresh the page",
+                                type: "info"
+
+                                });
+                                //alert("Antialias chenges won't take effect until you refresh the page");
                             });
 
                         gui.add(pgSettings, 'showNozzle');
