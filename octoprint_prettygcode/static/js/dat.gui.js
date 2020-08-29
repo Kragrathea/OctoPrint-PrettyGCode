@@ -2337,14 +2337,25 @@ function _add(gui, object, property, params) {
   return controller;
 }
 function getLocalStorageHash(gui, key) {
-    if (typeof gui.__localStorageHash !== 'undefined') {
-        console.log("Overriding default localStorageHash with :"+gui.__localStorageHash);
-        return gui.__localStorageHash + '.' + key;
-    }
-  console.log("Using default localStorageHash with :"+document.location.href);
 
-  return document.location.href + '.' + key;
-}
+    if(true){
+      ////////////////
+      ////This hack is to fix a bug/feature with dat.gui. 
+      ////Don't the use URL as part of the key for saving settings.
+      //console.log("WARNING:Overriding default dat.gui localStorageHash with :"+"PrettyGCodeSettings");
+      return "PrettyGCodeSettings" + '.' + key;
+    }else
+    {
+      /////////////
+      ////Tried to fix with this code but had race conditions.
+      if (typeof gui.__localStorageHash !== 'undefined') {
+          console.log("Overriding default localStorageHash with :"+gui.__localStorageHash);
+          return gui.__localStorageHash + '.' + key;
+        }
+      console.log("Using default localStorageHash with :"+document.location.href);
+      return document.location.href + '.' + key;
+    }
+  }
 function addPresetOption(gui, name, setSelected) {
   var opt = document.createElement('option');
   opt.innerHTML = name;

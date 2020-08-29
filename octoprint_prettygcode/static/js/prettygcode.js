@@ -386,7 +386,9 @@ $(function () {
                         gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
             
                         //Override default storage location to fix bug with tabs.
-                        gui.setLocalStorageHash("PrettyGCodeSettings");
+                        //Not working
+                        //gui.setLocalStorageHash("PrettyGCodeSettings");
+
                         gui.useLocalStorage=true;
                         // var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
             
@@ -574,7 +576,7 @@ $(function () {
 
             //var volume = ko.mapping.toJS(self.printerProfiles.currentProfileData().volume);
             var volume = self.printerProfiles.currentProfileData().volume;
-            console.log([arguments.callee.name,volume]);
+            //console.log([arguments.callee.name,volume]);
 
             if (typeof volume.custom_box === "function") //check for custom bounds.
             {
@@ -721,6 +723,41 @@ $(function () {
                     
                 }
             }
+            this.highlightLayer=function (layerNumber,highlightMaterial)
+            {
+                var needUpdate=false;//only need update if visiblity changes
+                var defaultMat=curLineBasicMaterial;
+                if(pgSettings.fatLines){
+                    defaultMat=curMaterial;
+                }
+
+                gcodeGroup.traverse(function (child) {
+                    if (child.name.startsWith("layer#")) {
+                        if (child.userData.layerNumber<layerNumber) {
+                            if(child.material.uuid!=defaultMat.uuid)
+                            {
+                                child.material=defaultMat;
+                                needUpdate=true;
+                            }
+                        }else if (child.userData.layerNumber==layerNumber) {
+                            if(child.material.uuid!=highlightMaterial.uuid)
+                            {
+                                child.material=highlightMaterial;
+                                needUpdate=true;
+                            }
+                        }
+                        else {
+                            if(child.material.uuid!=defaultMat.uuid)
+                            {
+                                child.material=defaultMat;
+                                needUpdate=true;
+                            }
+                        }
+                    }
+                });
+                return(needUpdate);
+            }
+
             this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity)
             {
                 var needUpdate=false;//only need update if visiblity changes
@@ -781,6 +818,7 @@ $(function () {
             }
             this.syncGcodeObjToFilePos=function (filePosition)
             {
+                let syncLayerNumber = 0;//derived layer number based on pos and user data.
                 gcodeGroup.traverse(function (child) {
                     if (child.name.startsWith("layer#")) {
                         var filePositions=child.userData.filePositions;
@@ -807,9 +845,12 @@ $(function () {
                                 count=count*2;
 
                             child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
+
+                            syncLayerNumber = child.userData.layerNumber
                         }
                     }
                 });
+                return syncLayerNumber;//used to sync other elements.
             }
             this.currentUrl="";
             this.loadGcode=function(url) {
@@ -1362,6 +1403,22 @@ $(function () {
             var cameraIdleTime=0;
             var firstFrame=true;                 /*possible bug fix. this might not be needed.*/
 
+            //material for fatline highlighter
+            var highlightMaterial = undefined;
+                        
+            if(pgSettings.fatLines)
+                {
+                    highlightMaterial=new THREE.LineMaterial({
+                        linewidth: 5, // in pixels
+                        //transparent: true,
+                        //opacity: 0.5,
+                        //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
+                        vertexColors: THREE.VertexColors,
+                    });
+                    highlightMaterial.resolution.set(500, 500);
+                }else{
+                    //highlightMaterial=
+                }
 
             function animate() {
 
@@ -1393,7 +1450,11 @@ $(function () {
                     }
                     if(gcodeProxy)
                     {
-                        gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        var calculatedLayer = gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        if(highlightMaterial!==undefined){
+                            gcodeProxy.highlightLayer(calculatedLayer,highlightMaterial);
+                        }
+
                         needRender=true;
                     //    gcodeProxy.syncGcodeObjTo(curState.layerZ,curState.lineNumber-1/*-window.fudge*/);//todo. figure out why *2 is needed.
                     }
@@ -1406,11 +1467,23 @@ $(function () {
                     if(gcodeProxy){
                         if( gcodeProxy.syncGcodeObjToLayer(currentLayerNumber) )
                             {
+                                if(highlightMaterial!==undefined){
+                                    gcodeProxy.highlightLayer(currentLayerNumber,highlightMaterial);
+                                }
                                 needRender=true;
                                 //console.log("GCode Proxy needs update");
                             }
                     }
 
+                }
+
+                if(highlightMaterial!==undefined){
+                    //fake a glow by ramping the diffuse color.
+                    let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0); 
+                    //console.log(nv);
+                    highlightMaterial.uniforms.diffuse.value.r=nv;
+                    highlightMaterial.uniforms.diffuse.value.g=nv;
+                    highlightMaterial.uniforms.diffuse.value.b=nv;
                 }
 
 
