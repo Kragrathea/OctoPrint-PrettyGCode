@@ -1624,7 +1624,7 @@ $(function () {
     OCTOPRINT_VIEWMODELS.push({
         construct: PrettyGCodeViewModel,
         dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel"],
-        elements: ["#injector_link","#tab_plugin_prettygcode"]
+        elements: ["#tab_plugin_prettygcode"]
     });
 
 
