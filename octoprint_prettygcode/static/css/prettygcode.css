@@ -4,6 +4,12 @@
     position: relative;
 }
 
+
+#tab_plugin_prettygcode .webcam_rotated {
+    transform: rotateZ(-90deg);
+}
+
+
 .pgfullscreen #tab_plugin_prettygcode .gwin {
     top:0px;
     left:0px;

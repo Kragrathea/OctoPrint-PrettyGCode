@@ -1,8 +1,10 @@
 $(function () {
+
     console.log("Create PrettyGCode View Model");
     function PrettyGCodeViewModel(parameters) {
         var self = this;
         self.printerProfiles = parameters[2];
+        self.controlViewModel = parameters[3];
         
         //Parse terminal data for file and pos updates.
         var curJobName="";
@@ -290,9 +292,11 @@ $(function () {
         var camera, cameraControls,cameraLight; 
         var scene, renderer; 
         var gcodeProxy;//used to display loaded gcode.
-        var terminalGcodeProxy;//used to display gcode actualy sent to printer.
-        var cubeCamera;
+
+        var terminalGcodeProxy;//todo remove(prob not used anymore). used to display gcode actualy sent to printer.
+        var cubeCamera;//todo make reflections optional.
         var nozzleModel;
+        
         var clock;
         var dimensionsGroup;
         var sceneBounds = new THREE.Box3();
@@ -505,9 +509,12 @@ $(function () {
                     });
                     $("#myslider").attr("style", "height:90%;position:absolute;top:5%;right:20px")
 
+                    
 
                     //Create a web camera inset for the view. 
                     var camView = $("#webcam_rotator").clone();
+                    let img=camView.find("#webcam_image")
+                    img.attr("id","pg_webcam_image")
                     $(".gwin").append(camView)
 
                     //check url for fullscreen mode
@@ -541,14 +548,17 @@ $(function () {
                 }
 
                 //Activate webcam view in window. 
-                $(".gwin #webcam_image").attr("src", "/webcam/?action=stream&" + Math.random())
+                $(".gwin #pg_webcam_image").attr("src", "/webcam/?action=stream&" + Math.random())
+                self.controlViewModel._enableWebcam();
 
             } else if (previous == "#tab_plugin_prettygcode") {
                 //todo. disable animation 
                 
                 //Disable camera when tab isnt visible.
-                $(".gwin #webcam_image").attr("src", "")
+                $(".gwin #pg_webcam_image").attr("src", "")
+                self.controlViewModel._disableWebcam();
             }
+            self.controlViewModel._enableWebcam();
         };
 
         //util function
@@ -1623,7 +1633,7 @@ $(function () {
 
     OCTOPRINT_VIEWMODELS.push({
         construct: PrettyGCodeViewModel,
-        dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel"],
+        dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel","controlViewModel"],
         elements: ["#tab_plugin_prettygcode"]
     });
 
