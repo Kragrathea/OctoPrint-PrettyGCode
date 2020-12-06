@@ -32,12 +32,205 @@ $(function () {
             updateJob(data.job);
         };
 
+        /* Arc Interpolation Parameters */
+        self.mm_per_arc_segment = 1.0;  // The absolute longest length of an interpolated segment
+        self.min_arc_segments = 20;  // The minimum number of interpolated segments in a full circle, 0 to disable
+        // The absolute minimum length of an interpolated segment.
+        // Limited by mm_per_arc_segment as a max and min_arc_segments as a minimum, 0 to disable
+        self.min_mm_per_arc_segment = 0.1;
+        // This controls how many arcs will be drawn before the exact position of the
+        // next segment is recalculated.  Reduces the number of sin/cos calls.
+        // 0 to disable
+        self.n_arc_correction = 24;
+
+        // A function to interpolate arcs into straight segments.  Returns an array of positions
+        self.interpolateArc = function (state, arc) {
+                // This is adapted from the Marlin arc interpolation routine found at
+                // https://github.com/MarlinFirmware/Marlin/
+                // The license can be found here: https://github.com/MarlinFirmware/Marlin/blob/2.0.x/LICENSE
+                // This allows the rendered arcs to be VERY close to what would be printed,
+                // depending on the firmware settings.
+
+                // Create vars to hold the initial and current position so we don't affect the state
+                var initial_position = {}, current_position = {};
+                Object.assign(initial_position, state)
+                Object.assign(current_position, state)
+                // Create the results which contain the copied initial position
+                var interpolated_segments = [initial_position];
+
+                // note that arc.is_clockwise determines if this is a G2, else it is a G3
+                // I'm going to also extract all the necessary variables up front to make this easier
+                // to convert from the source c++ arc interpolation code
+
+                // Convert r format to i j format if necessary
+                // I have no code like this to test, so I am not 100% sure this will work as expected
+                // commenting out for now
+                /*
+                if (arc.r)
+                {
+
+                    if (arc.x != current_position.x || arc.y != current_position.y) {
+                        var vector = {x: (arc.x - current_position.x)/2.0, y: (arc.y - current_position.y)/2.0};
+                        var e = arc.is_clockwise ^ (arc.r < 0) ? -1 : 1;
+                        var len = Math.sqrt(Math.pow(vector.x,2) + Math.pow(vector.y,2));
+                        var h2 = (arc.r - len) * (arc.r + len);
+                        var h = (h2 >= 0) ? Math.sqrt(h2) : 0.0;
+                        var bisector = {x: -1.0*vector.y, y: vector.x };
+                        arc.i = (vector.x + bisector.x) / len * e * h;
+                        arc.j = (vector.y + bisector.y) / len * e * h;
+                    }
+                }*/
+
+                // Calculate the radius, we will be using it a lot.
+                var radius = Math.hypot(arc.i, arc.j);
+                // Radius Vector
+                var v_radius = {x: -1.0 * arc.i, y: -1.0 * arc.j};
+                // Center of arc
+                var center = {x: current_position.x - v_radius.x, y: current_position.y - v_radius.y};
+                // Z Travel Total
+                var travel_z = arc.z - current_position.z;
+                // Extruder Travel
+                var travel_e = arc.e - current_position.e;
+                // Radius Target Vector
+                var v_radius_target = {x: arc.x - center.x, y: arc.y - center.y};
+
+                var angular_travel_total = Math.atan2(
+                v_radius.x * v_radius_target.y - v_radius.y * v_radius_target.x,
+                    v_radius.x * v_radius_target.x + v_radius.y * v_radius_target.y
+                );
+                // Having a positive angle is convenient here.  We will make it negative later
+                // if we need to.
+                if (angular_travel_total < 0) { angular_travel_total += 2.0 * Math.PI}
+
+                // Copy our mm_per_arc_segments var because we may be modifying it for this arc
+                var mm_per_arc_segment = self.mm_per_arc_segment;
+
+                // Enforce min_arc_segments if it is greater than 0
+                if (self.min_arc_segments > 0) {
+                    mm_per_arc_segment = (radius * ((2.0 * Math.PI) / self.min_arc_segments));
+                    // We will need to enforce our max segment length later, flag this
+                }
+
+                // Enforce the minimum segment length if it is set
+                if (self.min_mm_per_arc_segment > 0)
+                {
+                    if (mm_per_arc_segment < self.min_mm_per_arc_segment) {
+                        mm_per_arc_segment = self.min_mm_per_arc_segment;
+                    }
+                }
+
+                // Enforce the maximum segment length
+                if (mm_per_arc_segment > self.mm_per_arc_segment) {
+                    mm_per_arc_segment = self.mm_per_arc_segment;
+                }
+
+                // Adjust the angular travel if the direction is clockwise
+                if (arc.is_clockwise) { angular_travel_total -= (2.0 * Math.PI); }
+
+                // Compensate for a full circle, which would give us an angle of 0 here
+                // We want that to be 2Pi.  Note, full circles are bad in 3d printing, but they
+                // should still render correctly
+                if (current_position.x == arc.x && current_position.y == arc.y && angular_travel_total == 0)
+                {
+                    angular_travel_total += 2.0 * Math.PI;
+                }
+
+                // Now it's time to calculate the mm of total travel along the arc, making sure we take Z into account
+                var mm_of_travel_arc = Math.hypot(angular_travel_total * radius, Math.abs(travel_z));
+
+                // Get the number of segments total we will be generating
+                var num_segments = Math.ceil(mm_of_travel_arc / mm_per_arc_segment);
+
+                // Calculate xy_segment_theta, z_segment_theta, and e_segment_theta
+                // This is the distance we will be moving for each interpolated segment
+                var xy_segment_theta = angular_travel_total / num_segments;
+                var z_segment_theta = travel_z / num_segments;
+                var e_segment_theta = travel_e / num_segments;
+
+                // Time to interpolate!
+                if (num_segments > 1)
+                {
+                    // it's possible for num_segments to be zero.  If that's true, we just need to draw a line
+                    // from the start to the end coordinates, and this isn't needed.
+
+                    // I am NOT going to use the small angel approximation for sin and cos here, but it
+                    // could be easily added if performance is a problem.  Here is code for this if it becomes
+                    // necessary:
+                    //var sq_theta_per_segment = theta_per_segment * theta_per_segment;
+                    //var sin_T = theta_per_segment - sq_theta_per_segment * theta_per_segment / 6;
+                    //var cos_T = 1 - 0.5f * sq_theta_per_segment; // Small angle approximation
+                    var cos_t = Math.cos(xy_segment_theta);
+                    var sin_t = Math.sin(xy_segment_theta);
+                    var r_axisi;
+
+                    // We are going to correct sin and cos only occasionally to reduce cpu usage
+                    var count = 0;
+                    // Loop through each interpolated segment, minus the endpoint which will be handled separately
+                    for (var i = 1; i < num_segments; i++) {
+
+                        if (count < self.n_arc_correction)
+                        {
+                            // not time to recalculate X and Y.
+                            // Apply the rotational vector
+                            r_axisi = v_radius.x * sin_t + v_radius.y * cos_t;
+                            v_radius.x = v_radius.x * cos_t - v_radius.y * sin_t;
+                            v_radius.y = r_axisi;
+                            count++;
+                        }
+                        else
+                        {
+                            // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments.
+                            // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
+                            var sin_ti = Math.sin(i * xy_segment_theta);
+                            var cos_ti = Math.cos(i * xy_segment_theta);
+                            v_radius.x = (-1.0 * arc.i) * cos_ti + arc.j * sin_ti;
+                            v_radius.y = (-1.0 * arc.i) * sin_ti - arc.j * cos_ti;
+                            count = 0;
+                        }
+
+                        // Draw the segment
+                        var line = {
+                            x: center.x + v_radius.x,
+                            y: center.y + v_radius.y,
+                            z: current_position.z + z_segment_theta,
+                            e: current_position.e + e_segment_theta,
+                            f: arc.f
+                        };
+                        /*console.debug(
+                            "Arc Segment " + i.toString() + ":" +
+                            " X" + line.x.toString() +
+                            " Y" + line.y.toString() +
+                            " Z" + line.z.toString() +
+                            " E" + line.e.toString() +
+                            " F" + line.f.toString()
+                        );*/
+                        interpolated_segments.push(line);
+
+                        // Update the current state
+                        current_position.x = line.x;
+                        current_position.y = line.y;
+                        current_position.z = line.z;
+                        current_position.e = line.e;
+                    }
+                }
+                // Move to the target position
+                var line = {
+                    x: arc.x,
+                    y: arc.y,
+                    z: arc.z,
+                    e: arc.e,
+                    f: arc.f
+                };
+                interpolated_segments.push(line);
+                //Done!!!
+                return interpolated_segments;
+            };
 
         //used to animate the nozzle position in response to terminal messages
         function PrintHeadSimulator()
         {
             var buffer=[];
-            var HeadState =function(){
+            var HeadState = function(){
                 this.position=new THREE.Vector3(0,0,0);
                 this.rate=5.0*60;
                 this.extrude=false;
@@ -55,9 +248,9 @@ $(function () {
                     return(newState);
                 }
             };
-            var curState= new HeadState();
-            var curEnd= new HeadState();
-            var parserCurState= new HeadState();
+            var curState = new HeadState();
+            var curEnd = new HeadState();
+            var parserCurState = new HeadState();
 
             var observedLayerCount=0;
             var parserLayerLineNumber=0;
@@ -84,8 +277,14 @@ $(function () {
                     console.log("PrintHeadSimulator buffer overflow")
                     return;
                 }
-                if(cmd.indexOf(" G0")>-1 || cmd.indexOf(" G1")>-1)
+                var is_g0_g1 = cmd.indexOf(" G0")>-1 || cmd.indexOf(" G1")>-1;
+                var is_g2_g3 = !is_g0_g1 && cmd.indexOf(" G2")>-1 || cmd.indexOf(" G3")>-1;
+                if(is_g0_g1 || is_g2_g3)
                 {
+                    var parserPreviousState = {};
+                    // If this is a g2/g3, we need to know the previous state to interpolate the arcs
+                    if (is_g2_g3) { parserPreviousState = Object.assign(parserPreviousState, parserCurState);}
+                    // Extract x, y, z, f and e
                     var x= parseFloat(cmd.split("X")[1])
                     if(!Number.isNaN(x))
                     {
@@ -132,11 +331,49 @@ $(function () {
                     }else{
                         parserCurState.extrude=false;
                     }
-
                     parserCurState.layerLineNumber =parserLayerLineNumber;
-                    
-                    buffer.push(parserCurState.clone());
+
+                    // if this is a g0/g1, push the state to the buffer
+                    if (is_g0_g1) {buffer.push(parserCurState.clone());}
+                    else{
+                        // This is a g2/g3, so we need to do things a bit differently.
+                        // TODO: Do I need to convert axis mode here, or will things just work out?
+
+                        // is_clockwise
+
+                        // Extract I and J, R, and is_clockwise
+                        var is_clockwise = cmd.indexOf(" G2")>-1;
+                        var i = parseFloat(cmd.split("I")[1]);
+                        var j = parseFloat(cmd.split("J")[1]);
+                        var r = parseFloat(cmd.split("J")[1]);
+
+                        var arc = {
+                            x: x !== undefined ? x : parserPreviousState.x,
+                            y: y !== undefined ? y : parserPreviousState.y,
+                            z: z !== undefined ? z : parserPreviousState.z,
+                            i: i !== undefined ? i : parserPreviousState.i,
+                            j: j !== undefined ? j : parserPreviousState.j,
+                            r: r !== undefined ? r : parserPreviousState.r,
+                            // K omitted, not sure what that's supposed to do
+                            e: e !== undefined ? e : parserPreviousState.e,
+                            f: f !== undefined ? f : parserPreviousState.f,
+                            is_clockwise: is_clockwise
+                        };
+                        // Need to handle R maybe
+                        var segments = self.interpolateArc(parserPreviousState, arc);
+                        for(var index = 1; index < segments.length; index++)
+                        {
+                            var cur_segment = segments[index];
+                            var cur_state = parserCurState.clone();
+                            cur_state.position = new THREE.Vector3(cur_segment.x,cur_segment.y,cur_segment.z);
+                            buffer.push(cur_state);
+                        }
+                        // update the current parser state
+                        //parserCurState = segments[segments.length - 1];
+                    }
  
+                } else if (cmd.indexOf(" G2")>-1 || cmd.indexOf(" G3")>-1) {
+
                 } else if (cmd.indexOf(" G90")>-1) {
                     //G90: Set to Absolute Positioning
                     parserCurState.relative = false;
@@ -1097,198 +1334,6 @@ $(function () {
                 return state.relative ? v1 + v2 : v2;
             }
 
-            /* Arc Interpolation Parameters */
-            this.mm_per_arc_segment = 1.0;  // The absolute longest length of an interpolated segment
-            this.min_arc_segments = 20;  // The minimum number of interpolated segments in a full circle, 0 to disable
-            // The absolute minimum length of an interpolated segment.
-            // Limited by mm_per_arc_segment as a max and min_arc_segments as a minimum, 0 to disable
-            this.min_mm_per_arc_segment = 0.1;
-            // This controls how many arcs will be drawn before the exact position of the
-            // next segment is recalculated.  Reduces the number of sin/cos calls.
-            // 0 to disable
-            this.n_arc_correction = 24;
-
-            this.interpolateArc = function (state, arc) {
-                // This is adapted from the Marlin arc interpolation routine found at
-                // https://github.com/MarlinFirmware/Marlin/
-                // The license can be found here: https://github.com/MarlinFirmware/Marlin/blob/2.0.x/LICENSE
-                // This allows the rendered arcs to be VERY close to what would be printed,
-                // depending on the firmware settings.
-
-                // note that arc.is_clockwise determines if this is a G2, else it is a G3
-                // I'm going to also extract all the necessary variables up front to make this easier
-                // to convert from the source c++ arc interpolation code
-
-                // Convert r format to i j format if necessary
-                // I have no code like this to test, so I am not 100% sure this will work as expected
-                // commenting out for now
-                /*
-                if (arc.r)
-                {
-
-                    if (arc.x != state.x || arc.y != state.y) {
-                        var vector = {x: (arc.x - state.x)/2.0, y: (arc.y - state.y)/2.0};
-                        var e = arc.is_clockwise ^ (arc.r < 0) ? -1 : 1;
-                        var len = Math.sqrt(Math.pow(vector.x,2) + Math.pow(vector.y,2));
-                        var h2 = (arc.r - len) * (arc.r + len);
-                        var h = (h2 >= 0) ? Math.sqrt(h2) : 0.0;
-                        var bisector = {x: -1.0*vector.y, y: vector.x };
-                        arc.i = (vector.x + bisector.x) / len * e * h;
-                        arc.j = (vector.y + bisector.y) / len * e * h;
-                    }
-                }*/
-
-                // Calculate the radius, we will be using it a lot.
-                var radius = Math.hypot(arc.i, arc.j);
-                // Radius Vector
-                var v_radius = {x: -1.0 * arc.i, y: -1.0 * arc.j};
-                // Center of arc
-                var center = {x: state.x - v_radius.x, y: state.y - v_radius.y};
-                // Z Travel Total
-                var travel_z = arc.z - state.z;
-                // Extruder Travel
-                var travel_e = arc.e - state.e;
-                // Radius Target Vector
-                var v_radius_target = {x: arc.x - center.x, y: arc.y - center.y};
-
-                var angular_travel_total = Math.atan2(
-                v_radius.x * v_radius_target.y - v_radius.y * v_radius_target.x,
-                    v_radius.x * v_radius_target.x + v_radius.y * v_radius_target.y
-                );
-                // Having a positive angle is convenient here.  We will make it negative later
-                // if we need to.
-                if (angular_travel_total < 0) { angular_travel_total += 2.0 * Math.PI}
-
-                // Copy our mm_per_arc_segments var because we may be modifying it for this arc
-                var mm_per_arc_segment = this.mm_per_arc_segment;
-
-                // Enforce min_arc_segments if it is greater than 0
-                if (this.min_arc_segments > 0) {
-                    mm_per_arc_segment = (radius * ((2.0 * Math.PI) / this.min_arc_segments));
-                    // We will need to enforce our max segment length later, flag this
-                }
-
-                // Enforce the minimum segment length if it is set
-                if (this.min_mm_per_arc_segment > 0)
-                {
-                    if (mm_per_arc_segment < this.min_mm_per_arc_segment) {
-                        mm_per_arc_segment = this.min_mm_per_arc_segment;
-                    }
-                }
-
-                // Enforce the maximum segment length
-                if (mm_per_arc_segment > this.mm_per_arc_segment) {
-                    mm_per_arc_segment = this.mm_per_arc_segment;
-                }
-
-                // Adjust the angular travel if the direction is clockwise
-                if (arc.is_clockwise) { angular_travel_total -= (2.0 * Math.PI); }
-
-                // Compensate for a full circle, which would give us an angle of 0 here
-                // We want that to be 2Pi.  Note, full circles are bad in 3d printing, but they
-                // should still render correctly
-                if (state.x == arc.x && state.y == arc.y && angular_travel_total == 0)
-                {
-                    angular_travel_total += 2.0 * Math.PI;
-                }
-
-                // Now it's time to calculate the mm of total travel along the arc, making sure we take Z into account
-                var mm_of_travel_arc = Math.hypot(angular_travel_total * radius, Math.abs(travel_z));
-
-                // Get the number of segments total we will be generating
-                var num_segments = Math.ceil(mm_of_travel_arc / mm_per_arc_segment);
-
-                // Calculate xy_segment_theta, z_segment_theta, and e_segment_theta
-                // This is the distance we will be moving for each interpolated segment
-                var xy_segment_theta = angular_travel_total / num_segments;
-                var z_segment_theta = travel_z / num_segments;
-                var e_segment_theta = travel_e / num_segments;
-
-                // Time to interpolate!
-                if (num_segments > 1)
-                {
-                    // it's possible for num_segments to be zero.  If that's true, we just need to draw a line
-                    // from the start to the end coordinates, and this isn't needed.
-
-                    // I am NOT going to use the small angel approximation for sin and cos here, but it
-                    // could be easily added if performance is a problem.  Here is code for this if it becomes
-                    // necessary:
-                    //var sq_theta_per_segment = theta_per_segment * theta_per_segment;
-                    //var sin_T = theta_per_segment - sq_theta_per_segment * theta_per_segment / 6;
-                    //var cos_T = 1 - 0.5f * sq_theta_per_segment; // Small angle approximation
-                    var cos_t = Math.cos(xy_segment_theta);
-                    var sin_t = Math.sin(xy_segment_theta);
-                    var r_axisi;
-
-                    // We are going to correct sin and cos only occasionally to reduce cpu usage
-                    var count = 0;
-                    // Loop through each interpolated segment, minus the endpoint which will be handled separately
-                    for (var i = 1; i < num_segments; i++) {
-
-                        if (count < this.n_arc_correction)
-                        {
-                            // not time to recalculate X and Y.
-                            // Apply the rotational vector
-                            r_axisi = v_radius.x * sin_t + v_radius.y * cos_t;
-                            v_radius.x = v_radius.x * cos_t - v_radius.y * sin_t;
-                            v_radius.y = r_axisi;
-                            count++;
-                        }
-                        else
-                        {
-                            // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments.
-                            // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
-                            var sin_ti = Math.sin(i * xy_segment_theta);
-                            var cos_ti = Math.cos(i * xy_segment_theta);
-                            v_radius.x = (-1.0 * arc.i) * cos_ti + arc.j * sin_ti;
-                            v_radius.y = (-1.0 * arc.i) * sin_ti - arc.j * cos_ti;
-                            count = 0;
-                        }
-
-                        // Draw the segment
-                        var line = {
-                            x: center.x + v_radius.x,
-                            y: center.y + v_radius.y,
-                            z: state.z + z_segment_theta,
-                            e: state.e + e_segment_theta,
-                            f: arc.f
-                        };
-                        /*console.debug(
-                            "Arc Segment " + i.toString() + ":" +
-                            " X" + line.x.toString() +
-                            " Y" + line.y.toString() +
-                            " Z" + line.z.toString() +
-                            " E" + line.e.toString() +
-                            " F" + line.f.toString()
-                        );*/
-                        this.addSegment(state, line);
-
-                        // Update the current state
-                        state.x = line.x;
-                        state.y = line.y;
-                        state.z = line.z;
-                        state.e = line.e;
-                    }
-                }
-                // Move to the target position
-                var line = {
-                    x: arc.x,
-                    y: arc.y,
-                    z: arc.z,
-                    e: arc.e,
-                    f: arc.f
-                };
-                this.addSegment(state, line);
-                // update the state
-                state.x = line.x;
-                state.y = line.y;
-                state.z = line.z;
-                state.e = line.e;
-                state.f = line.f;
-
-                //Done!!!
-            };
-
             this.parse = function (chunk) {
 
                 //remove comments from chunk.
@@ -1420,9 +1465,19 @@ $(function () {
                             }
                             else
                             {
-                                this.interpolateArc(state, arc);
+                                var segments = self.interpolateArc(state, arc);
+                                for(var index = 1; index < segments.length; index++)
+                                {
+                                    this.addSegment(segments[index-1], segments[index]);
+                                }
                             }*/
-                            this.interpolateArc(state, arc);
+                            var segments = self.interpolateArc(state, arc);
+                            for(var index = 1; index < segments.length; index++)
+                            {
+                                this.addSegment(segments[index-1], segments[index]);
+                            }
+                            // Set the state to the last segment
+                            state = segments[segments.length - 1];
                         }
                     } else if (cmd === 'G90') {
                         //G90: Set to Absolute Positioning
