@@ -371,9 +371,6 @@ $(function () {
                         // update the current parser state
                         //parserCurState = segments[segments.length - 1];
                     }
- 
-                } else if (cmd.indexOf(" G2")>-1 || cmd.indexOf(" G3")>-1) {
-
                 } else if (cmd.indexOf(" G90")>-1) {
                     //G90: Set to Absolute Positioning
                     parserCurState.relative = false;
