@@ -283,6 +283,10 @@ $(function () {
                 $("#pgcss").html(css);
                 $("#pg_add_css").val(css);
             }
+
+            var gauge = new LinearGauge({
+                renderTo: 'gauge-canvas'
+            }).draw();
     };
         self.onEventFileSelected = function (payload){
             //console.log(["onEventFileSelected ",payload])
