@@ -490,6 +490,14 @@ $(function () {
                                  terminalGcodeProxy.parse(matches[0]+'\n');
                         }
                     }
+                    else if(e.startsWith("Recv: T:"))
+                    {
+                        //console.log(["GCmd:",e]);
+                        let parts = e.substr(6).split("@");//remove Recv: and checksum.
+                        let temps = parts[0];
+                        $(".pgstatus").text(temps);
+
+                    }
                 })
             }
         };
@@ -517,11 +525,7 @@ $(function () {
                 $("#pgcss").html(css);
                 $("#pg_add_css").val(css);
             }
-
-            var gauge = new LinearGauge({
-                renderTo: 'gauge-canvas'
-            }).draw();
-    };
+        };
         self.onEventFileSelected = function (payload){
             //console.log(["onEventFileSelected ",payload])
         }
