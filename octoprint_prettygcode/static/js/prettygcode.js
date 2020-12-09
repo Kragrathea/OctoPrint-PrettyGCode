@@ -337,26 +337,27 @@ $(function () {
                     if (is_g0_g1) {buffer.push(parserCurState.clone());}
                     else{
                         // This is a g2/g3, so we need to do things a bit differently.
-                        // TODO: Do I need to convert axis mode here, or will things just work out?
-
-                        // is_clockwise
-
                         // Extract I and J, R, and is_clockwise
                         var is_clockwise = cmd.indexOf(" G2")>-1;
                         var i = parseFloat(cmd.split("I")[1]);
                         var j = parseFloat(cmd.split("J")[1]);
-                        var r = parseFloat(cmd.split("J")[1]);
-
+                        var r = parseFloat(cmd.split("R")[1]);
                         var arc = {
-                            x: x !== undefined ? x : parserPreviousState.x,
-                            y: y !== undefined ? y : parserPreviousState.y,
-                            z: z !== undefined ? z : parserPreviousState.z,
-                            i: i !== undefined ? i : parserPreviousState.i,
-                            j: j !== undefined ? j : parserPreviousState.j,
-                            r: r !== undefined ? r : parserPreviousState.r,
+                            // Get X Y and Z from the previous state if it is not
+                            // provided
+                            x: this.getCurrentCoordinate(x, parserPreviousState.position.x),
+                            y: this.getCurrentCoordinate(y, parserPreviousState.position.y),
+                            z: this.getCurrentCoordinate(z, parserPreviousState.position.z),
+                            // Set I and J and R to 0 if they are not provided.
+                            i: this.getCurrentCoordinate(i, 0),
+                            j: this.getCurrentCoordinate(j, 0),
+                            r: this.getCurrentCoordinate(r, 0),
                             // K omitted, not sure what that's supposed to do
-                            e: e !== undefined ? e : parserPreviousState.e,
-                            f: f !== undefined ? f : parserPreviousState.f,
+                            //k: k !== undefined ? k : 0,
+                            // Since the amount extruded doesn't really matter, set it to 1 if we are extruding,
+                            // We don't want undefined values going into the arc interpolation routine
+                            e: this.getCurrentCoordinate(e, parserPreviousState.extrude ? 1 : 0),
+                            f: this.getCurrentCoordinate(r, parserPreviousState.rate),
                             is_clockwise: is_clockwise
                         };
                         // Need to handle R maybe
@@ -368,8 +369,6 @@ $(function () {
                             cur_state.position = new THREE.Vector3(cur_segment.x,cur_segment.y,cur_segment.z);
                             buffer.push(cur_state);
                         }
-                        // update the current parser state
-                        //parserCurState = segments[segments.length - 1];
                     }
                 } else if (cmd.indexOf(" G90")>-1) {
                     //G90: Set to Absolute Positioning
@@ -383,6 +382,11 @@ $(function () {
 //window.myMaxRate=120.0; 
 //window.fudge=7; 
 
+            // Handle undefined and NaN for current coordinates.
+            this.getCurrentCoordinate=function(cmdCoord, prevCoord) {
+                if (cmdCoord === undefined || isNaN(cmdCoord)){cmdCoord=prevCoord;}
+                return cmdCoord;
+            }
             //Update the printhead position based on time elapsed.
             this.updatePosition=function(timeStep){
 
@@ -595,7 +599,6 @@ $(function () {
                 $("#tab_plugin_dashboard").addClass("pghidden");
             }
         }
-
 
         var bedVolume = undefined;
         var viewInitialized = false;
