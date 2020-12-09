@@ -349,15 +349,15 @@ $(function () {
                             y: this.getCurrentCoordinate(y, parserPreviousState.position.y),
                             z: this.getCurrentCoordinate(z, parserPreviousState.position.z),
                             // Set I and J and R to 0 if they are not provided.
-                            i: i !== undefined ? i : 0,
-                            j: j !== undefined ? j : 0,
-                            r: r !== undefined ? r : 0,
+                            i: this.getCurrentCoordinate(i, 0),
+                            j: this.getCurrentCoordinate(j, 0),
+                            r: this.getCurrentCoordinate(r, 0),
                             // K omitted, not sure what that's supposed to do
                             //k: k !== undefined ? k : 0,
                             // Since the amount extruded doesn't really matter, set it to 1 if we are extruding,
                             // We don't want undefined values going into the arc interpolation routine
-                            e: e !== undefined ? e : (parserPreviousState.extrude ? 1 : 0),
-                            f: f !== undefined ? f : parserPreviousState.rate,
+                            e: this.getCurrentCoordinate(e, parserPreviousState.extrude ? 1 : 0),
+                            f: this.getCurrentCoordinate(r, parserPreviousState.rate),
                             is_clockwise: is_clockwise
                         };
                         // Need to handle R maybe
