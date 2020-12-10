@@ -63,8 +63,13 @@
     display:none;
 }
 
+.pgfullscreen .pgstatus
+{
+    display:unset;
+}
 .pgstatus
 {
+    display:none;
     position:absolute;
     top:0px;
     left:0px;
