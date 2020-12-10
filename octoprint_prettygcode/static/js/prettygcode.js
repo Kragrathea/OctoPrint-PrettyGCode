@@ -265,6 +265,10 @@ $(function () {
                 return({position:curState.position,layerZ:curLastExtrudedZ,lineNumber:curState.layerLineNumber});
             }
 
+            this.getBufferStats=function()
+            {
+                return(buffer.length);
+            }
             //
             //var currentFileOffset=0;
 
@@ -499,7 +503,8 @@ $(function () {
                         //console.log(["GCmd:",e]);
                         let parts = e.substr(6).split("@");//remove Recv: and checksum.
                         let temps = parts[0];
-                        $(".pgstatus").text(temps);
+                        let statusStr = temps;//+" Buffer:"+printHeadSim.getBufferStats()
+                        $(".pgstatus").text(statusStr);
 
                     }
                 })
@@ -1179,6 +1184,14 @@ $(function () {
 
                 console.log("Finished loading GCode object.")
                 console.log(["layers:",layers.length,"size:",filePos])
+
+                let totalLines=0;
+                for(let layer of layers)
+                {
+                    totalLines+=layer.vertex.length/6;
+                }
+                console.log(["lines:",totalLines])
+
                 //console.log([sceneBounds,layers])
                 
                 //gcodeProxy.syncGcodeObjTo(Infinity);
