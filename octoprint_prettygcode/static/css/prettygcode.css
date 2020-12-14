@@ -63,6 +63,22 @@
     display:none;
 }
 
+.pgfullscreen .pgstatus
+{
+    display:unset;
+}
+.pgstatus
+{
+    display:none;
+    position:absolute;
+    top:0px;
+    left:0px;
+    width:100%;
+    font-size:large;
+    text-align:center;
+    background:#ffffff50;
+}
+
 .pgfullscreen #state_wrapper {
     top: 20px;
     left: 20px;
