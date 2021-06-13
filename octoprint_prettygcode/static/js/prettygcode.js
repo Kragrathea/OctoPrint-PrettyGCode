@@ -1892,7 +1892,7 @@ $(function () {
             if(existingGrid)
                 scene.remove( existingGrid );
                 
-            console.log([existingPlane,existingGrid]);
+            //console.log([existingPlane,existingGrid]);
             
             var planeGeometry = new THREE.PlaneGeometry(bedVolume.width, bedVolume.depth);
             var planeMaterial = new THREE.MeshBasicMaterial({
