@@ -579,6 +579,8 @@ $(function () {
 
             this.showNozzle=true;
             this.highlightCurrentLayer=true;
+
+            this.transparentBackground=false;
         };
         var pgSettings = new PGSettings();
 
@@ -685,6 +687,14 @@ $(function () {
 
                         //dont show Windows. Automatically handled by toggle buttons
                         $(folder.domElement).attr("hidden", true);
+
+                        gui.add(pgSettings, 'transparentBackground').onFinishChange(function(){
+                            if(!pgSettings.transparentBackground)
+                                myScene.background = new THREE.Color(0xd0d0d0);
+                            else
+                                myScene.background = null;//new THREE.Color(0xd0d0d0);
+                            
+                        });
 
                     } 
 
@@ -1651,7 +1661,7 @@ $(function () {
 
         function initThree()
         {
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas"),antialias: pgSettings.antialias });
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas"),antialias: pgSettings.antialias,alpha:true });
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -1680,7 +1690,12 @@ $(function () {
 
             //scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xd0d0d0);
+            //scene.background = new THREE.Color(0xd0d0d0);
+
+            if(!pgSettings.transparentBackground)
+                scene.background = new THREE.Color(0xd0d0d0);
+            else
+                scene.background = null;//new THREE.Color(0xd0d0d0);
 
             //for debugging
             window.myScene = scene;
