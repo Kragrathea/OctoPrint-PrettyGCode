@@ -195,13 +195,16 @@
     };
 }
 
-function GCodeParser(settings=null) {
+
+function GCodeObject3(settings=null) {
 
     var parserSettings={
-        fatLines:true
+        fatLines:true,
+        showTravel:false
     }
     if(settings!=null)
         parserSettings=settings;
+    window.myViewSettings=parserSettings;
 
     var state = { x: 0, y: 0, z: 0, e: 0, f: 0, extruding: false, relative: false };
     var layers = [];
@@ -268,7 +271,10 @@ function GCodeParser(settings=null) {
 
         gcodeGroup.traverse(function (child) {
             if (child.name.startsWith("layer#")) {
-                if (child.userData.layerNumber<layerNumber) {
+                if(child.userData.isTravel){
+                    //dont update material for travels
+
+                }else if (child.userData.layerNumber<layerNumber) {
                     if(child.material.uuid!=defaultMat.uuid)
                     {
                         child.material=defaultMat;
@@ -297,11 +303,6 @@ function GCodeParser(settings=null) {
     {
         var needUpdate=false;//only need update if visiblity changes
 
-        //hack comp for mirror.
-        //todo. better handle of mirror object so this isnt needed. 
-        // if(pgSettings.showMirror && lineNumber!=Infinity)
-        //     lineNumber=lineNumber*2;
-
         gcodeGroup.traverse(function (child) {
             if (child.name.startsWith("layer#")) {
                 if (child.userData.layerNumber<layerNumber) {
@@ -310,12 +311,22 @@ function GCodeParser(settings=null) {
                         needUpdate = true;
 
                     child.visible = true;
+
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;
+
                     child.geometry.maxInstancedCount=child.userData.numLines;
                 }else if (child.userData.layerNumber==layerNumber) {
                     if(!child.visible || child.geometry.maxInstancedCount!=Math.min(lineNumber,child.userData.numLines))
                         needUpdate = true;
 
                     child.visible = true;
+
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;
+
                     child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
                 }
                 else {
@@ -330,19 +341,23 @@ function GCodeParser(settings=null) {
     }
     this.syncGcodeObjTo=function (layerZ,lineNumber=Infinity)
     {
-        //hack comp for mirror.
-        //todo. better handle of mirror object so this isnt needed. 
-        // if(pgSettings.showMirror && lineNumber!=Infinity)
-        //     lineNumber=lineNumber*2;
-
         gcodeGroup.traverse(function (child) {
             if (child.name.startsWith("layer#")) {
                 if (child.userData.layerZ<layerZ) {
                     child.visible = true;
 
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;                    
+
                     child.geometry.maxInstancedCount=child.userData.numLines;
                 }else if (child.userData.layerZ==layerZ) {
                     child.visible = true;
+
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;
+
                     child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
                 }
                 else {
@@ -362,16 +377,27 @@ function GCodeParser(settings=null) {
                 if (fpMax<filePosition) { //way before.
                     child.visible = true;
 
-                    child.geometry.maxInstancedCount=child.userData.numLines;
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;
+
+                    if(child.geometry.type!="BufferGeometry")
+                        child.geometry.maxInstancedCount=child.userData.numLines;
+                    else
+                        child.geometry.setDrawRange(0,child.userData.numLines)
                 }else if (fpMin>filePosition) { //way after
                     child.visible = false;
                 }else //must be during. right?
                 {
                     child.visible = true;
 
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;
+
                     //count number of lines before filePos
                     var count =0;
-                    while(count<filePositions.length && filePositions[count]<filePosition)
+                    while(count<filePositions.length && filePositions[count]<=filePosition)
                         count++;
                     
                     //hack comp for mirror.
@@ -379,79 +405,20 @@ function GCodeParser(settings=null) {
                     // if(pgSettings.showMirror)
                     //     count=count*2;
 
-                    child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
-
+                    if(child.geometry.type!="BufferGeometry")
+                        child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
+                    else
+                        child.geometry.setDrawRange(0,Math.min(count,child.userData.numLines));
                     syncLayerNumber = child.userData.layerNumber
                 }
             }
         });
         return syncLayerNumber;//used to sync other elements.
     }
-    this.currentUrl="";
-    this.loadGcode=function(url) {
-        this.reset();
-
-        currentUrl=url;
-
-        var parserObject=this;
-        var file_url = url;//'/downloads/files/local/xxx.gcode';
-
-        var myInit = {/* method: 'GET',*/
-               headers: {
-                   'Content-Type': 'text/plain'
-               },
-               mode: 'cors',
-    /*cache: 'default'*/ };
-
-        var myRequest = new Request(file_url,myInit);
-        fetch(myRequest)
-            .then(function (response) {
-                var contentLength = response.headers.get('Content-Length');
-                if (!response.body || !window['TextDecoder']) {
-                    response.text().then(function (text) {
-                        parserObject.parse(text);
-                        parserObject.finishLoading();
-                    });
-                } else {
-                    var myReader = response.body.getReader();
-                    var decoder = new TextDecoder();
-                    var buffer = '';
-                    var received = 0;
-                    myReader.read().then(function processResult(result) {
-                        if (result.done) {
-                            parserObject.finishLoading();
-                            return;
-                        }
-                        received += result.value.length;
-
-                        //                buffer += decoder.decode(result.value, {stream: true});
-                        /* process the buffer string */
-                        parserObject.parse(decoder.decode(result.value, { stream: true }));
-
-                        // read the next piece of the stream and process the result
-                        return myReader.read().then(processResult);
-                    })
-                }
-            })
-
-    }
     this.finishLoading=function()
     {
         if (currentLayer !== undefined) {
             addObject(currentLayer, true);
-        }
-
-        //update scene bounds.
-        var bsize=new THREE.Vector3();
-        // sceneBounds.getSize(bsize);
-
-        //update ui slider
-        if ($("#myslider-vertical").length) {
-            $("#myslider-vertical").slider("setMax", layers.length)
-            $("#myslider-vertical").slider("setValue", layers.length,false,true)
-            $("#myslider .slider-handle").text(layers.length);
-
-            currentLayerNumber = layers.length;
         }
 
         console.log("Finished loading GCode object.")
@@ -464,23 +431,14 @@ function GCodeParser(settings=null) {
         }
         console.log(["lines:",totalLines])
 
-        //console.log([sceneBounds,layers])
-        
-        this.syncGcodeObjTo(Infinity);
+        //this.syncGcodeObjTo(Infinity);
 
-        //updateDimensions(bsize); 
-         
-        //Move zoom camera to new bounds.
-        var dist = Math.max(Math.abs(bsize.x), Math.abs(bsize.y)) / 2;
-        dist=Math.max(20,dist);//min distance to model.
-        //console.log(dist)
-//        cameraControls.dollyTo(dist * 2.0 ,true);
     }
 
-    function addObject(layer, extruding) {
+    function addLayerObject(layer, extruding) {
 
         if (layer.vertex.length > 2) { //Something to draw?
-            if(parserSettings.fatLines){//fancy lines
+            if(window.PGCSettings.fatLines){//fancy lines
                 var geo = new THREE.LineGeometry();
                 geo.setPositions(layer.vertex);
                 geo.setColors(layer.colors)
@@ -500,23 +458,95 @@ function GCodeParser(settings=null) {
 
             }
         }
+        if (layer.pathVertex.length > 2) { //Something to draw?
+            if(false){//fancy lines
+                var geo = new THREE.LineGeometry();
+                geo.setPositions(layer.pathVertex);
+                geo.setColors(layer.pathColors)
+                var line = new THREE.Line2(geo, curMaterial);
+                line.name = 'layer#' + layers.length;
+                line.userData={isTravel:true,layerZ:layer.z,layerNumber:layers.length,numLines:layer.pathVertex.length/6,filePositions:layer.pathFilePositions};// 6 because 2 x triplets
+                gcodeGroup.add(line);
+                //line.renderOrder = 2;
+            }else{//plain lines
+                var geo = new THREE.BufferGeometry();
+                geo.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array(layer.pathVertex), 3 ) );
+                geo.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array(layer.pathColors), 3 ) );
+                var pathObj = new THREE.LineSegments( geo, curLineBasicMaterial );
+                pathObj.name = 'layer#' + layers.length;
+                pathObj.userData={isTravel:true,layerZ:layer.z,layerNumber:layers.length,numLines:layer.pathVertex.length/6,filePositions:layer.pathFilePositions};
+                gcodeGroup.add(pathObj);
+
+            }
+        }
+
     }
 
     function newLayer(line) {
         if (currentLayer !== undefined) {
-            addObject(currentLayer, true);
+            addLayerObject(currentLayer);
         }
 
-        currentLayer = { vertex: [], pathVertex: [], z: line.z, colors: [], filePositions:[] };
+        currentLayer = { vertex: [], z: line.z, colors: [], filePositions:[],pathVertex: [],pathColors: [],pathFilePositions: [], };
         layers.push(currentLayer);
         //console.log("layer #" + layers.length + " z:" + line.z);
 
     }
 
-    this.addSegment= function(p1, p2) {
-        if (currentLayer === undefined) {
+    this.addTravel= function(p1, p2,color,filePos) {
+        //check for new layer
+        if (currentLayer === undefined || p1.z != currentLayer.z) {
             newLayer(p1);
         }
+
+        //todo. does this happen?
+        if(Number.isNaN(p1.x) ||Number.isNaN(p1.y) ||Number.isNaN(p1.z) ||Number.isNaN(p2.x) ||Number.isNaN(p2.y) ||Number.isNaN(p2.z))
+        {
+            console.log(["Bad line segment",p1,p2]);
+            return;
+        }
+
+        currentLayer.pathVertex.push(p1.x, p1.y, p1.z);
+        currentLayer.pathVertex.push(p2.x, p2.y, p2.z);
+        currentLayer.pathFilePositions.push(filePos);//save for syncing.
+
+        if (false)//faux shading. Darken line color based on angle
+        {
+            var per=1.0;//bright
+            //var np2=new THREE.Vector3(p2.x,p2.y,p2.z);
+            var vec = new THREE.Vector3(p2.x-p1.x,p2.y-p1.y,p2.z-p1.z);
+            vec.normalize();
+            per = (vec.dot(new THREE.Vector3(1,0,0))/2)+0.5;
+            per=(per/5.0);
+
+            var drawColor = new THREE.Color(color)
+            var hsl = {}
+            drawColor.getHSL(hsl);
+
+            //darken every other line to make the layers easier to see.
+            if((layers.length%2)==0)
+                hsl.l = per+0.25;
+            else
+                hsl.l = per+0.30;
+
+            drawColor.setHSL(hsl.h,hsl.s,hsl.l);
+            //console.log(drawColor.r + " " + drawColor.g + " " + drawColor.b )
+            currentLayer.pathColors.push(drawColor.r, drawColor.g, drawColor.b);
+            currentLayer.pathColors.push(drawColor.r, drawColor.g, drawColor.b);
+
+        }
+        else {
+            currentLayer.pathColors.push(color.r, color.g, color.b);
+            currentLayer.pathColors.push(color.r, color.g, color.b);
+        }
+    }
+    this.addSegment= function(p1, p2,color,filePos) {
+        //check for new layer
+        if (currentLayer === undefined || p1.z != currentLayer.z) {
+            newLayer(p1);
+        }
+
+        //todo. does this happen?
         if(Number.isNaN(p1.x) ||Number.isNaN(p1.y) ||Number.isNaN(p1.z) ||Number.isNaN(p2.x) ||Number.isNaN(p2.y) ||Number.isNaN(p2.z))
         {
             console.log(["Bad line segment",p1,p2]);
@@ -527,42 +557,16 @@ function GCodeParser(settings=null) {
         currentLayer.vertex.push(p2.x, p2.y, p2.z);
         currentLayer.filePositions.push(filePos);//save for syncing.
 
-        // if (curColor != defaultColor) {
-        //     sceneBounds.expandByPoint(p1);
-        //     sceneBounds.expandByPoint(p2);
-        // }
-
-        // if(pgSettings.showMirror){
-        //         //add mirror version
-        //     currentLayer.vertex.push(p1.x, p1.y, -p1.z);
-        //     currentLayer.vertex.push(p2.x, p2.y, -p2.z);
-        // }
-
         if (true)//faux shading. Darken line color based on angle
         {
-            //var p1=new THREE.Vector3(10,10,0);
-            //var p2=new THREE.Vector3(15,15,0);
-
             var per=1.0;//bright
-            if(true)
-            {
-                //var np2=new THREE.Vector3(p2.x,p2.y,p2.z);
-                var vec = new THREE.Vector3(p2.x-p1.x,p2.y-p1.y,p2.z-p1.z);
-                vec.normalize();
-//                        per= Math.max(vec.dot(new THREE.Vector3(1,0,0)),0.0)
-//                        per= Math.abs(vec.dot(new THREE.Vector3(1,0,0)),0.0)
-                per = (vec.dot(new THREE.Vector3(1,0,0))/2)+0.5;
-                per=(per/5.0);
-            }else{
-                var deltaX = p2.x - p1.x;
-                var deltaY = p2.y - p1.y;
-                var rad = Math.atan2(deltaY, deltaX);
+            //var np2=new THREE.Vector3(p2.x,p2.y,p2.z);
+            var vec = new THREE.Vector3(p2.x-p1.x,p2.y-p1.y,p2.z-p1.z);
+            vec.normalize();
+            per = (vec.dot(new THREE.Vector3(1,0,0))/2)+0.5;
+            per=(per/5.0);
 
-                rad = Math.abs(rad)
-                per = (rad) / (2.0 * 3.1415);
-            //console.log(rad + " " + per);
-            }
-            var drawColor = new THREE.Color(curColor)
+            var drawColor = new THREE.Color(color)
             var hsl = {}
             drawColor.getHSL(hsl);
 
@@ -577,12 +581,6 @@ function GCodeParser(settings=null) {
             currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
             currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
 
-            // if(pgSettings.showMirror){
-            //     //add mirror version
-            //     drawColor.setHSL(hsl.h, hsl.s, hsl.l/2);
-            //     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
-            //     currentLayer.colors.push(drawColor.r, drawColor.g, drawColor.b);
-            // }
         }
         else {
             currentLayer.colors.push(curColor.r, curColor.g, curColor.b);
@@ -590,19 +588,159 @@ function GCodeParser(settings=null) {
         }
     }
 
-    function delta(v1, v2) {
-        return state.relative ? v2 : v2 - v1;
+};
+
+        //used to animate the nozzle position in response to terminal messages
+function PrintHeadSimulator()
+{
+    var buffer=[];
+    var HeadState = function(){
+        this.position=new THREE.Vector3(0,0,0);
+        this.rate=5.0*60;
+        this.extrude=false;
+        this.relative=false;
+        //this.lastExtrudedZ=0;//used to better calc layer number
+        this.layerLineNumber=0;
+        this.clone=function(){
+            var newState=new HeadState();
+            newState.position.copy(this.position);
+            newState.rate=this.rate;
+            newState.extrude=this.extrude;
+            newState.relative=this.relative;
+            //newState.lastExtrudedZ=this.lastExtrudedZ;
+            newState.layerLineNumber=this.layerLineNumber;
+            newState.filePos=this.filePos;
+            return(newState);
+        }
+    };
+    var curState = new HeadState();
+    var curEnd = new HeadState();
+    var parserCurState = new HeadState();
+
+    var observedLayerCount=0;
+    var parserLayerLineNumber=0;
+    var parserLastExtrudedZ=0;
+
+    var curLastExtrudedZ=0;
+
+    parserCurState.extrude=true;
+    
+    var previousPiece="";
+    var filePos=0;
+    var currentColor=new THREE.Color('white');
+    var travelColor=new THREE.Color('white');
+
+    var gcodeObject = new GCodeObject3()
+
+    this.getCurPosition=function(){
+        let startPoint=undefined
+        if(bufferCursor>0)
+            startPoint=buffer[bufferCursor-1].position
+
+        return({position:curState.position,layerZ:curLastExtrudedZ,lineNumber:curState.layerLineNumber,filePos:curState.filePos,startPoint:startPoint,extrude:curState.extrude});
     }
 
-    function absolute(v1, v2) {
-        return state.relative ? v1 + v2 : v2;
+    this.loadGcode=function(file_url)
+    {
+        var myRequest = new Request(file_url,
+            {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'text/plain'
+                },
+                mode: 'cors',
+                cache: 'no-cache' 
+            }
+        );
+        fetch(myRequest)
+            .then(function (response) {
+                var contentLength = response.headers.get('Content-Length');
+                if (!response.body || !window['TextDecoder']) {
+                    response.text().then(function (text) {
+                        addCommands(text);
+                        //finishLoading();
+                    });
+                } else {
+                    var myReader = response.body.getReader();
+                    var decoder = new TextDecoder();
+                    //var buffer = '';
+                    var received = 0;
+                    myReader.read().then(function processResult(result) {
+                        if (result.done) {
+                            //finishLoading();
+                            //syncGcodeObjTo(Infinity);
+                            console.log("PrintSimBufferSize:"+buffer.length)
+                            return;
+                        }
+                        received += result.value.length;
+
+                        /* process the buffer string */
+                        addCommands(decoder.decode(result.value, { stream: true }));
+
+                        // read the next piece of the stream and process the result
+                        return myReader.read().then(processResult);
+                    })
+                }
+            })
+
     }
 
-    this.parse = function (chunk) {
+    function getGcodeObject()
+    {
+        return gcodeObject;
+    }
+    this.getGcodeObject=getGcodeObject;
 
-        //remove comments from chunk.
-        //var lines = chunk.replace(/;.+/g, '').split('\n');
-        //or not
+    function addObjectSegment(prevState,curState,filePos){
+        //console.log("Parsed NewLine:")
+
+        let p1=prevState.position;
+        let p2=curState.position;
+        let extruding = curState.extrude;
+
+        if(extruding)
+            gcodeObject.addSegment(p1,p2,currentColor,filePos)
+        else
+            gcodeObject.addTravel(p1,p2,travelColor,filePos)
+
+    }
+    function commentToColor(line)
+    {
+        let color=null;
+        let cmdLower=line.toLowerCase();
+        if (cmdLower.indexOf("inner") > -1) {
+            color = new THREE.Color('forestgreen');//green
+        }
+        else if (cmdLower.indexOf("outer") > -1) {
+            color = new THREE.Color('indianred');
+        }
+        else if (cmdLower.indexOf("perimeter") > -1) {
+            color = new THREE.Color('indianred');
+        }
+        else if (cmdLower.indexOf("fill") > -1) {
+            color = new THREE.Color('darkorange');
+        }
+        else if (cmdLower.indexOf("skin") > -1) {
+            color = new THREE.Color('yellow');
+        }
+        else if (cmdLower.indexOf("support") > -1) {
+            color = new THREE.Color('skyblue');
+        }
+        else if (cmdLower.indexOf("skirt") > -1) {
+            color = new THREE.Color('skyblue');
+        }
+        else
+        {
+            //var curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
+            //curColor = new THREE.Color(curColorHex);
+            //console.log(cmd + ' ' + curColorHex.toString(16))
+        }
+        return color;
+    }
+
+    //add gcode commands to the buffer
+    addCommands= function(chunk){
+        //split chunk into lines
         var lines = chunk.split('\n');
 
         //handle partial lines from previous chunk.
@@ -615,438 +753,229 @@ function GCodeParser(settings=null) {
 
             filePos+=lines[i].length+1;//+1 because of split \n. 
             
-            //Process comments
-            //figure out line color from comments.
-            if (lines[i].indexOf(";")>-1 ) {
-                var cmdLower=lines[i].toLowerCase();
-                if (cmdLower.indexOf("inner") > -1) {
-                    curColor = new THREE.Color(0x00ff00);//green
-                }
-                else if (cmdLower.indexOf("outer") > -1) {
-                    curColor = new THREE.Color('red');
-                }
-                else if (cmdLower.indexOf("perimeter") > -1) {
-                    curColor = new THREE.Color('red');
-                }
-                else if (cmdLower.indexOf("fill") > -1) {
-                    curColor = new THREE.Color('orange');
-                }
-                else if (cmdLower.indexOf("skin") > -1) {
-                    curColor = new THREE.Color('yellow');
-                }
-                else if (cmdLower.indexOf("support") > -1) {
-                    curColor = new THREE.Color('skyblue');
-                }
-                else if (cmdLower.indexOf("skirt") > -1) {
-                    curColor = new THREE.Color('skyblue');
-                }
-                else
-                {
-                    //var curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
-                    //curColor = new THREE.Color(curColorHex);
-                    //console.log(cmd + ' ' + curColorHex.toString(16))
-                }
-                //console.log(lines[i])
+            //Process lines with comments
+            if (lines[i].indexOf(";")>-1) {
+
+                //send comment to handler
+                //this.onComment(lines[i],filePos)
+                var newColor = commentToColor(lines[i])
+                if(newColor!=null && newColor!=currentColor)
+                    currentColor=newColor;
             }
 
-
             //remove comments and process command part of line.
-            var tokens = lines[i].replace(/;.+/g, '').split(' ');
-            if(tokens.length<1)
-                continue; //nothing left to process.
-
-            var cmd = tokens[0].toUpperCase();
-
-            //Arguments
-            var args = {};
-            tokens.splice(1).forEach(function (token) {
-                if (token[0] !== undefined) {
-                    var key = token[0].toLowerCase();
-                    var value = parseFloat(token.substring(1));
-                    args[key] = value;
-                }
-            });
-
-            //G0/G1 - Linear Movement
-            if (cmd === 'G0' || cmd === 'G1') {
-                var line = {
-                    x: args.x !== undefined ? absolute(state.x, args.x) : state.x,
-                    y: args.y !== undefined ? absolute(state.y, args.y) : state.y,
-                    z: args.z !== undefined ? absolute(state.z, args.z) : state.z,
-                    e: args.e !== undefined ? absolute(state.e, args.e) : state.e,
-                    f: args.f !== undefined ? absolute(state.f, args.f) : state.f,
-                };
-                //Layer change detection is or made by watching Z, it's made by watching when we extrude at a new Z position
-                if (delta(state.e, line.e) > 0) {
-                    var diff = delta(state.e, line.e);
-                    line.extruding = delta(state.e, line.e) > 0;
-                    if (currentLayer == undefined || line.z != currentLayer.z) {
-                        newLayer(line);
-                    }
-                }
-
-                //make sure extruding is updated. might not be needed.
-                //line.extruding = delta(state.e, line.e) > 0;
-                //if (line.extruding)
-                //    addSegment(state, line);//only if extruding right now.
-
-                //If E is defined in the args then extruding. Todo. is this right?
-                if(args.e !== undefined)
-                    this.addSegment(state, line);//only if extruding right now.
-                state = line;
-            } else if (cmd === 'G2' || cmd === 'G3') {
-                //G2/G3 - Arc Movement ( G2 clock wise and G3 counter clock wise )
-                // Not supporting K ATM
-                if (args.k !== undefined)
+            var cmd = lines[i].replace(/;.+/g, '').toUpperCase();
+            this.addCommand(cmd,filePos);
+        }
+    }
+    //add gcode command to the buffer
+    addCommand= function(cmd,filePos)
+    {
+        var is_g0_g1 = cmd.indexOf("G0 ")>-1 || cmd.indexOf("G1 ")>-1;
+        var is_g2_g3 = !is_g0_g1 && cmd.indexOf("G2 ")>-1 || cmd.indexOf("G3 ")>-1;
+        if(is_g0_g1 || is_g2_g3)
+        {
+            var parserPreviousState = {};
+            // If this is a g2/g3, we need to know the previous state to interpolate the arcs
+            if (is_g2_g3) { parserPreviousState = Object.assign(parserPreviousState, parserCurState);}
+            // Extract x, y, z, f and e
+            var x= parseFloat(cmd.split("X")[1])
+            if(!Number.isNaN(x))
+            {
+                if(parserCurState.relative)
+                    parserCurState.position.x+=x;
+                else
+                    parserCurState.position.x=x;
+            }
+            var y= parseFloat(cmd.split("Y")[1])
+            if(!Number.isNaN(y))
+            {
+                if(parserCurState.relative)
+                    parserCurState.position.y+=y;
+                else
+                    parserCurState.position.y=y;
+            }
+            var z= parseFloat(cmd.split("Z")[1])
+            if(!Number.isNaN(z))
+            {
+                if(parserCurState.relative)
+                    parserCurState.position.z+=z;
+                else
+                    parserCurState.position.z=z;
+            }
+            var f= parseFloat(cmd.split("F")[1])
+            if(!Number.isNaN(f))
+            {
+                parserCurState.rate=f;
+            }
+            var e= parseFloat(cmd.split("E")[1])
+            if(!Number.isNaN(e))
+            {
+                parserCurState.extrude=true;
+                if( parserLastExtrudedZ!=parserCurState.position.z)
                 {
-                    // I have no idea what K is for...
-                    console.warn('THREE.GCodeLoader: Arcs with K parameter not currently supported');
-                }
-                else if (args.r !== undefined)
-                {
-                    console.warn('THREE.GCodeLoader: Arc in R form are not currently supported.');
+                    //new layer (probably)
+                    //observedLayerCount++
+                    //console.log("New layer Z."+parserCurState.position.z+" File offset:"+currentFileOffset)
+                    parserLayerLineNumber=0;
+                    parserLastExtrudedZ=parserCurState.position.z;
                 }
                 else
-                {
-                    var arc = {
-                        x: args.x !== undefined ? absolute( state.x, args.x ) : state.x,
-                        y: args.y !== undefined ? absolute( state.y, args.y ) : state.y,
-                        z: args.z !== undefined ? absolute( state.z, args.z ) : state.z,
-                        i: args.i !== undefined ? args.i : 0,
-                        j: args.j !== undefined ? args.j : 0,
-                        r: args.r !== undefined ? args.r : null,
-                        // What is this K I'm seeing here, lol
-                        //k: args.k !== undefined ? absolute( state.k, args.k ) : state.k,
-                        e: args.e !== undefined ? absolute( state.e, args.e ) : state.e,
-                        f: args.f !== undefined ? absolute( state.f, args.f ) : state.f,
-                        is_clockwise: cmd === 'G2'
-                    };
-                    /*  If R format is working, this could be used.  I have no test code so I can't verify
-                    if ((arc.i || arc.j) && arc.r)
-                    {
-                        console.warn('THREE.GCodeLoader: Arc contains I/J and R, which is not allowed.  Removing R');
-                        arc.r = null;
-                    }
-                    else
-                    {
-                        var segments = self.interpolateArc(state, arc);
-                        for(var index = 1; index < segments.length; index++)
-                        {
-                            this.addSegment(segments[index-1], segments[index]);
-                        }
-                    }*/
-                    var segments = self.interpolateArc(state, arc);
-                    for(var index = 1; index < segments.length; index++)
-                    {
-                        this.addSegment(segments[index-1], segments[index]);
-                    }
-                    // Set the state to the last segment
-                    state = segments[segments.length - 1];
+                    parserLayerLineNumber++;
+            }else{
+                parserCurState.extrude=false;
+            }
+            parserCurState.layerLineNumber =parserLayerLineNumber;
+
+            // if this is a g0/g1, push the state to the buffer
+            if (is_g0_g1) {
+
+                if(buffer.length>1){
+                    let prevState=buffer[buffer.length-1];
+                    addObjectSegment(prevState,parserCurState,filePos);
                 }
-            } else if (cmd === 'G90') {
-                //G90: Set to Absolute Positioning
-                state.relative = false;
-            } else if (cmd === 'G91') {
-                //G91: Set to state.relative Positioning
-                state.relative = true;
-            } else if (cmd === 'G92') {
-                //G92: Set Position
-                var line = state;
-                line.x = args.x !== undefined ? args.x : line.x;
-                line.y = args.y !== undefined ? args.y : line.y;
-                line.z = args.z !== undefined ? args.z : line.z;
-                line.e = args.e !== undefined ? args.e : line.e;
-                state = line;
-            } else {
-                //console.warn( 'THREE.GCodeLoader: Command not supported:' + cmd );
+                parserCurState.filePos=filePos;
+                buffer.push(parserCurState.clone());
+            }
+            else{
+                // This is a g2/g3, so we need to do things a bit differently.
+                // Extract I and J, R, and is_clockwise
+                var is_clockwise = cmd.indexOf(" G2")>-1;
+                var i = parseFloat(cmd.split("I")[1]);
+                var j = parseFloat(cmd.split("J")[1]);
+                var r = parseFloat(cmd.split("R")[1]);
+                var arc = {
+                    // Get X Y and Z from the previous state if it is not
+                    // provided
+                    x: this.getCurrentCoordinate(x, parserPreviousState.position.x),
+                    y: this.getCurrentCoordinate(y, parserPreviousState.position.y),
+                    z: this.getCurrentCoordinate(z, parserPreviousState.position.z),
+                    // Set I and J and R to 0 if they are not provided.
+                    i: this.getCurrentCoordinate(i, 0),
+                    j: this.getCurrentCoordinate(j, 0),
+                    r: this.getCurrentCoordinate(r, 0),
+                    // K omitted, not sure what that's supposed to do
+                    //k: k !== undefined ? k : 0,
+                    // Since the amount extruded doesn't really matter, set it to 1 if we are extruding,
+                    // We don't want undefined values going into the arc interpolation routine
+                    e: this.getCurrentCoordinate(e, parserPreviousState.extrude ? 1 : 0),
+                    f: this.getCurrentCoordinate(r, parserPreviousState.rate),
+                    is_clockwise: is_clockwise
+                };
+                // Need to handle R maybe
+                var segments = self.interpolateArc(parserPreviousState, arc);
+                for(var index = 1; index < segments.length; index++)
+                {
+                    var cur_segment = segments[index];
+
+                    parserCurState.filePos=filePos;
+
+                    var cur_state = parserCurState.clone();
+                    cur_state.position = new THREE.Vector3(cur_segment.x,cur_segment.y,cur_segment.z);
+
+                    //add segment to gcodeobject
+                    if(buffer.length>1){
+                        let prevState=buffer[buffer.length-1];
+                        addObjectSegment(prevState,cur_state,filePos);
+                    }
+
+
+                    buffer.push(cur_state);
+                }
+            }
+        } else if (cmd.indexOf(" G90")>-1) {
+            //G90: Set to Absolute Positioning
+            parserCurState.relative = false;
+        } else if (cmd.indexOf(" G91")>-1) {
+            //G91: Set to state.relative Positioning
+            parserCurState.relative = true;
+        } else if (cmd.indexOf(" G92")>-1) {
+            //todo. Handle this?
+            //G92: ?
+            console.log("WARN:Unhandled G92")
+            //parserCurState.relative = true;
+        }                
+    }
+
+    // Handle undefined and NaN for current coordinates.
+    this.getCurrentCoordinate=function(cmdCoord, prevCoord) {
+        if (cmdCoord === undefined || isNaN(cmdCoord)){
+            cmdCoord=prevCoord;
+        }
+        return cmdCoord;
+    }
+    getCurrentCoordinate=this.getCurrentCoordinate;
+    //Update the printhead position based on time elapsed.
+    var bufferCursor=0;
+    function updatePosition(timeStep){
+        if(bufferCursor>=buffer.length)
+            return;//at end of buffer nothing to do  
+
+        //Convert the gcode feed rate (in MM/per min?) to rate per second.
+        var rate = curState.rate/60.0;
+    
+rate=rate*0.75;//why still too fast?        
+//        rate=rate*10
+
+        //adapt rate to keep up with buffer.
+        //todo. Make dist based rather than just buffer size.
+        if(buffer.length>10)
+        {
+//                    rate=rate*(buffer.length/5.0);
+            //console.log(["Too Slow ",rate,buffer.length])
+        }
+        if(buffer.length<5)
+        {
+//                    rate=rate*(1.0/(buffer.length*5.0));
+            //console.log(["Too fast ",rate,buffer.length])
+        }
+
+        //dist head needs to travel this frame
+        var dist = rate*timeStep
+        while(bufferCursor<buffer.length>0 && dist >0)//while some place to go and some dist left.
+        {
+            //direction
+            var vectToCurEnd=curEnd.position.clone().sub(curState.position);
+            var distToEnd=vectToCurEnd.length();
+            if(dist<distToEnd)//Inside current line?
+            {
+                //move pos the distance along line
+                vectToCurEnd.setLength(dist);
+                curState.position.add(vectToCurEnd);  
+                dist=0;//all done 
+            }else{
+                //move pos to end point.
+                curState.position.copy(curEnd.position);
+                curState.rate=curEnd.rate;
+                curState.filePos=curEnd.filePos;
+
+                //subract dist for next loop.
+                dist=dist-distToEnd;
+
+                //update lastZ for display of layers. 
+                if(curEnd.extrude && curEnd.position.z != curLastExtrudedZ )
+                {
+                    curLastExtrudedZ=curEnd.position.z;
+                }
+                //console.log([curState.position.z,curState.layerLineNumber])
+
+                //start on next buffer command
+                //buffer.shift();
+                if(bufferCursor< buffer.length-1)
+                {
+                    bufferCursor+=1;
+                    curEnd=buffer[bufferCursor];
+                    curState.layerLineNumber=curEnd.layerLineNumber;
+
+                    curState.rate=curEnd.rate;
+                    curState.extrude=curEnd.extrude;
+
+                }else
+                    return;//at end of buffer
             }
         }
     }
+    this.updatePosition=updatePosition;
 
-};
+}
 
-
-        //used to animate the nozzle position in response to terminal messages
-        function PrintHeadSimulator()
-        {
-            var buffer=[];
-            var HeadState = function(){
-                this.position=new THREE.Vector3(0,0,0);
-                this.rate=5.0*60;
-                this.extrude=false;
-                this.relative=false;
-                //this.lastExtrudedZ=0;//used to better calc layer number
-                this.layerLineNumber=0;
-                this.clone=function(){
-                    var newState=new HeadState();
-                    newState.position.copy(this.position);
-                    newState.rate=this.rate;
-                    newState.extrude=this.extrude;
-                    newState.relative=this.relative;
-                    //newState.lastExtrudedZ=this.lastExtrudedZ;
-                    newState.layerLineNumber=this.layerLineNumber;
-                    return(newState);
-                }
-            };
-            var curState = new HeadState();
-            var curEnd = new HeadState();
-            var parserCurState = new HeadState();
-
-            var observedLayerCount=0;
-            var parserLayerLineNumber=0;
-            var parserLastExtrudedZ=0;
-
-            var curLastExtrudedZ=0;
-
-            parserCurState.extrude=true;
-
-
-            this.getCurPosition=function(){
-                return({position:curState.position,layerZ:curLastExtrudedZ,lineNumber:curState.layerLineNumber});
-            }
-
-            this.getBufferStats=function()
-            {
-                return(buffer.length);
-            }
-            //
-            //var currentFileOffset=0;
-
-            //add gcode command to the buffer
-            this.addCommand= function(cmd)
-            {
-                //currentFileOffset+=cmd.length;
-                if(buffer.length>1000)
-                {
-                    console.log("PrintHeadSimulator buffer overflow")
-                    return;
-                }
-                var is_g0_g1 = cmd.indexOf(" G0")>-1 || cmd.indexOf(" G1")>-1;
-                var is_g2_g3 = !is_g0_g1 && cmd.indexOf(" G2")>-1 || cmd.indexOf(" G3")>-1;
-                if(is_g0_g1 || is_g2_g3)
-                {
-                    var parserPreviousState = {};
-                    // If this is a g2/g3, we need to know the previous state to interpolate the arcs
-                    if (is_g2_g3) { parserPreviousState = Object.assign(parserPreviousState, parserCurState);}
-                    // Extract x, y, z, f and e
-                    var x= parseFloat(cmd.split("X")[1])
-                    if(!Number.isNaN(x))
-                    {
-                        if(parserCurState.relative)
-                           parserCurState.position.x+=x;
-                        else
-                           parserCurState.position.x=x;
-                    }
-                    var y= parseFloat(cmd.split("Y")[1])
-                    if(!Number.isNaN(y))
-                    {
-                        if(parserCurState.relative)
-                           parserCurState.position.y+=y;
-                        else
-                           parserCurState.position.y=y;
-                    }
-                    var z= parseFloat(cmd.split("Z")[1])
-                    if(!Number.isNaN(z))
-                    {
-                        if(parserCurState.relative)
-                           parserCurState.position.z+=z;
-                        else
-                           parserCurState.position.z=z;
-                    }
-                    var f= parseFloat(cmd.split("F")[1])
-                    if(!Number.isNaN(f))
-                    {
-                        parserCurState.rate=f;
-                    }
-                    var e= parseFloat(cmd.split("E")[1])
-                    if(!Number.isNaN(e))
-                    {
-                        parserCurState.extrude=true;
-                        if( parserLastExtrudedZ!=parserCurState.position.z)
-                        {
-                            //new layer (probably)
-                            //observedLayerCount++
-                            //console.log("New layer Z."+parserCurState.position.z+" File offset:"+currentFileOffset)
-                            parserLayerLineNumber=0;
-                            parserLastExtrudedZ=parserCurState.position.z;
-                        }
-                        else
-                            parserLayerLineNumber++;
-                    }else{
-                        parserCurState.extrude=false;
-                    }
-                    parserCurState.layerLineNumber =parserLayerLineNumber;
-
-                    // if this is a g0/g1, push the state to the buffer
-                    if (is_g0_g1) {buffer.push(parserCurState.clone());}
-                    else{
-                        // This is a g2/g3, so we need to do things a bit differently.
-                        // Extract I and J, R, and is_clockwise
-                        var is_clockwise = cmd.indexOf(" G2")>-1;
-                        var i = parseFloat(cmd.split("I")[1]);
-                        var j = parseFloat(cmd.split("J")[1]);
-                        var r = parseFloat(cmd.split("R")[1]);
-                        var arc = {
-                            // Get X Y and Z from the previous state if it is not
-                            // provided
-                            x: this.getCurrentCoordinate(x, parserPreviousState.position.x),
-                            y: this.getCurrentCoordinate(y, parserPreviousState.position.y),
-                            z: this.getCurrentCoordinate(z, parserPreviousState.position.z),
-                            // Set I and J and R to 0 if they are not provided.
-                            i: this.getCurrentCoordinate(i, 0),
-                            j: this.getCurrentCoordinate(j, 0),
-                            r: this.getCurrentCoordinate(r, 0),
-                            // K omitted, not sure what that's supposed to do
-                            //k: k !== undefined ? k : 0,
-                            // Since the amount extruded doesn't really matter, set it to 1 if we are extruding,
-                            // We don't want undefined values going into the arc interpolation routine
-                            e: this.getCurrentCoordinate(e, parserPreviousState.extrude ? 1 : 0),
-                            f: this.getCurrentCoordinate(r, parserPreviousState.rate),
-                            is_clockwise: is_clockwise
-                        };
-                        // Need to handle R maybe
-                        var segments = self.interpolateArc(parserPreviousState, arc);
-                        for(var index = 1; index < segments.length; index++)
-                        {
-                            var cur_segment = segments[index];
-                            var cur_state = parserCurState.clone();
-                            cur_state.position = new THREE.Vector3(cur_segment.x,cur_segment.y,cur_segment.z);
-                            buffer.push(cur_state);
-                        }
-                    }
-                } else if (cmd.indexOf(" G90")>-1) {
-                    //G90: Set to Absolute Positioning
-                    parserCurState.relative = false;
-                } else if (cmd.indexOf(" G91")>-1) {
-                    //G91: Set to state.relative Positioning
-                    parserCurState.relative = true;
-                }
-                
-            }
-//window.myMaxRate=120.0; 
-//window.fudge=7; 
-
-            // Handle undefined and NaN for current coordinates.
-            this.getCurrentCoordinate=function(cmdCoord, prevCoord) {
-                if (cmdCoord === undefined || isNaN(cmdCoord)){cmdCoord=prevCoord;}
-                return cmdCoord;
-            }
-            //Update the printhead position based on time elapsed.
-            this.updatePosition=function(timeStep){
-
-                //Convert the gcode feed rate (in MM/per min?) to rate per second.
-                var rate = curState.rate/60.0;
-
-        //rate=rate/2;//todo. why still too fast?
-
-                //adapt rate to keep up with buffer.
-                //todo. Make dist based rather than just buffer size.
-                if(buffer.length>10)
-                {
-                    rate=rate*(buffer.length/5.0);
-                    //console.log(["Too Slow ",rate,buffer.length])
-                }
-                if(buffer.length<5)
-                {
-                    rate=rate*(1.0/(buffer.length*5.0));
-                    //console.log(["Too fast ",rate,buffer.length])
-                }
-//rate=Math.min(rate,window.myMaxRate);
-                //dist head needs to travel this frame
-                var dist = rate*timeStep
-                while(buffer.length>0 && dist >0)//while some place to go and some dist left.
-                {
-                    //direction
-                    var vectToCurEnd=curEnd.position.clone().sub(curState.position);
-                    var distToEnd=vectToCurEnd.length();
-                    if(dist<distToEnd)//Inside current line?
-                    {
-                        //move pos the distance along line
-                        vectToCurEnd.setLength(dist);
-                        curState.position.add(vectToCurEnd);  
-                        dist=0;//all done 
-                    }else{
-                        //move pos to end point.
-                        curState.position.copy(curEnd.position);
-                        curState.rate=curEnd.rate;
-                        //subract dist for next loop.
-                        dist=dist-distToEnd;
-
-                        //draw segment
-                        //todo.
-
-                        //update lastZ for display of layers. 
-                        if(curEnd.extrude && curEnd.position.z != curLastExtrudedZ )
-                        {
-                            curLastExtrudedZ=curEnd.position.z;
-                        }
-                        //console.log([curState.position.z,curState.layerLineNumber])
-
-                        //start on next buffer command
-                        buffer.shift();
-                        if(buffer.length>0)
-                        {
-                            curEnd=buffer[0];
-                            curState.layerLineNumber=curEnd.layerLineNumber;
-                        }
-                    }
-                }
-            }
-        }
-
-        var printHeadSim=new PrintHeadSimulator();
-        var curPrinterState=null;
-        var curPrintFilePos=0;
-        self.fromCurrentData= function (data) {
-
-            //Dont do anything if view not initalized
-            if(!viewInitialized)
-                return;
-
-            //update current loaded model.
-            updateJob(data.job);
-            if(curPrinterState && curPrinterState.text!=data.state.text)
-            {
-                //console.log(["Printer state changed: ",curPrinterState.text," -> ",data.state.text])
-                if(data.state.text.startsWith("Operational"))
-                {
-                    //console.log("Resetting print simulation");
-                    printHeadSim=new PrintHeadSimulator();
-                }
-            }
-            curPrinterState=data.state;
-
-
-            curPrintFilePos=data.progress.filepos;
-
-            //parse logs position data for simulator
-            if(data.logs.length){
-                data.logs.forEach(function(e,i)
-                {
-                    if(e.startsWith("Send:"))
-                    {
-                        //console.log(["GCmd:",e]);
-                        if(printHeadSim)
-                            printHeadSim.addCommand(e);
-
-                        //Strip out the extra stuff in the terminal line.
-                        //match second space to * character. I hate regexp.
-                        if(terminalGcodeProxy){
-                             var reg=new RegExp('(?<=\\s\\S*\\s).[^*]*','g');
-                             var matches=e.match(reg);
-                             if(matches && matches.length>0)
-                                 terminalGcodeProxy.parse(matches[0]+'\n');
-                        }
-                    }
-                    else if(e.startsWith("Recv: T:"))
-                    {
-                        //console.log(["GCmd:",e]);
-                        let parts = e.substr(6).split("@");//remove Recv: and checksum.
-                        let temps = parts[0];
-                        let statusStr = temps;//+" Buffer:"+printHeadSim.getBufferStats()
-                        $(".pgstatus").text(statusStr);
-
-                    }
-                })
-            }
-        };

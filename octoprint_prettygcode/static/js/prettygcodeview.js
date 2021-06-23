@@ -2,6 +2,24 @@ $(function () {
 
         var self = this;
 
+        //settings that are saved between sessions
+        var PGSettings = function () {
+            //this.showMirror=false;//default changed
+            this.fatLines=true;//default changed
+            this.showTravel=true;
+            this.syncToProgress=true;
+            this.orbitWhenIdle=false;
+            this.antialias=true;
+            this.lightTheme=false;
+            this.saveCamera=false;
+
+            this.showNozzle=true;
+            this.highlightCurrentLayer=true;
+        };
+        var pgSettings = new PGSettings();
+        window.PGCSettings=pgSettings;
+
+
         //Scene globals
         var camera, cameraControls,cameraLight; 
         var scene, renderer; 
@@ -9,6 +27,7 @@ $(function () {
 
         var cubeCamera;//todo make reflections optional.
         var nozzleModel;
+        var extrudingLineGroup;
         
         var clock;
         var sceneBounds = new THREE.Box3();
@@ -17,30 +36,48 @@ $(function () {
         var gcodeHei = 580;
         var gui;
 
+        var printHeadSim=new PrintHeadSimulator();
+        //var curPrinterState=null;
+        var curPrintFilePos=0;
+        var curSimFilePos=0;
+
         var forceNoSync=false;//used to override sync when user drags slider. Todo. Better way to handle this?
+        
+        var simPlaying =true;
+        var playbackRate=1.0;
 
-        var currentLayerNumber=100;
+        var currentLayerNumber=0;
 
-        //settings that are saved between sessions
-        var PGSettings = function () {
-            this.showMirror=false;//default changed
-            this.fatLines=true;//default changed
-            this.syncToProgress=true;
-            this.orbitWhenIdle=false;
-            // this.reloadGcode = function () {
-            //     if(gcodeProxy && curJobName!="")
-            //         gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
-            //     };
-            //this.showState=true;
-            //this.showWebcam=false;
-            //this.showFiles=false;
-            //this.showDash=false;
-            this.antialias=true;
+        $('#layer-slider').on('input', function (e) {
+            if(parseInt(e.currentTarget.value))
+                currentLayerNumber=parseInt(e.currentTarget.value)
 
-            this.showNozzle=true;
-            this.highlightCurrentLayer=true;
-        };
-        var pgSettings = new PGSettings();
+            simPlaying=false;
+            forceNoSync=true
+            //console.log(["layerSlider",currentLayerNumber])
+        });
+
+        $('#play-button').on('click', function (e) {
+            simPlaying=!simPlaying;
+            forceNoSync=false
+            if(!simPlaying)
+                $('#play-button').html("&#x25B6;")
+            else
+                $('#play-button').html("&#x23F8;")
+
+        });
+        $('#faster-button').on('click', function (e) {
+            playbackRate=playbackRate*2;
+            if(playbackRate>64)
+                playbackRate=64;
+        });           
+        $('#slower-button').on('click', function (e) {
+            playbackRate=playbackRate/2;
+            if(playbackRate<0.125)
+                playbackRate=0.125;
+        });           
+            
+
 
         var bedVolume = undefined;
         var viewInitialized = false;
@@ -56,26 +93,304 @@ $(function () {
             resetCamera();
         }
 
-                                
+        function connectToOctoprint()
+        {
+            //let jobSourcePath = 'http://octopi.local/'
+            //let apiKey = '?apikey=18439BE29F904B5CA4ED388EBE085C09'
+
+            //let jobSourcePath = 'http://fluiddpi.local:5000/'
+            //let apiKey = '?apikey=666EC2F0E48C4F348375B904C9C187E5'
+            let jobSourcePath = '/'
+            let apiKey=''
+            setInterval(function () {
+                var file_url = jobSourcePath+"api/job"+apiKey;//'/downloads/files/local/xxx.gcode';
+                //var file_url = "/api/job";//'/downloads/files/local/xxx.gcode';
+
+                var myRequest = new Request(file_url,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        mode: 'cors',
+                        cache: 'no-cache',
+                        timeout: 900 
+                    }
+                );
+                fetch(myRequest)
+                    .then(function (response) {
+                        var contentLength = response.headers.get('Content-Length');
+                        //console.log(response)
+                        if (!response.body || !window['TextDecoder']) {
+                            response.text().then(function (text) {
+                                console.log(text);
+                                //finishLoading();
+                            });
+                        } else {
+                            var myReader = response.body.getReader();
+                            var decoder = new TextDecoder();
+                            var buffer = '';
+                            var received = 0;
+                            myReader.read().then(function processResult(result) {
+                                if (result.done) {
+                                    //finishLoading();
+                                    //syncGcodeObjTo(Infinity);
+                                    return;
+                                }
+                                received += result.value.length;
+                                let rresult = decoder.decode(result.value, { stream: true });
+                                let msg = JSON.parse(rresult);
+                                if(msg.progress){
+                                    //console.log(msg.progress.filepos)
+                                    //curPrintFilePos=msg.progress.filepos
+                                }
+                                if(msg.state){
+                                    //console.log(msg.progress.filepos)
+                                    //curPrintFilePos=msg.progress.filepos
+                                    $("#status-state").html(msg.state)
+                                }                                
+                                if(msg.job){
+                                    //console.log(msg.job.file.path)
+                                    if(msg.job.file.path){
+                                        updateJob(jobSourcePath+'downloads/files/local/'+msg.job.file.path+apiKey);
+                                        http://fluiddpi.local:5000/api/files/sdcard/CCR10_Nose106.gcode
+                                        //updateJob('/downloads/files/local/'+msg.job.file.path);
+                                        $("#status-name").html(msg.job.file.path)
+                                    }
+
+                                }
+        
+                                /* process the buffer string */
+                                //parserObject.parse(decoder.decode(result.value, { stream: true }));
+        
+                                // read the next piece of the stream and process the result
+                                return myReader.read().then(processResult);
+                            })
+                        }                                
+
+                    })
+
+            }, 1000);
+            return;
+
+            if (!("WebSocket" in window))
+            {
+                // The browser doesn't support WebSocket
+                return;
+            }
+            var totalDownloaded=0;
+            $.post( "http://octopi.local/api/login"+"?apikey=18439BE29F904B5CA4ED388EBE085C09", { passive:true /*,user: "chris", pass: "opib6ub9"*/ },function( data ) {
+                console.log( data.session );
+                //{ "auth":"chris:0CD4ED8F8EFE409C8DC204EAC2B02F03" }
+                var ws = new WebSocket("ws://octopi.local/sockjs/websocket");
+                ws.onopen = function()
+                {
+                    ws.send('{ "auth":"chris:'+data.session+'" }')
+                };
+
+                ws.onmessage = function (e) 
+                { 
+                    handled=false;
+
+                    totalDownloaded+=e.data.length
+                    //console.log("BytesDL:"+totalDownloaded);
+                    //console.log(e.data)
+                    let msg = JSON.parse(e.data);
+                    //console.log(msg.current.job.file.path)
+                    //console.log(msg.current.progress.filepos)
+                    if(msg.current)
+                    {
+                        //console.log(msg.current.job.file.path)
+                        let jobName=msg.current.job.file.path
+                        updateJob('http:///octopi.local/downloads/files/local/' + jobName+"?apikey=18439BE29F904B5CA4ED388EBE085C09");
+
+                        //console.log(msg.current.progress.filepos)
+                        curPrintFilePos=msg.current.progress.filepos
+                        handled=true;
+
+                        console.log("BytesDL:"+totalDownloaded);
+                    }
+
+                    //if(!handled)
+                    //    console.log(e.data);
+
+                };
+
+                ws.onclose = function()
+                { 
+                };
+
+                ws.onerror = function(error){
+                }
+            });
+                            
+        }                
+
+
+        function connectToMoonraker()
+        {
+
+            if ("WebSocket" in window)
+            {
+                var ws = new WebSocket("ws://fluiddpi.local/websocket");
+                ws.onopen = function()
+                {
+                    ws.send('{"jsonrpc": "2.0","method": "printer.objects.query","params": {"objects": {"print_stats": null}},"id": 5434}')
+                    ws.send('{"jsonrpc": "2.0","method": "printer.objects.subscribe","params": {"objects": {'+
+                                '"virtual_sdcard":["file_position"],'+
+                                '"print_stats":["filename"]'+
+                                //'"toolhead": ["gcode_position"]'+
+                            '}},"id": 5434}'
+                            );
+                };
+
+                ws.onmessage = function (e) 
+                { 
+                    handled=false;
+                    if(e.data.indexOf("notify_proc_stat_update")>-1)
+                        handled=true;
+                    
+                    let msg = JSON.parse(e.data);
+                    //console.log(msg.method)
+                    if(e.data.indexOf("print_stats")>-1)
+                    {    
+                        //console.log(msg.params[0].virtual_sdcard.file_position);
+                        if(msg.result)
+                        {    if(msg.result.status.print_stats.filename)
+                            {
+                                let jobName=msg.result.status.print_stats.filename
+                                updateJob('http://fluiddpi.local/server/files/gcodes/'+jobName);
+                            }
+                            //return;//handled
+                        }
+                        handled=true;
+                    }
+                    if(e.data.indexOf("virtual_sdcard")>-1)
+                    {    
+                        //console.log(msg.params[0].virtual_sdcard.file_position);
+
+                        if(msg.params)
+                            curPrintFilePos=msg.params[0].virtual_sdcard.file_position
+                        handled=true;
+                        //return;//handled
+                    }
+
+                    if(!handled)
+                        console.log(e.data);
+                };
+
+                ws.onclose = function()
+                { 
+                };
+
+                ws.onerror = function(error){
+                }
+            }
+
+            else
+            {
+            // The browser doesn't support WebSocket
+            }
+                            
+        }
+                        
+
+        function initGui()
+        {
+            if(true){
+                //simple gui
+                dat.GUI.TEXT_OPEN="View Options"
+                dat.GUI.TEXT_CLOSED="View Options"
+                gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
+    
+                //Override default storage location to fix bug with tabs.
+                //Not working
+                //gui.setLocalStorageHash("PrettyGCodeSettings");
+
+                gui.useLocalStorage=true;
+                // var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
+    
+                // $('.gwin').prepend(guielem)
+    
+                $('#mygui').append(gui.domElement);
+
+                gui.remember(pgSettings);
+//                 gui.add(pgSettings, 'syncToProgress').onFinishChange(function(){
+//                     if(pgSettings.syncToProgress){
+// //                                syncLayerToZ();
+//                     }
+//                 });
+
+                //gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
+                gui.add(pgSettings, 'orbitWhenIdle');
+                gui.add(pgSettings, 'showTravel');
+
+                //gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
+                //gui.add(pgSettings, 'reflections');
+                // gui.add(pgSettings, 'antialias').onFinishChange(function(){
+                //     new PNotify({
+                //         title: "Reload page required",
+                //         text: "Antialias chenges won't take effect until you refresh the page",
+                //         type: "info"
+
+                //         });
+                //         //alert("Antialias chenges won't take effect until you refresh the page");
+                //     });
+
+                gui.add(pgSettings, 'showNozzle');
+                    
+                //gui.add(pgSettings, 'reloadGcode');
+                gui.add(pgSettings, 'lightTheme').onFinishChange(function(){
+                    if(pgSettings.lightTheme)
+                        myScene.background = new THREE.Color(0xd0d0d0);
+                    else
+                        myScene.background = null;//new THREE.Color(0xd0d0d0);
+                    
+                });
+
+                gui.add(pgSettings, 'saveCamera');
+
+                var folder = gui.addFolder('Windows');//hidden.
+                // folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
+                // folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
+                // folder.add(pgSettings, 'showFiles').onFinishChange(updateWindowStates).listen();
+                // folder.add(pgSettings, 'showDash').onFinishChange(updateWindowStates).listen();
+
+                //dont show Windows. Automatically handled by toggle buttons
+                $(folder.domElement).attr("hidden", true);
+
+                $(".pgsettingstoggle").on("click", function () {
+                    $("#mygui").toggleClass("pghidden");
+                });
+
+            } 
+        }
 
         self.initScene = function () {
             if (!viewInitialized) {
                 viewInitialized = true;
 
                 updateBedVolume();
+              
+                initGui()
 
                 initThree();
 
+                connectToOctoprint()
+                
                 //GCode loader.
-                gcodeProxy = new GCodeParser();
-                var gcodeObject = gcodeProxy.getObject();
-                gcodeObject.position.set(-0, -0, 0);
-                scene.add(gcodeObject);
+                // gcodeProxy = new GCodeObject2();
+                // var gcodeObject = gcodeProxy.getObject();
+                // gcodeObject.position.set(-0, -0, 0);
+                // scene.add(gcodeObject);
 
                 // if(curJobName!="")
                 //     gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
                     
-                gcodeProxy.loadGcode('http://fluiddpi.local/server/files/gcodes/' + 'CCR10_xyzCalibration_cube.gcode?xx=1');
+                //gcodeProxy.loadGcode('http://fluiddpi.local/server/files/gcodes/' + 'CCR10_xyzCalibration_cube.gcode?xx=1');
+                //gcodeProxy.loadGcode('http://fluiddpi.local/server/files/gcodes/' + 'CCR10_3DBenchy-FAST.gcode?xx=1');
+
+
                     
             }
         };
@@ -103,7 +418,7 @@ $(function () {
 
         function initThree()
         {
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("pgccanvas"),antialias: pgSettings.antialias });
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("pgccanvas"),antialias: pgSettings.antialias,alpha:true });
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -115,19 +430,36 @@ $(function () {
             CameraControls.install({ THREE: THREE });
             clock = new THREE.Clock();
 
+
+
             var canvas = $("#pgccanvas");
             cameraControls = new CameraControls(camera, canvas[0]);
+
+
 
             //todo handle other than lowerleft
             resetCamera();
 
+                        //if()
+            if(pgSettings.saveCamera && localStorage.getItem('pgcCameraPos'))
+            {
+                var camStr=localStorage.getItem('pgcCameraPos');
+                try{
+                    var camPos = JSON.parse(camStr)
+                    cameraControls.setPosition(camPos.pos.x,camPos.pos.y,camPos.pos.z)
+                    cameraControls.setTarget(camPos.target.x,camPos.target.y,camPos.target.z)
+                }catch{}
+            }
 
             //for debugging
             window.myCameraControls = cameraControls;
 
             //scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xd0d0d0);
+            if(pgSettings.lightTheme)
+                scene.background = new THREE.Color(0xd0d0d0);
+            else
+                scene.background = null;//new THREE.Color(0xd0d0d0);
 
             //for debugging
             window.myScene = scene;
@@ -171,28 +503,91 @@ $(function () {
             }
 
             //load Nozzle model.
-            var objloader = new THREE.OBJLoader();
-            objloader.load( './js/models/ExtruderNozzle.obj', function ( obj ) {
-                obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
-                obj.scale.setScalar(0.1)
-                obj.position.set(0, 0, 10);
-                obj.name="nozzle";
-                var nozzleMaterial = new THREE.MeshStandardMaterial( {
+            // var objloader = new THREE.OBJLoader();
+            // objloader.load( './js/models/ExtruderNozzle.obj', function ( obj ) {
+            //     obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
+            //     obj.scale.setScalar(0.1)
+            //     obj.position.set(0, 0, 10);
+            //     obj.name="nozzle";
+            //     var nozzleMaterial = new THREE.MeshStandardMaterial( {
+            //         metalness: 1,   // between 0 and 1
+            //         roughness: 0.5, // between 0 and 1
+            //         envMap: cubeCamera.renderTarget.texture,
+            //         color: new THREE.Color(0xba971b),
+            //         //flatShading:false,
+            //     } );
+            //     obj.children.forEach(function(e,i){
+            //         if ( e instanceof THREE.Mesh ) {
+            //             e.material = nozzleMaterial;
+            //             //e.geometry.computeVertexNormals();
+            //         }
+            //     })
+
+                var nozzleGroup = new THREE.Group();
+                //let geometry = new THREE.ConeGeometry( 5, 6, 32 );
+                let geometry = new THREE.CylinderGeometry( 0.3,4.4, 3, 16 );
+                //const material = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+                let nozzleMaterial = new THREE.MeshStandardMaterial( {
                     metalness: 1,   // between 0 and 1
                     roughness: 0.5, // between 0 and 1
                     envMap: cubeCamera.renderTarget.texture,
                     color: new THREE.Color(0xba971b),
                     //flatShading:false,
                 } );
-                obj.children.forEach(function(e,i){
-                    if ( e instanceof THREE.Mesh ) {
-                        e.material = nozzleMaterial;
-                        //e.geometry.computeVertexNormals();
-                    }
-                })
-                nozzleModel=obj;
-                scene.add( obj );
-            } );
+                let cone = new THREE.Mesh( geometry, nozzleMaterial );
+                cone.rotation.x = -Math.PI / 2;
+                cone.position.z = 1.5;
+
+                geometry = new THREE.CylinderGeometry( 5,5, 4, 6 );
+                let nutMaterial = new THREE.MeshStandardMaterial( {
+                    metalness: 1,   // between 0 and 1
+                    roughness: 0.5, // between 0 and 1
+                    envMap: cubeCamera.renderTarget.texture,
+                    color: new THREE.Color(0xba971b),
+                    flatShading:true,
+                } );
+                let nut =new THREE.Mesh( geometry, nutMaterial );
+                nut.rotation.x = -Math.PI / 2;
+                nut.position.z = 5;
+                
+
+                nozzleGroup.add(cone)
+                nozzleGroup.add(nut)
+
+                extrudingLineGroup = new THREE.Group();
+
+                geometry = new THREE.CylinderGeometry( 0.2,0.2, 1, 12 );
+                let extrudingLineMaterial = new THREE.MeshStandardMaterial( {
+                    //metalness: 1,   // between 0 and 1
+                    //roughness: 0.5, // between 0 and 1
+                    //envMap: cubeCamera.renderTarget.texture,
+                    color: new THREE.Color("red"),
+                    emissive:new THREE.Color("blue")
+                    //flatShading:true,
+                } );                
+                let extrudingLine =new THREE.Mesh( geometry, extrudingLineMaterial );
+                //extrudingLine.position.y = -1;
+                extrudingLine.scale.y=2;
+                extrudingLine.rotation.x = -Math.PI / 2;
+                //extrudingLine.position.y = -10;
+
+                extrudingLineGroup.add(extrudingLine)
+
+                scene.add( extrudingLineGroup );
+
+                //extrudingLine.scale.y=40;
+
+                //extrudingLineGroup.lookAt(100,00,0)
+
+                //extrudingLine.rotation.z= -Math.PI / 4;
+
+                nozzleModel=nozzleGroup;
+                scene.add( nozzleGroup );
+
+
+
+
+            //} );
                 
 
             function animate() {
@@ -209,28 +604,81 @@ $(function () {
                     firstFrame=false;
                 }
 
-                if(printHeadSim)
+                if(printHeadSim && simPlaying)
                 {
-                    printHeadSim.updatePosition(delta);
+                    printHeadSim.updatePosition(delta*playbackRate);
+
+                    var curState=printHeadSim.getCurPosition();
+                    if(curState.filePos)
+                        curSimFilePos=curState.filePos;
+
+                    //adapt playback rate
+                    if(false){
+                        var fpDelta=curPrintFilePos-curSimFilePos;
+                    
+                        if(fpDelta<-100)
+                        {
+                            playbackRate=1/(-fpDelta/100);
+                            //console.log("Down throttle "+playbackRate)
+                        }else if(fpDelta>100){
+                            playbackRate=fpDelta/100;
+                            //console.log("Up throttle "+playbackRate)
+                        }else{
+                            playbackRate=1;
+                        }
+                    }
+                    //todo. stop when past end.
+
+                    //if(playbackRate==0)
+                    //    console.log(playbackRate)
+                    if(playbackRate==0)
+                        console.log(fpDelta)                        
+                    // if(fpDelta<200)
+                    //     playbackRate=0.5
+                    // if(fpDelta>200)
+                    //     playbackRate=fpDelta/100;
+
+                    //console.log(fpDelta)
+
                 }
-                if(curPrinterState && (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
-                    pgSettings.syncToProgress && (!forceNoSync))
+//                if(curPrinterState && (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
+//                    pgSettings.syncToProgress && (!forceNoSync))
+if((!forceNoSync))
                 {
                     if(nozzleModel && printHeadSim)
                     {
                         var curState=printHeadSim.getCurPosition();
                         nozzleModel.position.copy(curState.position);
+                        
+                        //Position a cylinder to represent the segment being extruding
+                        if(extrudingLineGroup && curState.startPoint)
+                        {
+                            if(!curState.extrude)
+                                extrudingLineGroup.visible=false;
+                            else{
+                                extrudingLineGroup.visible=true;
+                                var vectToCurEnd=nozzleModel.position.clone().sub(curState.startPoint);
+                                var dist=vectToCurEnd.length();
+
+                                extrudingLineGroup.children[0].scale.y=dist;
+                                extrudingLineGroup.lookAt(curState.position);
+                                extrudingLineGroup.position.copy(curState.startPoint);
+
+                                vectToCurEnd.setLength(dist/2);
+                                extrudingLineGroup.position.add(vectToCurEnd);  
+                            }
+                        }    
                         needRender=true;
                     }
                     if(gcodeProxy)
                     {
-                        var calculatedLayer = gcodeProxy.syncGcodeObjToFilePos(curPrintFilePos);
+                        var calculatedLayer = gcodeProxy.syncGcodeObjToFilePos(curSimFilePos);
                         if(highlightMaterial!==undefined){
                             gcodeProxy.highlightLayer(calculatedLayer,highlightMaterial);
                         }
 
-                        $("#myslider-vertical").slider('setValue', calculatedLayer, false,true);
-                        $("#myslider .slider-handle").text(calculatedLayer);
+                        //$("#myslider-vertical").slider('setValue', calculatedLayer, false,true);
+                        //$("#myslider .slider-handle").text(calculatedLayer);
 
                         needRender=true;
                     }
@@ -241,6 +689,14 @@ $(function () {
                     }
 
                     if(gcodeProxy){
+                        //todo. this should be somewhere else
+
+                        if($('#layer-slider').attr("max")!=gcodeProxy.getLayers().length){
+                            $('#layer-slider').attr("max",gcodeProxy.getLayers().length)
+                            $('#layer-slider').attr("value",gcodeProxy.getLayers().length)
+                            currentLayerNumber=gcodeProxy.getLayers().length;
+                        }
+
                         if( gcodeProxy.syncGcodeObjToLayer(currentLayerNumber) )
                             {
                                 if(highlightMaterial!==undefined){
@@ -262,7 +718,7 @@ $(function () {
                 if(highlightMaterial!==undefined){
                     //fake a glow by ramping the diffuse color.
                     let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0); 
-                    nv=0.5;
+                    nv=1.0;
                     highlightMaterial.uniforms.diffuse.value.r=nv;
                     highlightMaterial.uniforms.diffuse.value.g=nv;
                     highlightMaterial.uniforms.diffuse.value.b=nv;
@@ -274,6 +730,12 @@ $(function () {
                 {
                     cameraIdleTime=0;
                     needRender=true;
+                                //if()
+                    if(pgSettings.saveCamera)
+                    {
+                        let camStr= JSON.stringify({pos:cameraControls.getPosition(),target:cameraControls.getTarget()});
+                        localStorage.setItem('pgcCameraPos',camStr);
+                    }
                 }
                 else{
                     cameraIdleTime+=delta;
@@ -405,13 +867,30 @@ $(function () {
         //rename to loadGcode or something.
         function updateJob(job){
             
-            if (durJobDate != job.file.date) {
-                curJobName = job.file.path;
-                durJobDate = job.file.date;
-                if(viewInitialized && gcodeProxy)
+            // if (durJobDate != job.file.date) {
+            //     curJobName = job.file.path;
+            //     durJobDate = job.file.date;
+            if(curJobName!=job){
+                if(viewInitialized);// && gcodeProxy)
                     {
-                        gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        curJobName=job
+                        //gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        //gcodeProxy.loadGcode('http://fluiddpi.local/server/files/gcodes/' + curJobName);
+
+                        //remove old gcode objects
+                        scene.traverse(function (child) {
+                            if (child.name.startsWith("gcode")) { 
+                                scene.remove(child)
+                            }
+                        })
+
                         printHeadSim=new PrintHeadSimulator();
+                        gcodeProxy = printHeadSim.getGcodeObject();
+                        var gcodeObject = gcodeProxy.getObject();
+                        gcodeObject.position.set(-0, -0, 0);
+                        scene.add(gcodeObject);
+
+                        printHeadSim.loadGcode(curJobName);
 
                         //terminalGcodeProxy = new GCodeParser();
                         //terminalGcodeProxy;//used to display gcode actualy sent to printer.
