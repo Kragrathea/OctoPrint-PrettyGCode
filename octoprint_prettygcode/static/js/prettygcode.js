@@ -905,7 +905,7 @@ $(function () {
             });
             //todo. handle window resize
 //            curMaterial.resolution.set(gcodeWid, gcodeHei);
-            curMaterial.resolution.set(500, 500);
+            curMaterial.resolution.set(window.innerWidth, window.innerHeight);
 
             //for plain lines
             var curLineBasicMaterial = new THREE.LineBasicMaterial( {
@@ -1745,7 +1745,7 @@ $(function () {
                         //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
                         vertexColors: THREE.VertexColors,
                     });
-                    highlightMaterial.resolution.set(500, 500);
+                    highlightMaterial.resolution.set(window.innerWidth, window.innerHeight);
                 }else{
                     //highlightMaterial=
                 }

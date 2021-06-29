@@ -224,7 +224,8 @@
 
 	    _this.minPolarAngle = 0; // radians
 
-	    _this.maxPolarAngle = Math.PI/2; // radians /2 keeps it from going below horizion. 
+//	    _this.maxPolarAngle = Math.PI/2; // radians /2 keeps it from going below horizion. 
+	    _this.maxPolarAngle = Math.PI; // radians /2 keeps it from going below horizion. 
 
 	    _this.minAzimuthAngle = -Infinity; // radians
 

@@ -15,6 +15,7 @@ $(function () {
 
             this.showNozzle=true;
             this.highlightCurrentLayer=true;
+            this.show2d=true;
         };
         var pgSettings = new PGSettings();
         window.PGCSettings=pgSettings;
@@ -24,6 +25,8 @@ $(function () {
         var camera, cameraControls,cameraLight; 
         var scene, renderer; 
         var gcodeProxy;//used to display loaded gcode.
+
+        var camera2d;
 
         var cubeCamera;//todo make reflections optional.
         var nozzleModel;
@@ -37,7 +40,7 @@ $(function () {
         var gui;
 
         var printHeadSim=new PrintHeadSimulator();
-        //var curPrinterState=null;
+        var curPrinterState=null;
         var curPrintFilePos=0;
         var curSimFilePos=0;
 
@@ -48,14 +51,72 @@ $(function () {
 
         var currentLayerNumber=0;
 
+        var currentLayerCopy=null;//used for 2d view.
+        var currentCalculatedLayer=0;
+
+        //set to force render.
+        var needRender = false;
+
+        $('#layer-slider').on('mousedown', function (e) {
+            forceNoSync=true
+
+        });
+        $('#layer-slider').on('mouseup', function (e) {
+            forceNoSync=false
+        });
         $('#layer-slider').on('input', function (e) {
             if(parseInt(e.currentTarget.value))
+            {    
                 currentLayerNumber=parseInt(e.currentTarget.value)
-
-            simPlaying=false;
-            forceNoSync=true
+                
+                //todo. this seems hacky. better way?
+                //currentCalculatedLayer=currentCalculatedLayer;
+            }
+            //simPlaying=false;
             //console.log(["layerSlider",currentLayerNumber])
         });
+
+        var camera2dDragging=false;
+        var camera2dLastPos=null;
+        $('#pgc2dcanvas').on('mousedown', function (e) {
+            //console.log("md")
+            camera2dLastPos={x:e.originalEvent.clientX,y:e.originalEvent.clientY}
+            camera2dDragging=true;
+        });
+        $('body').on('mouseup', function (e) {
+            //console.log("mu")
+            camera2dDragging=false;
+        });
+        $('#pgc2dcanvas').on('mouseleave', function (e) {
+            //console.log("mu")
+            //camera2dDragging=false;
+        });        
+        $('body').on('mousemove', function (e) {
+            if(camera2dDragging && camera2dLastPos!=null)
+            {
+                //console.log("drag")
+                let dx= e.originalEvent.clientX-camera2dLastPos.x;
+                let dy= e.originalEvent.clientY-camera2dLastPos.y;
+                //console.log([dx,dy])
+                camera2d.translateX(-dx/4);
+                camera2d.translateY(dy/4);
+                //console.log(camera2d.position)
+                //camera2d.position.set(camera2d.position.x+=dx, camera2d.position.y+=dy, 500);
+                camera2dLastPos={x:e.originalEvent.clientX,y:e.originalEvent.clientY}
+                camera2d.updateProjectionMatrix();
+                needRender=true;
+            }
+        });        
+        $('#pgc2dcanvas').on('wheel', function (e) {
+
+            camera2d.zoom +=  Math.sign(e.originalEvent.wheelDelta )/10
+            if(camera2d.zoom<0.1)
+                camera2d.zoom=0.1;
+            camera2d.updateProjectionMatrix();
+            needRender=true;
+            //console.log(e)
+        });
+  
 
         $('#play-button').on('click', function (e) {
             simPlaying=!simPlaying;
@@ -143,11 +204,18 @@ $(function () {
                                 if(msg.progress){
                                     //console.log(msg.progress.filepos)
                                     //curPrintFilePos=msg.progress.filepos
+                                    $("#status-eta").html(new Date(msg.progress.printTimeLeft * 1000).toISOString().substr(11, 8))
+                                    $("#status-done").html(parseInt(msg.progress.completion).toString()+"%")
+                                    $("#status-elapsed").html(new Date(msg.progress.printTime * 1000).toISOString().substr(11, 8))
                                 }
                                 if(msg.state){
                                     //console.log(msg.progress.filepos)
-                                    //curPrintFilePos=msg.progress.filepos
+                                    curPrintFilePos=msg.progress.filepos
                                     $("#status-state").html(msg.state)
+                                    curPrinterState=msg.state.toLowerCase();
+                                    console.log("Set curPrinterState:"+curPrinterState)
+
+
                                 }                                
                                 if(msg.job){
                                     //console.log(msg.job.file.path)
@@ -157,6 +225,7 @@ $(function () {
                                         //updateJob('/downloads/files/local/'+msg.job.file.path);
                                         $("#status-name").html(msg.job.file.path)
                                     }
+
 
                                 }
         
@@ -171,6 +240,65 @@ $(function () {
                     })
 
             }, 1000);
+
+            //get temp info.
+            setInterval(function () {
+                var file_url = jobSourcePath+"api/printer"+apiKey;//'/downloads/files/local/xxx.gcode';
+                //var file_url = "/api/job";//'/downloads/files/local/xxx.gcode';
+
+                var myRequest = new Request(file_url,
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        mode: 'cors',
+                        cache: 'no-cache',
+                        timeout: 900 
+                    }
+                );
+                fetch(myRequest)
+                    .then(function (response) {
+                        var contentLength = response.headers.get('Content-Length');
+                        //console.log(response)
+                        if (!response.body || !window['TextDecoder']) {
+                            response.text().then(function (text) {
+                                console.log(text);
+                                //finishLoading();
+                            });
+                        } else {
+                            var myReader = response.body.getReader();
+                            var decoder = new TextDecoder();
+                            var buffer = '';
+                            var received = 0;
+                            myReader.read().then(function processResult(result) {
+                                if (result.done) {
+                                    //finishLoading();
+                                    //syncGcodeObjTo(Infinity);
+                                    return;
+                                }
+                                received += result.value.length;
+                                let rresult = decoder.decode(result.value, { stream: true });
+                                let msg = JSON.parse(rresult);
+                                if(msg.temperature){
+                                    //console.log(msg.progress.filepos)
+                                    //curPrintFilePos=msg.progress.filepos
+                                    $("#status-bedtemp").html(msg.temperature.bed.actual)
+                                    $("#status-tooltemp").html(msg.temperature.tool0.actual)
+                                }
+
+        
+                                /* process the buffer string */
+                                //parserObject.parse(decoder.decode(result.value, { stream: true }));
+        
+                                // read the next piece of the stream and process the result
+                                return myReader.read().then(processResult);
+                            })
+                        }                                
+
+                    })
+
+            }, 2000);            
             return;
 
             if (!("WebSocket" in window))
@@ -315,12 +443,24 @@ $(function () {
                 $('#mygui').append(gui.domElement);
 
                 gui.remember(pgSettings);
-//                 gui.add(pgSettings, 'syncToProgress').onFinishChange(function(){
-//                     if(pgSettings.syncToProgress){
-// //                                syncLayerToZ();
-//                     }
-//                 });
+                gui.add(pgSettings, 'syncToProgress').onFinishChange(function(){
+                    if(pgSettings.syncToProgress){
+                    }
+                });
 
+                gui.add(pgSettings, 'show2d').onFinishChange(function(){
+                    if(pgSettings.show2d){
+                        $('#pgc2dcanvas').show()
+                    }else{
+                        $('#pgc2dcanvas').hide()
+                    }
+                });
+                if(pgSettings.show2d){
+                    $('#pgc2dcanvas').show()
+                }else{
+                    $('#pgc2dcanvas').hide()
+                }
+                
                 //gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
                 gui.add(pgSettings, 'orbitWhenIdle');
                 gui.add(pgSettings, 'showTravel');
@@ -422,7 +562,7 @@ $(function () {
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
 
-            //todo allow save/pos camera at start.
+            //init camera(s)
             camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
             camera.up.set(0,0,1);
             camera.position.set(bedVolume.width, 0, 50);
@@ -430,7 +570,11 @@ $(function () {
             CameraControls.install({ THREE: THREE });
             clock = new THREE.Clock();
 
-
+            let frustumSize=50;
+            const aspect = window.innerWidth / window.innerHeight;
+            camera2d = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000 );
+            camera2d.up.set(0,1,0);
+            camera2d.position.set(bedVolume.width/2, bedVolume.depth/2, 500);
 
             var canvas = $("#pgccanvas");
             cameraControls = new CameraControls(camera, canvas[0]);
@@ -491,38 +635,43 @@ $(function () {
             if(pgSettings.fatLines)
             {
                 highlightMaterial=new THREE.LineMaterial({
-                    linewidth: 4, // in pixels
+                    linewidth: 3, // in pixels
                     //transparent: true,
                     //opacity: 0.5,
                     //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
                     vertexColors: THREE.VertexColors,
                 });
-                highlightMaterial.resolution.set(500, 500);
+                highlightMaterial.resolution.set(window.innerWidth, window.innerHeight);
             }else{
                 //highlightMaterial=
             }
 
+            if(false){
             //load Nozzle model.
-            // var objloader = new THREE.OBJLoader();
-            // objloader.load( './js/models/ExtruderNozzle.obj', function ( obj ) {
-            //     obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
-            //     obj.scale.setScalar(0.1)
-            //     obj.position.set(0, 0, 10);
-            //     obj.name="nozzle";
-            //     var nozzleMaterial = new THREE.MeshStandardMaterial( {
-            //         metalness: 1,   // between 0 and 1
-            //         roughness: 0.5, // between 0 and 1
-            //         envMap: cubeCamera.renderTarget.texture,
-            //         color: new THREE.Color(0xba971b),
-            //         //flatShading:false,
-            //     } );
-            //     obj.children.forEach(function(e,i){
-            //         if ( e instanceof THREE.Mesh ) {
-            //             e.material = nozzleMaterial;
-            //             //e.geometry.computeVertexNormals();
-            //         }
-            //     })
-
+                var objloader = new THREE.OBJLoader();
+                objloader.load( './js/models/ExtruderNozzle.obj', function ( obj ) {
+                    obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
+                    obj.scale.setScalar(0.1)
+                    obj.position.set(0, 0, 10);
+                    obj.name="nozzle";
+                    var nozzleMaterial = new THREE.MeshStandardMaterial( {
+                        metalness: 1,   // between 0 and 1
+                        roughness: 0.5, // between 0 and 1
+                        envMap: cubeCamera.renderTarget.texture,
+                        color: new THREE.Color(0xba971b),
+                        //flatShading:false,
+                    } );
+                    obj.children.forEach(function(e,i){
+                        if ( e instanceof THREE.Mesh ) {
+                            e.material = nozzleMaterial;
+                            //e.geometry.computeVertexNormals();
+                        }
+                    })
+                    nozzleModel=obj;
+                    scene.add( nozzleModel );
+                });
+                    
+            }else{
                 var nozzleGroup = new THREE.Group();
                 //let geometry = new THREE.ConeGeometry( 5, 6, 32 );
                 let geometry = new THREE.CylinderGeometry( 0.3,4.4, 3, 16 );
@@ -553,6 +702,9 @@ $(function () {
 
                 nozzleGroup.add(cone)
                 nozzleGroup.add(nut)
+                nozzleModel=nozzleGroup;
+                scene.add( nozzleGroup );
+            }
 
                 extrudingLineGroup = new THREE.Group();
 
@@ -581,21 +733,17 @@ $(function () {
 
                 //extrudingLine.rotation.z= -Math.PI / 4;
 
-                nozzleModel=nozzleGroup;
-                scene.add( nozzleGroup );
+
 
 
 
 
             //} );
                 
-
             function animate() {
 
                 const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
-
-                var needRender = false;
 
                 /*possible bug fix. this might not be needed.*/
                 if(firstFrame)
@@ -613,18 +761,25 @@ $(function () {
                         curSimFilePos=curState.filePos;
 
                     //adapt playback rate
-                    if(false){
+                    if(true){
                         var fpDelta=curPrintFilePos-curSimFilePos;
-                    
-                        if(fpDelta<-100)
+
+                        if(fpDelta>30000 || fpDelta<-1000){
+                            printHeadSim.setCurPosition(curPrintFilePos)
+                            fpDelta=0;
+                        }
+                        // if(fpDelta<0)
+                        //     playbackRate=0;
+                        else 
+                        if(fpDelta<500)
                         {
                             playbackRate=1/(-fpDelta/100);
                             //console.log("Down throttle "+playbackRate)
-                        }else if(fpDelta>100){
-                            playbackRate=fpDelta/100;
+                        }else if(fpDelta>1500){
+                            playbackRate=fpDelta/750;
                             //console.log("Up throttle "+playbackRate)
                         }else{
-                            playbackRate=1;
+                            playbackRate=0.75;
                         }
                     }
                     //todo. stop when past end.
@@ -641,9 +796,9 @@ $(function () {
                     //console.log(fpDelta)
 
                 }
-//                if(curPrinterState && (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
-//                    pgSettings.syncToProgress && (!forceNoSync))
-if((!forceNoSync))
+                if(curPrinterState && (curPrinterState=="printing" || curPrinterState=="paused") && 
+                    pgSettings.syncToProgress && (!forceNoSync))
+//if(!forceNoSync || )
                 {
                     if(nozzleModel && printHeadSim)
                     {
@@ -657,25 +812,27 @@ if((!forceNoSync))
                                 extrudingLineGroup.visible=false;
                             else{
                                 extrudingLineGroup.visible=true;
-                                var vectToCurEnd=nozzleModel.position.clone().sub(curState.startPoint);
+                                var vectToCurEnd=curState.position.clone().sub(curState.startPoint);
                                 var dist=vectToCurEnd.length();
 
                                 extrudingLineGroup.children[0].scale.y=dist;
-                                extrudingLineGroup.lookAt(curState.position);
                                 extrudingLineGroup.position.copy(curState.startPoint);
 
                                 vectToCurEnd.setLength(dist/2);
                                 extrudingLineGroup.position.add(vectToCurEnd);  
+                                extrudingLineGroup.lookAt(curState.position);
                             }
                         }    
                         needRender=true;
                     }
                     if(gcodeProxy)
                     {
-                        var calculatedLayer = gcodeProxy.syncGcodeObjToFilePos(curSimFilePos);
+                        currentCalculatedLayer = gcodeProxy.syncGcodeObjToFilePos(curSimFilePos);
                         if(highlightMaterial!==undefined){
-                            gcodeProxy.highlightLayer(calculatedLayer,highlightMaterial);
+                            gcodeProxy.highlightLayer(currentCalculatedLayer,highlightMaterial);
                         }
+
+                        $('#layer-slider')[0].value=currentCalculatedLayer;
 
                         //$("#myslider-vertical").slider('setValue', calculatedLayer, false,true);
                         //$("#myslider .slider-handle").text(calculatedLayer);
@@ -757,7 +914,67 @@ if((!forceNoSync))
 
                 if(needRender)
                 {
+                    let left =0;
+                    let bottom = 0;
+                    let width=window.innerWidth
+                    let height=window.innerHeight
+                    //renderer.setScissor( 10, 10, window.innerWidth/4, window.innerHeight/4 );
+                    renderer.setViewport( left, bottom, width, height );
+					renderer.setScissor( left, bottom, width, height );
+					renderer.setScissorTest( true );
+
+                    renderer.setScissor( 0, 0, window.innerWidth, window.innerHeight );
                     renderer.render(scene, camera);
+                    
+
+                    if(pgSettings.show2d){
+                        width=window.innerWidth/4
+                        height=window.innerHeight/4
+                        // left =window.innerWidth-width-50;
+                        // bottom = 20;
+                        bottom =window.innerHeight-height-50;
+                        left = 20;
+
+
+                        //renderer.setScissor( 10, 10, window.innerWidth/4, window.innerHeight/4 );
+                        renderer.setViewport( left, bottom, width, height );
+                        renderer.setScissor( left, bottom, width, height );
+                        renderer.setScissorTest( true );
+                        //renderer.setClearColor( view.background );
+                        camera2d.up.set(0,1,0);
+                        //camera2d.position.set(bedVolume.width/2, bedVolume.depth/2, 500);
+
+                        if(gcodeProxy)
+                        {
+                            let curLayer=gcodeProxy.getLayerObject(currentCalculatedLayer);
+                            if(curLayer && (currentLayerCopy==null || curLayer.userData.layerNumber !=currentLayerCopy.userData.layerNumber))
+                            {
+                                if(currentLayerCopy)
+                                    scene.remove(currentLayerCopy)
+                                currentLayerCopy=curLayer.clone();
+                                currentLayerCopy.name="currentLayerCopy";
+                                scene.add(currentLayerCopy);
+                            }
+                        }
+                        let gcodeObject =null;
+                        if(gcodeProxy){
+                            gcodeObject = gcodeProxy.getObject();
+                        }
+                        if(gcodeObject)
+                            gcodeObject.visible=false;
+                        if(currentLayerCopy)
+                            currentLayerCopy.visible=true
+
+                        if(nozzleModel)
+                            nozzleModel.visible=false;
+                        renderer.render(scene, camera2d);
+                        if(nozzleModel)
+                            nozzleModel.visible= pgSettings.showNozzle;
+                        if(currentLayerCopy)
+                            currentLayerCopy.visible=false
+                        if(gcodeObject)
+                            gcodeObject.visible=true;
+                    }
                 }else{
                     //console.log("idle");
                 }
@@ -878,11 +1095,16 @@ if((!forceNoSync))
                         //gcodeProxy.loadGcode('http://fluiddpi.local/server/files/gcodes/' + curJobName);
 
                         //remove old gcode objects
-                        scene.traverse(function (child) {
-                            if (child.name.startsWith("gcode")) { 
-                                scene.remove(child)
-                            }
-                        })
+                        // scene.traverse(function (child) {
+                        //     if (child.name.startsWith("gcode")) { 
+                        //         scene.remove(child)
+                        //     }
+                        // })
+
+                        if(gcodeProxy){
+                            gcodeProxy.reset();
+
+                        }
 
                         printHeadSim=new PrintHeadSimulator();
                         gcodeProxy = printHeadSim.getGcodeObject();

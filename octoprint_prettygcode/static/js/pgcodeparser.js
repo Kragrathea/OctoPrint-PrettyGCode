@@ -224,7 +224,7 @@ function GCodeObject3(settings=null) {
     });
     //todo. handle window resize
 //            curMaterial.resolution.set(gcodeWid, gcodeHei);
-    curMaterial.resolution.set(500, 500);
+    curMaterial.resolution.set(window.innerWidth, window.innerHeight);
 
     //for plain lines
     var curLineBasicMaterial = new THREE.LineBasicMaterial( {
@@ -259,6 +259,17 @@ function GCodeObject3(settings=null) {
     }
     this.getLayers = function () {
         return layers;
+    }
+    this.getLayerObject = function (layerNumber) {
+        let result = null;
+        gcodeGroup.traverse(function (child) {
+            if (child.name.startsWith("layer#")) {
+                if (child.userData.layerNumber==layerNumber && !child.userData.isTravel) {
+                    result=child;
+                }
+            }
+        })
+        return result;
     }
 
     this.highlightLayer=function (layerNumber,highlightMaterial)
@@ -299,7 +310,7 @@ function GCodeObject3(settings=null) {
         return(needUpdate);
     }
 
-    this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity)
+    this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity,hideBefore=false)
     {
         var needUpdate=false;//only need update if visiblity changes
 
@@ -311,6 +322,9 @@ function GCodeObject3(settings=null) {
                         needUpdate = true;
 
                     child.visible = true;
+
+                    if(hideBefore)//for just showing current layer 
+                        child.visible=false;
 
                     //handle hiding travels.
                     if(!window.PGCSettings.showTravel && child.userData.isTravel)
@@ -638,6 +652,24 @@ function PrintHeadSimulator()
             startPoint=buffer[bufferCursor-1].position
 
         return({position:curState.position,layerZ:curLastExtrudedZ,lineNumber:curState.layerLineNumber,filePos:curState.filePos,startPoint:startPoint,extrude:curState.extrude});
+    }
+
+    this.setCurPosition=function(filePos){
+
+        let newBufferCursor=0;
+        while(newBufferCursor<buffer.length>0)
+        {
+            if(buffer[newBufferCursor].filePos>filePos)
+            {    
+                console.log("buffer seek to:"+newBufferCursor)
+                bufferCursor=newBufferCursor;
+                curState=buffer[bufferCursor].clone()
+                curEnd=buffer[bufferCursor].clone();
+                return;
+            }
+            newBufferCursor++;
+        }
+
     }
 
     this.loadGcode=function(file_url)
