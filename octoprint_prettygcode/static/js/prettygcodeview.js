@@ -159,10 +159,12 @@ $(function () {
             //let jobSourcePath = 'http://octopi.local/'
             //let apiKey = '?apikey=18439BE29F904B5CA4ED388EBE085C09'
 
-            //let jobSourcePath = 'http://fluiddpi.local:5000/'
-            //let apiKey = '?apikey=666EC2F0E48C4F348375B904C9C187E5'
             let jobSourcePath = '/'
             let apiKey=''
+            if(document.location.href.startsWith("file")){
+                jobSourcePath = 'http://fluiddpi.local:5000/'
+                apiKey = '?apikey=666EC2F0E48C4F348375B904C9C187E5'
+            }
             setInterval(function () {
                 var file_url = jobSourcePath+"api/job"+apiKey;//'/downloads/files/local/xxx.gcode';
                 //var file_url = "/api/job";//'/downloads/files/local/xxx.gcode';
@@ -207,13 +209,16 @@ $(function () {
                                     $("#status-eta").html(new Date(msg.progress.printTimeLeft * 1000).toISOString().substr(11, 8))
                                     $("#status-done").html(parseInt(msg.progress.completion).toString()+"%")
                                     $("#status-elapsed").html(new Date(msg.progress.printTime * 1000).toISOString().substr(11, 8))
+                                    if(gcodeProxy)
+                                        $("#status-layer").html(currentCalculatedLayer.toString()+"/"+gcodeProxy.getLayerCount())
+
                                 }
                                 if(msg.state){
                                     //console.log(msg.progress.filepos)
                                     curPrintFilePos=msg.progress.filepos
                                     $("#status-state").html(msg.state)
                                     curPrinterState=msg.state.toLowerCase();
-                                    console.log("Set curPrinterState:"+curPrinterState)
+                                    //console.log("Set curPrinterState:"+curPrinterState)
 
 
                                 }                                
@@ -506,6 +511,9 @@ $(function () {
             } 
         }
 
+        //handles fps display
+        const stats = new Stats();
+
         self.initScene = function () {
             if (!viewInitialized) {
                 viewInitialized = true;
@@ -515,6 +523,10 @@ $(function () {
                 initGui()
 
                 initThree();
+
+                stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+                var statsElement=$("body").append( stats.dom );
+                
 
                 connectToOctoprint()
                 
@@ -742,6 +754,8 @@ $(function () {
                 
             function animate() {
 
+                stats.begin();
+
                 const delta = clock.getDelta();
                 const elapsed = clock.getElapsedTime();
 
@@ -946,6 +960,10 @@ $(function () {
 
                         if(gcodeProxy)
                         {
+                            //todo. better way to do this.
+                            //if using the slider to seek then use slider for layer number.
+                            if(forceNoSync)
+                                currentCalculatedLayer=currentLayerNumber;
                             let curLayer=gcodeProxy.getLayerObject(currentCalculatedLayer);
                             if(curLayer && (currentLayerCopy==null || curLayer.userData.layerNumber !=currentLayerCopy.userData.layerNumber))
                             {
@@ -953,6 +971,8 @@ $(function () {
                                     scene.remove(currentLayerCopy)
                                 currentLayerCopy=curLayer.clone();
                                 currentLayerCopy.name="currentLayerCopy";
+                                currentLayerCopy.material=currentLayerCopy.material.clone();
+                                currentLayerCopy.material.resolution.set(width, height);
                                 scene.add(currentLayerCopy);
                             }
                         }
@@ -978,6 +998,8 @@ $(function () {
                 }else{
                     //console.log("idle");
                 }
+
+                stats.end();
                 requestAnimationFrame(animate);
             }
 

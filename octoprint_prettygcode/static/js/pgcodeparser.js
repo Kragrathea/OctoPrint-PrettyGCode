@@ -260,6 +260,9 @@ function GCodeObject3(settings=null) {
     this.getLayers = function () {
         return layers;
     }
+    this.getLayerCount = function () {
+        return layers.length;
+    }    
     this.getLayerObject = function (layerNumber) {
         let result = null;
         gcodeGroup.traverse(function (child) {

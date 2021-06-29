@@ -148,6 +148,7 @@
 
         <div class='section'>
             <div id='model-done'  class='column'><span class="label">DONE</span><span id='status-done'>0%</span></div>
+            <div id='model-layer'  class='column' style='flex-grow: 1;flex-shrink: 1;'><span class="label">LAYER</span><span id='status-layer'>-/-</span></div>
             <div id='model-elapsed'  class='column'><span class="label">ELAPSED</span><span id='status-elapsed'>00:00</span></div>
             <!-- <div id='model-left'  class='column'><span class="label">LEFT</span><span>45m</span></div> -->
             <div id='model-left'  class='column' style='flex-grow: 2;flex-shrink: 2;'><span class="label">ETA</span><span id='status-eta'>00:00</span></div>
@@ -155,17 +156,15 @@
 
         
         <div class='section'>
-            <div id='model-name'  class='column' style='flex-grow: 5;flex-shrink: 5;'>
+            <!-- <div id='model-name'  class='column' style='flex-grow: 5;flex-shrink: 5;'>
                 <span class="label">PLAYBACK</span>
                 <input type="checkbox" id="vehicle1" name="vehicle1" value="true">
                 <label for="vehicle1">Synced</label>
                 
-                <!-- <button>Synced</button> -->
                 <button id='play-button'>&#x23f8;</button>
                 <button id='slower-button'>&#x23F7</button>
                 <button id='faster-button'>&#x23F6</button>
-            </div>
-            <div id='model-layer'  class='column' style='flex-grow: 1;flex-shrink: 1;'><span class="label">LAYER</span><span>-/-</span></div>
+            </div> -->
             <!-- <div id='model-name'  class='column'>
                 <span class="label">PLAYBACK RATE</span>
                 <span>1.2x</span>
@@ -184,6 +183,7 @@
     <script src="js/LineMaterial.js"></script>
     <script src="js/LineSegments2.js"></script>
     <script src="js/Line2.js"></script>
+    <script src="js/stats.js"></script>
     <script src="js/camera-controls.js"></script>
     <script src="js/dat.gui.js"></script>
     <script src="js/pgcodeparser.js"></script>
