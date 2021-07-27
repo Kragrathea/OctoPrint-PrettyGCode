@@ -207,7 +207,10 @@ $(function () {
                                     //console.log(msg.progress.filepos)
                                     //curPrintFilePos=msg.progress.filepos
                                     $("#status-eta").html(new Date(msg.progress.printTimeLeft * 1000).toISOString().substr(11, 8))
-                                    $("#status-done").html(parseInt(msg.progress.completion).toString()+"%")
+                                    let perDone = parseInt(msg.progress.completion);
+                                    if(isNaN(perDone))
+                                        perDone=0;
+                                    $("#status-done").html(perDone.toString()+"%")
                                     $("#status-elapsed").html(new Date(msg.progress.printTime * 1000).toISOString().substr(11, 8))
                                     if(gcodeProxy)
                                         $("#status-layer").html(currentCalculatedLayer.toString()+"/"+gcodeProxy.getLayerCount())
@@ -591,12 +594,8 @@ $(function () {
             var canvas = $("#pgccanvas");
             cameraControls = new CameraControls(camera, canvas[0]);
 
-
-
-            //todo handle other than lowerleft
             resetCamera();
 
-                        //if()
             if(pgSettings.saveCamera && localStorage.getItem('pgcCameraPos'))
             {
                 var camStr=localStorage.getItem('pgcCameraPos');
@@ -797,15 +796,6 @@ $(function () {
                         }
                     }
                     //todo. stop when past end.
-
-                    //if(playbackRate==0)
-                    //    console.log(playbackRate)
-                    if(playbackRate==0)
-                        console.log(fpDelta)                        
-                    // if(fpDelta<200)
-                    //     playbackRate=0.5
-                    // if(fpDelta>200)
-                    //     playbackRate=fpDelta/100;
 
                     //console.log(fpDelta)
 
