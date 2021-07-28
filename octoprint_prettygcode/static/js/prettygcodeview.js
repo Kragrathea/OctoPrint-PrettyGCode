@@ -310,56 +310,7 @@ $(function () {
             }, 2000);            
             return;
 
-            if (!("WebSocket" in window))
-            {
-                // The browser doesn't support WebSocket
-                return;
-            }
-            var totalDownloaded=0;
-            $.post( "http://octopi.local/api/login"+"?apikey=18439BE29F904B5CA4ED388EBE085C09", { passive:true /*,user: "chris", pass: "opib6ub9"*/ },function( data ) {
-                console.log( data.session );
-                //{ "auth":"chris:0CD4ED8F8EFE409C8DC204EAC2B02F03" }
-                var ws = new WebSocket("ws://octopi.local/sockjs/websocket");
-                ws.onopen = function()
-                {
-                    ws.send('{ "auth":"chris:'+data.session+'" }')
-                };
 
-                ws.onmessage = function (e) 
-                { 
-                    handled=false;
-
-                    totalDownloaded+=e.data.length
-                    //console.log("BytesDL:"+totalDownloaded);
-                    //console.log(e.data)
-                    let msg = JSON.parse(e.data);
-                    //console.log(msg.current.job.file.path)
-                    //console.log(msg.current.progress.filepos)
-                    if(msg.current)
-                    {
-                        //console.log(msg.current.job.file.path)
-                        let jobName=msg.current.job.file.path
-                        updateJob('http:///octopi.local/downloads/files/local/' + jobName+"?apikey=18439BE29F904B5CA4ED388EBE085C09");
-
-                        //console.log(msg.current.progress.filepos)
-                        curPrintFilePos=msg.current.progress.filepos
-                        handled=true;
-
-                        console.log("BytesDL:"+totalDownloaded);
-                    }
-
-                    //if(!handled)
-                    //    console.log(e.data);
-
-                };
-
-                ws.onclose = function()
-                { 
-                };
-
-                ws.onerror = function(error){
-                }
-            });
                             
         }                
 
