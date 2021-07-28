@@ -12,6 +12,7 @@ $(function () {
             this.antialias=true;
             this.lightTheme=false;
             this.saveCamera=false;
+            this.perspectiveCamera=true;
 
             this.showNozzle=true;
             this.highlightCurrentLayer=true;
@@ -498,6 +499,10 @@ $(function () {
 
                 gui.add(pgSettings, 'saveCamera');
 
+                //todo handle finish change for this
+                gui.add(pgSettings, 'perspectiveCamera');
+                
+
                 var folder = gui.addFolder('Windows');//hidden.
                 // folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                 // folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
@@ -577,16 +582,22 @@ $(function () {
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
 
+            let frustumSize=50;
+            const aspect = window.innerWidth / window.innerHeight;
+
             //init camera(s)
-            camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
+            if(pgSettings.perspectiveCamera)
+                camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000);
+            else
+                camera = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000 );
+
             camera.up.set(0,0,1);
             camera.position.set(bedVolume.width, 0, 50);
 
             CameraControls.install({ THREE: THREE });
             clock = new THREE.Clock();
 
-            let frustumSize=50;
-            const aspect = window.innerWidth / window.innerHeight;
+
             camera2d = new THREE.OrthographicCamera( frustumSize * aspect / - 2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / - 2, 1, 1000 );
             camera2d.up.set(0,1,0);
             camera2d.position.set(bedVolume.width/2, bedVolume.depth/2, 500);

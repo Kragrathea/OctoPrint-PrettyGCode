@@ -359,6 +359,9 @@
 	          y = (event.clientY - elementRect.y) / elementRect.w * -2 + 1;
 	        }
 
+			if(scope._camera.isOrthographicCamera)
+				delta=-delta;	//todo cmp PGC bug fix. scroll wheel goes backward in ortho
+
 	        dollyInternal(-delta, x, y);
 	      };
 
