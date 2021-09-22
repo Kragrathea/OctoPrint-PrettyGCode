@@ -6,6 +6,9 @@ $(function () {
         self.printerProfiles = parameters[2];
         self.controlViewModel = parameters[3];
         
+        $("#pgciframe").hide();
+        $("#mycanvas").show();
+
         //Parse terminal data for file and pos updates.
         var curJobName="";
         var durJobDate=0;//use date of file to check for update. 
@@ -1936,12 +1939,13 @@ $(function () {
             scene.add(grid);
         }
     }
-
-    OCTOPRINT_VIEWMODELS.push({
-        construct: PrettyGCodeViewModel,
-        dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel","controlViewModel"],
-        elements: ["#tab_plugin_prettygcode"]
-    });
+    let searchParams = new URLSearchParams(window.location.search)
+    if(searchParams.has('oldpgc'))
+        OCTOPRINT_VIEWMODELS.push({
+            construct: PrettyGCodeViewModel,
+            dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel","controlViewModel"],
+            elements: ["#tab_plugin_prettygcode"]
+        });
 
 
 });

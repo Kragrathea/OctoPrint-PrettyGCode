@@ -1,0 +1,386 @@
+<body>
+   
+    <style>
+        .pgsettingstoggle {
+            top: 20px;
+            right: 35px;
+            position: absolute;
+            z-index:10;
+        }
+        .pgconnection {
+            background: url("img/disconnected-icon.png") no-repeat scroll 0 0 transparent;
+            background-size: contain;
+            color: #a72323;
+            cursor: pointer;
+            font-weight: bold;
+            height: 38px;
+            width: 35px;
+            top: 20px;
+            right: 70px;
+            position: absolute;
+            z-index:10;
+            border:2px solid red;
+        }
+        .pgconnection.connected{
+            background: url("img/connected-icon.png") no-repeat scroll 0 0 transparent;
+            background-size: contain;
+            color: #a72323;
+            border:2px solid rgb(1, 131, 29);
+        }
+
+        .pghidden {
+            display:none;
+        }
+        /*dat gui*/
+        #mygui
+        { 
+            position:absolute;
+            right:35px;
+            top:20px;
+            z-index:5;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(190, 186, 186, 0.19);
+            z-index:4;
+            background: rgba(255, 255, 255, 1.0);
+            opacity: 0.8;
+
+        }     
+
+        .dg li.save-row {
+            display:none;
+        }
+     
+        #pgccanvas{
+            width: 100%;
+            height: 100%;
+            background-color: #1e1e20;
+            /* background-image: url(img/DarkBluePaper.jpg); */
+            background-size: cover;
+        }
+        .pgclabel{
+            /* width: 30%;
+            height: 15%; */
+            left:20px;
+            bottom:20px;
+            /* border: 2px grey;
+            border-style: solid; */
+            position: absolute;
+            background-color: #0a0f79cf;
+            /* background-color: #1e1e20; */
+            /* background-image: url(img/DarkPaper.jpg);
+            background-size: cover; */
+            color: #eee;
+            font-family: 'Brush Script MT', cursive;
+            font-style: bold;
+            
+            box-sizing: border-box;
+            opacity: 0.60;
+
+        }        
+        .pgclabel-box{
+            color: #eee;
+            float:left; 
+            outline: 1px blue;
+            outline-style: solid;
+        }  
+        .pgclabel .row{
+  
+            width:100%;
+            overflow: hidden;
+        }          
+        .label{
+            font-family: "Helvetica";
+            font-size:x-small;
+            width:100%;
+            display:block;
+            margin-left: 15px;
+            color:lightgrey;
+            /* margin-top: 4px; */
+        }          
+        .pgclabel-box .box{
+            margin-left: 2%;
+        } 
+
+        .section {
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+        }
+
+        .column {
+            margin: 0px;
+            flex-grow: 1;
+            flex-shrink: 1;
+            flex-basis: 0;
+
+            padding: 2px 24px 4px 10px;
+            /* background-color: rgba(255, 0, 0, 0.25); */
+
+            
+            border: 1px solid grey;
+            color: white;
+        }
+
+        /* h1 { font-family: "Architects Daughter"; font-size: 24px; font-style: normal; font-variant: normal; font-weight: 700; line-height: 26.4px; } h3 { font-family: "Architects Daughter"; font-size: 14px; font-style: normal; font-variant: normal; font-weight: 700; line-height: 15.4px; } p { font-family: "Architects Daughter"; font-size: 14px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 20px; } blockquote { font-family: "Architects Daughter"; font-size: 21px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 30px; } pre { font-family: "Architects Daughter"; font-size: 13px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 18.5714px; } */
+    </style>
+
+    <canvas id="pgccanvas" ></canvas>
+    <div style="
+    position: absolute;
+    top: 12px;
+    left: 24px;
+    color: #38bfff;
+    z-index: 10;
+    /* background: rgb(119 85 85 / 45%); */
+    font-family: 'Brush Script MT', cursive;
+    font-size: large;
+    text-shadow: 2px 2px 2px rgb(51, 51, 51);
+            ">
+    <a href='https://github.com/Kragrathea/pgcode' target="_blank">
+        <div id="pgclogo"><span style="color: #a385ff;">Pretty</span><span style="color: #a385ff;">G</span><span style="color: #a385ff;">Code</span></div>
+    </a></div>
+
+    <div id="pgc2dcanvas" style='position: absolute;top:45px;left:25px;width:25%;height:25%;border:1px solid white'></div>
+    <input type="range" id="layer-slider" name="layer" min="0" value='100' max="100" orient="vertical" style="-webkit-appearance: slider-vertical;position:absolute;width:25px;right:35px;top:60px;bottom:35px;">
+    <div style="position: absolute;left:1%;bottom:20px;">
+    </div>
+    <button class="pgsettingstoggle" title="Toggle settings window">&#9881</button>
+    <button class="pgconnection" title="Show connection info"></button>
+    <div id='mygui' class='xgwin pghidden'></div>
+
+    <div class='pgclabel'>
+        <div class='section'>
+            <div class='column'><span class="label">NAME</span><span id='status-name'>Connect or drag/drop .GCode file</span></div>
+        </div>
+        <div class='section'>
+            <div class='column'><span class="label">SOURCE</span><span id='status-source'>Disconnected</span></div>
+            <div class='column'><span class="label">STATE</span><span id='status-state'></span></div>
+            <div id='model-temp'  class='column'><span class="label">TOOL</span><span id='status-tooltemp'>0</span></div>
+            <div id='model-temp'  class='column'><span class="label">BED</span><span id='status-bedtemp'>0</span></div>
+            <!-- <div id='model-temp'  class='column'><span class="label">FAN</span><span>100%</span></div>             -->
+        </div>
+
+        <div class='section'>
+            <div id='model-done'  class='column'><span class="label">DONE</span><span id='status-done'>0%</span></div>
+            <div id='model-layer'  class='column' style='flex-grow: 1;flex-shrink: 1;'><span class="label">LAYER</span><span id='status-layer'>-/-</span></div>
+            <div id='model-elapsed'  class='column'><span class="label">ELAPSED</span><span id='status-elapsed'>00:00</span></div>
+            <!-- <div id='model-left'  class='column'><span class="label">LEFT</span><span>45m</span></div> -->
+            <div id='model-left'  class='column' style='flex-grow: 2;flex-shrink: 2;'><span class="label">ETA</span><span id='status-eta'>00:00</span></div>
+        </div>
+
+        
+        <div class='section'>
+            <!-- <div id='model-name'  class='column' style='flex-grow: 5;flex-shrink: 5;'>
+                <span class="label">PLAYBACK</span>
+                <input type="checkbox" id="vehicle1" name="vehicle1" value="true">
+                <label for="vehicle1">Synced</label>
+                
+                <button id='play-button'>&#x23f8;</button>
+                <button id='slower-button'>&#x23F7</button>
+                <button id='faster-button'>&#x23F6</button>
+            </div> -->
+            <!-- <div id='model-name'  class='column'>
+                <span class="label">PLAYBACK RATE</span>
+                <span>1.2x</span>
+            </div> -->
+        </div>        
+    </div>
+
+    <style>
+        body {
+            font-family:'Helvetica', cursive;
+        }
+        form{
+
+        }
+        
+        /* Full-width input fields */
+        input[type=text], input[type=password] {
+          width: 100%;
+          padding: 12px 20px;
+          margin: 8px 0;
+          display: inline-block;
+          border: 1px solid #ccc;
+          box-sizing: border-box;
+        }
+        
+        /* Set a style for all buttons */
+        form button {
+          background-color: #04AA6D;
+          color: white;
+          padding: 14px 20px;
+          margin: 8px 0;
+          border: none;
+          cursor: pointer;
+          /* width: 100%; */
+        }
+        
+        button:hover {
+          opacity: 0.8;
+        }
+        
+        /* Extra styles for the cancel button */
+        .cancelbtn {
+          width: auto;
+          padding: 14px 20px;
+          background-color: #f44336;
+        }
+        
+        /* Center the image and position the close button */
+        .imgcontainer {
+          text-align: center;
+          margin: 24px 0 12px 0;
+          position: relative;
+        }
+        
+        img.avatar {
+          width: 40%;
+          border-radius: 50%;
+        }
+        
+        .container {
+          padding: 16px;
+        }
+        
+        span.psw {
+          float: right;
+          padding-top: 16px;
+        }
+        
+        /* The Modal (background) */
+        .modal {
+          display: none; /* Hidden by default */
+          position: fixed; /* Stay in place */
+          z-index: 1; /* Sit on top */
+          left: 0;
+          top: 0;
+          width: 100%; /* Full width */
+          height: 100%; /* Full height */
+          overflow: auto; /* Enable scroll if needed */
+          background-color: rgb(0,0,0); /* Fallback color */
+          background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+          padding-top: 60px;
+        }
+        
+        /* Modal Content/Box */
+        .modal-content {
+          background-color: #fefefe;
+          margin: 5% auto 15% auto; /* 5% from the top, 15% from the bottom and centered */
+          border: 1px solid #888;
+          width: 60%; /* Could be more or less, depending on screen size */
+          background-color: #0a0f79cf;
+            color: lightgray;
+        }
+        
+        /* The Close Button (x) */
+        .close {
+          position: absolute;
+          right: 25px;
+          top: 0;
+          color: #000;
+          font-size: 35px;
+          font-weight: bold;
+        }
+        
+        .close:hover,
+        .close:focus {
+          color: red;
+          cursor: pointer;
+        }
+        
+        /* Add Zoom Animation */
+        .animate {
+          -webkit-animation: animatezoom 0.2s;
+          animation: animatezoom 0.2s
+        }
+        
+        @-webkit-keyframes animatezoom {
+          from {-webkit-transform: scale(0)} 
+          to {-webkit-transform: scale(1)}
+        }
+          
+        @keyframes animatezoom {
+          from {transform: scale(0)} 
+          to {transform: scale(1)}
+        }
+        
+        /* Change styles for span and cancel button on extra small screens */
+        @media screen and (max-width: 300px) {
+          span.psw {
+             display: block;
+             float: none;
+          }
+          .cancelbtn {
+             width: 100%;
+          }
+        }
+        </style>
+
+    <div id="connect-dialog" class="modal">
+  
+        <form class="modal-content animate" action="/action_page.php" method="post">
+          <!-- <div class="imgcontainer">
+            <span onclick="document.getElementById('connect-dialog').style.display='none'" class="close" title="Close Modal">&times;</span>
+            <img src="img_avatar2.png" alt="Avatar" class="avatar">
+          </div> -->
+      
+          <div class="container">
+            <label for="server"><b>Server URL</b></label>
+            <input type="text" placeholder="http://fluiddpi.local:7125" name="server" notrequired>
+            <label for="apikey"><b>API Key</b></label>
+            <span  style='display:block;float:right;'><input type="checkbox" onclick="if(this.checked) $('input[name=apikey]').attr('type','text');else $('input[name=apikey]').attr('type','password'); ">Show API Key</span>
+            <input type="password" placeholder="Enter API key" name="apikey" notrequired>
+            <label for="connection-log"><b>Connection log</b></label>
+            <textarea rows="8" style='width:100%' placeholder="" name="connection-log" notrequired></textarea>
+
+            <!-- <div>
+                <label for="uname"><b>Username</b></label>
+                <input type="text" placeholder="Enter Username" name="uname" required>
+      
+                <label for="psw"><b>Password</b></label>
+                <input type="password" placeholder="Enter Password" name="psw" required>
+            </div> -->
+
+              
+            
+            <!-- <label>
+              <input type="checkbox" checked="checked" name="remember"> Save Server
+            </label> -->
+            <!-- <label>
+                <input type="checkbox" checked="checked" name="autoconnect"> Connect automatically
+            </label> -->
+            </div>
+      
+          <div class="container" style="background-color: #050846cf;">
+            <button type="button" onclick="document.getElementById('connect-dialog').style.display='none'" class="cancelbtn">Cancel</button>
+            <button type="submit" style='float:right'>Save and Reload</button>
+            <!-- <span class="psw">Forgot <a href="#">password?</a></span> -->
+          </div>
+        </form>
+      </div>
+        <script>
+            // Get the modal....
+            var modal = document.getElementById('connect-dialog');
+
+            // When the user clicks anywhere outside of the modal, close it
+            window.onmousedown = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = "none";
+                }
+            }
+        </script>
+    <script src="js/jquery-3.6.0.min.js"></script>
+
+    <script src="js/three.min.js"></script>
+    <script src="js/LineSegmentsGeometry.js"></script>
+    <script src="js/LineGeometry.js"></script>
+    <script src="js/OBJLoader.js"></script>
+    <script src="js/LineMaterial.js"></script>
+    <script src="js/LineSegments2.js"></script>
+    <script src="js/Line2.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/camera-controls.js"></script>
+    <script src="js/dat.gui.js"></script>
+    <script src="js/printerconnection.js"></script>
+    <script src="js/pgcodeparser.js"></script>
+    <script src="js/prettygcodeview.js"></script>
+</body>

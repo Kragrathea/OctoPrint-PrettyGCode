@@ -12,7 +12,7 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
     pass
     def get_assets(self):
         return dict(
-            js=["js/prettygcode.js","js/three.min.js",
+            js=["js/pgcframe.js","js/prettygcode.js","js/three.min.js",
                 "js/LineSegmentsGeometry.js","js/LineGeometry.js","js/OBJLoader.js",
                 "js/LineMaterial.js","js/LineSegments2.js","js/Line2.js","js/camera-controls.js","js/Lut.js","js/dat.gui.js"],
             css=["css/prettygcode.css"]
@@ -31,7 +31,20 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
                 repo="OctoPrint-PrettyGCode",
                 current=self._plugin_version,
                 # update method: pip
-                pip="https://github.com/Kragrathea/OctoPrint-PrettyGCode/archive/{target_version}.zip"
+                pip="https://github.com/Kragrathea/OctoPrint-PrettyGCode/archive/{target_version}.zip",
+                stable_branch=dict(
+					name="Stable",
+					branch="master",
+                    comittish= ["master"]
+				),
+
+				prerelease_branches=[
+					dict(
+						name="rc",
+						branch="rc",
+                        comittish= ["rc","master"]
+					)
+				]
             )
         )
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py

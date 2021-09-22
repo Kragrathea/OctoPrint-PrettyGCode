@@ -312,7 +312,29 @@ function GCodeObject3(settings=null) {
         });
         return(needUpdate);
     }
+    this.hideAllBeforeLayer=function (layerNumber)
+    {
+        var needUpdate=false;//only need update if visiblity changes
 
+        gcodeGroup.traverse(function (child) {
+            if (child.name.startsWith("layer#")) {
+                if (child.userData.layerNumber<layerNumber) {
+
+                    if(child.visible)// || child.geometry.maxInstancedCount!=child.userData.numLines)
+                        needUpdate = true;
+
+                    child.visible = false;
+
+                    //handle hiding travels.
+                    if(!window.PGCSettings.showTravel && child.userData.isTravel)
+                        child.visible=false;
+
+                    //child.geometry.maxInstancedCount=child.userData.numLines;
+                }
+            }
+        });
+        return(needUpdate);
+    }
     this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity,hideBefore=false)
     {
         var needUpdate=false;//only need update if visiblity changes
@@ -390,18 +412,18 @@ function GCodeObject3(settings=null) {
             if (child.name.startsWith("layer#")) {
                 var filePositions=child.userData.filePositions;
                 var fpMin=filePositions[0];
-                var fpMax = filePositions[filePositions.length];
+                var fpMax = filePositions[filePositions.length-1];
                 if (fpMax<filePosition) { //way before.
                     child.visible = true;
 
-                    //handle hiding travels.
+                   //handle hiding travels.
                     if(!window.PGCSettings.showTravel && child.userData.isTravel)
                         child.visible=false;
 
                     if(child.geometry.type!="BufferGeometry")
                         child.geometry.maxInstancedCount=child.userData.numLines;
                     else
-                        child.geometry.setDrawRange(0,child.userData.numLines)
+                        child.geometry.setDrawRange(0,child.userData.numLines*2)//*2 for plain lines
                 }else if (fpMin>filePosition) { //way after
                     child.visible = false;
                 }else //must be during. right?
@@ -416,46 +438,23 @@ function GCodeObject3(settings=null) {
                     var count =0;
                     while(count<filePositions.length && filePositions[count]<=filePosition)
                         count++;
-                    
-                    //hack comp for mirror.
-                    //todo. better handle of mirror object so this isnt needed. 
-                    // if(pgSettings.showMirror)
-                    //     count=count*2;
 
                     if(child.geometry.type!="BufferGeometry")
                         child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
                     else
-                        child.geometry.setDrawRange(0,Math.min(count,child.userData.numLines));
+                        child.geometry.setDrawRange(0,Math.min(count*2,child.userData.numLines*2));//*2 for plain lines
                     syncLayerNumber = child.userData.layerNumber
                 }
             }
         });
         return syncLayerNumber;//used to sync other elements.
     }
-    this.finishLoading=function()
-    {
-        if (currentLayer !== undefined) {
-            addObject(currentLayer, true);
-        }
 
-        console.log("Finished loading GCode object.")
-        console.log(["layers:",layers.length,"size:",filePos])
-
-        let totalLines=0;
-        for(let layer of layers)
-        {
-            totalLines+=layer.vertex.length/6;
-        }
-        console.log(["lines:",totalLines])
-
-        //this.syncGcodeObjTo(Infinity);
-
-    }
 
     function addLayerObject(layer, extruding) {
 
         if (layer.vertex.length > 2) { //Something to draw?
-            if(window.PGCSettings.fatLines){//fancy lines
+            if(parserSettings.fatLines){//fancy lines
                 var geo = new THREE.LineGeometry();
                 geo.setPositions(layer.vertex);
                 geo.setColors(layer.colors)
@@ -507,6 +506,12 @@ function GCodeObject3(settings=null) {
         currentLayer = { vertex: [], z: line.z, colors: [], filePositions:[],pathVertex: [],pathColors: [],pathFilePositions: [], };
         layers.push(currentLayer);
         //console.log("layer #" + layers.length + " z:" + line.z);
+
+    }
+    this.finishLayer= function(p) {
+        if (currentLayer !== undefined) {
+            addLayerObject(currentLayer);
+        }
 
     }
 
@@ -660,7 +665,7 @@ function PrintHeadSimulator()
     this.setCurPosition=function(filePos){
 
         let newBufferCursor=0;
-        while(newBufferCursor<buffer.length>0)
+        while(newBufferCursor<buffer.length)
         {
             if(buffer[newBufferCursor].filePos>filePos)
             {    
@@ -675,16 +680,149 @@ function PrintHeadSimulator()
 
     }
 
-    this.loadGcode=function(file_url)
+
+    
+    this.getDeltaFromTo=function(startFilePos,filePos){
+
+        if(filePos==startFilePos)
+        {
+            return {seconds:0,lines:0,distance:0};
+        }
+        if(filePos<startFilePos)
+        {
+            console.log("warning getDeltaFromTo wrong order"+[startFilePos,filePos])
+            
+            //swap
+            let tt=filePos
+            filePos=startFilePos
+            startFilePos=tt;
+            //return [0,0]
+        }
+        let startBufferCursor=0;
+        while(startBufferCursor<buffer.length)
+        {
+            if(buffer[startBufferCursor].filePos>=startFilePos)
+            {    
+                //console.log("Found startBufferCursor:"+startBufferCursor)
+                break;
+            }
+            startBufferCursor++;
+        }
+
+        let newBufferCursor=startBufferCursor;
+       
+        let count=0;
+        let distTotal=0.0;
+        let et=0.0;
+        let curPos = buffer[newBufferCursor].position.clone();
+        while(newBufferCursor<buffer.length)
+        {
+            if(buffer[newBufferCursor].filePos>=filePos)
+            {    
+                //console.log("Found endBufferCursor:"+newBufferCursor)
+                return {seconds:et,lines:count,distance:/*Math.sqrt*/(distTotal)};
+            }
+            let dist=curPos.distanceTo(buffer[newBufferCursor].position)
+            distTotal+=dist
+
+            //dist is MM? rate is MM/Minute
+            et+=(dist*(buffer[newBufferCursor].rate/60.0))/1000.0
+
+            curPos = buffer[newBufferCursor].position.clone()
+            newBufferCursor++;
+            count++;
+
+        }
+        console.log("error getDeltaFromTo fell through"+[startFilePos,filePos])
+        return [0,0]
+    }
+
+    this.getDeltaTo=function(filePos){
+
+        if(bufferCursor>=buffer.length)
+        {
+            return {seconds:0,lines:0,distance:0};
+        }
+
+        if(buffer[bufferCursor].filePos>filePos)
+        {
+            //console.log("Overflow??")
+            //console.log([buffer[bufferCursor].filePos,filePos])
+        }
+        let newBufferCursor=bufferCursor;
+//newBufferCursor=0;        
+        let count=0;
+        let distTotal=0.0;
+        let et=0.0;
+        let curPos = buffer[newBufferCursor].position.clone();
+        while(newBufferCursor<buffer.length)
+        {
+            if(buffer[newBufferCursor].filePos>=filePos)
+            {    
+                //console.log("getDeltaTo:"+[buffer[newBufferCursor].filePos,filePos])
+                //return [et,count,Math.sqrt(distSq)];
+                return {seconds:et,lines:count,distance:/*Math.sqrt*/(distTotal)};
+
+            }
+            let dist=curPos.distanceTo(buffer[newBufferCursor].position)
+            distTotal+=dist
+            //dist is MM? rate is MM/Minute
+            et+=(dist*(buffer[newBufferCursor].rate/60.0))/1000.0
+
+            curPos = buffer[newBufferCursor].position.clone()
+            newBufferCursor++;
+            count++;
+
+        }
+        return {seconds:0,lines:0,distance:0};
+    }
+
+    //load from a file://
+    this.loadGcodeLocal=function(file){
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          //console.log(e.target.result);
+          addCommands(e.target.result);
+        };
+        reader.readAsText(file, "UTF-8");
+    }
+
+    function finishLoading()
     {
+
+        if (gcodeObject)
+            gcodeObject.finishLayer();
+
+        console.log("Finished loading GCode object.")
+        console.log(["layers:",gcodeObject.getLayerCount(),"size:",filePos])
+
+        // let totalLines=0;
+        // for(let layer of layers)
+        // {
+        //     totalLines+=layer.vertex.length/6;
+        // }
+        // console.log(["lines:",totalLines])
+
+        //this.syncGcodeObjTo(Infinity);
+
+    }
+
+    //load from a url
+    this.loadGcode=function(file_url,apiKey)
+    {
+        //todo. Find a better way to pass the apiKey
+        if(!apiKey)
+            apiKey=''
+
         var myRequest = new Request(file_url,
             {
                 method: 'GET',
                 headers: {
-                    'Content-Type': 'text/plain'
+                    'Content-Type': 'text/plain',
+                    "X-Api-Key": apiKey
                 },
                 mode: 'cors',
-                cache: 'no-cache' 
+                cache: 'no-cache'
             }
         );
         fetch(myRequest)
@@ -693,7 +831,7 @@ function PrintHeadSimulator()
                 if (!response.body || !window['TextDecoder']) {
                     response.text().then(function (text) {
                         addCommands(text);
-                        //finishLoading();
+                        finishLoading();
                     });
                 } else {
                     var myReader = response.body.getReader();
@@ -702,9 +840,9 @@ function PrintHeadSimulator()
                     var received = 0;
                     myReader.read().then(function processResult(result) {
                         if (result.done) {
-                            //finishLoading();
+                            finishLoading();
                             //syncGcodeObjTo(Infinity);
-                            console.log("PrintSimBufferSize:"+buffer.length)
+                            //console.log("PrintSimBufferSize:"+buffer.length)
                             return;
                         }
                         received += result.value.length;
@@ -743,21 +881,56 @@ function PrintHeadSimulator()
     {
         let color=null;
         let cmdLower=line.toLowerCase();
+        // if(cmdLower.startsWith("; object:{"))
+        // {
+        //     let json=line.substring("; object:".length);
+        //     let slicerInfo=JSON.parse(json)
+        //     console.log("Slicer Bound Center:"+slicerInfo.boundingbox_center)
+        //     console.log("Slicer Bound Size:"+slicerInfo.boundingbox_size)
+        // }
+        // else if(cmdLower.startsWith(";min"))
+        // {
+        //     if(cmdLower.startsWith(";minx:"))
+        //         console.log("MINX:"+parseInt(cmdLower.split(':')[1]))
+        //     if(cmdLower.startsWith(";miny:"))
+        //         console.log("MINY:"+parseInt(cmdLower.split(':')[1]))
+        //     if(cmdLower.startsWith(";minz:"))
+        //         console.log("MINZ:"+parseInt(cmdLower.split(':')[1]))
+        // }
+        // else if(cmdLower.startsWith(";max"))
+        // {
+        //     if(cmdLower.startsWith(";maxx:"))
+        //         console.log("MAXX:"+parseInt(cmdLower.split(':')[1]))
+        //     if(cmdLower.startsWith(";maxy:"))
+        //         console.log("MAXY:"+parseInt(cmdLower.split(':')[1]))
+        //     if(cmdLower.startsWith(";maxz:"))
+        //         console.log("MAXZ:"+parseInt(cmdLower.split(':')[1]))
+        // }
+        // else 
         if (cmdLower.indexOf("inner") > -1) {
             color = new THREE.Color('forestgreen');//green
         }
+        // else if (cmdLower.indexOf("overhang") > -1) {
+        //     color = new THREE.Color('forestgreen');//green
+        // }
         else if (cmdLower.indexOf("outer") > -1) {
             color = new THREE.Color('indianred');
         }
         else if (cmdLower.indexOf("perimeter") > -1) {
             color = new THREE.Color('indianred');
         }
+        // else if (cmdLower.indexOf("gap fill") > -1) {
+        //     color = new THREE.Color('skyblue');
+        // }
         else if (cmdLower.indexOf("fill") > -1) {
             color = new THREE.Color('darkorange');
         }
         else if (cmdLower.indexOf("skin") > -1) {
             color = new THREE.Color('yellow');
         }
+        // else if (cmdLower.indexOf("internal") > -1) {
+        //     color = new THREE.Color('yellow');
+        // }
         else if (cmdLower.indexOf("support") > -1) {
             color = new THREE.Color('skyblue');
         }
@@ -766,6 +939,18 @@ function PrintHeadSimulator()
         }
         else
         {
+            //cura info
+            //;FLAVOR:Marlin
+            //;TIME:1271
+            //;Filament used: 1.2109m
+            //;Layer height: 0.2
+
+            //;LAYER_COUNT:98
+            //;LAYER:0
+            //;TIME_ELAPSED:195.644520
+            //;LAYER:9
+
+            //console.log("Comment:"+cmdLower)
             //var curColorHex = (Math.abs(cmd.hashCode()) & 0xffffff);
             //curColor = new THREE.Color(curColorHex);
             //console.log(cmd + ' ' + curColorHex.toString(16))
@@ -949,7 +1134,7 @@ function PrintHeadSimulator()
         //Convert the gcode feed rate (in MM/per min?) to rate per second.
         var rate = curState.rate/60.0;
     
-rate=rate*0.75;//why still too fast?        
+//rate=rate*0.75;//why still too fast?        
 //        rate=rate*10
 
         //adapt rate to keep up with buffer.
@@ -967,7 +1152,7 @@ rate=rate*0.75;//why still too fast?
 
         //dist head needs to travel this frame
         var dist = rate*timeStep
-        while(bufferCursor<buffer.length>0 && dist >0)//while some place to go and some dist left.
+        while(bufferCursor<buffer.length && dist >0)//while some place to go and some dist left.
         {
             //direction
             var vectToCurEnd=curEnd.position.clone().sub(curState.position);
@@ -1010,7 +1195,90 @@ rate=rate*0.75;//why still too fast?
             }
         }
     }
+
     this.updatePosition=updatePosition;
+
+    function updatePosition2(timeStep,playbackRate,linesBehind,maxFilePos){
+        if(bufferCursor>=buffer.length)
+            return;//at end of buffer nothing to do  
+
+        //Convert the gcode feed rate (in MM/per min?) to rate per second.
+        var rate = curState.rate/60.0;
+    
+rate=rate*0.090;//why still too fast?        
+//        rate=rate*10
+
+        //adapt rate to keep up with buffer.
+        //todo. Make dist based rather than just buffer size.
+        if(linesBehind<1)
+            return;
+        if(linesBehind>5)
+        {
+            rate=rate*(linesBehind/0.9);
+            //console.log(["Too Slow ",rate,linesBehind])
+        }
+        if(linesBehind<2)
+        {
+            rate=rate*(1.0/(linesBehind*5.0));
+            //console.log(["Too fast ",rate,linesBehind])
+        }
+     
+        //dist head needs to travel this frame
+        //todo. this is wrong. dist is based on rate of this segment only. 
+        //dist may not be the way to do this now.
+        //instead reduce a time by rate*distance
+        var dist = rate*timeStep
+        while((bufferCursor<buffer.length) && (dist >0))//while some place to go and some dist left.
+        {
+            //direction
+            var vectToCurEnd=curEnd.position.clone().sub(curState.position);
+            var distToEnd=vectToCurEnd.length();
+            if(dist<distToEnd)//Inside current line?
+            {
+                //move pos the distance along line
+                vectToCurEnd.setLength(dist);
+                curState.position.add(vectToCurEnd);  
+                dist=0;//all done 
+            }else{
+                //move pos to end point.
+                curState.position.copy(curEnd.position);
+                curState.rate=curEnd.rate;
+                curState.filePos=curEnd.filePos;
+
+                //subract dist for next loop.
+                dist=dist-distToEnd;
+
+                //update lastZ for display of layers. 
+                if(curEnd.extrude && curEnd.position.z != curLastExtrudedZ )
+                {
+                    curLastExtrudedZ=curEnd.position.z;
+                }
+                //console.log([curState.position.z,curState.layerLineNumber])
+
+                //start on next buffer command
+                //buffer.shift();
+                if(bufferCursor< buffer.length-1)
+                {
+                    //Done if next would go past the maxFilePos
+                    if( buffer[bufferCursor+1].filePos>=maxFilePos)
+                    {
+                        //console.log("early")
+                        //console.log([buffer[bufferCursor].filePos,maxFilePos])                
+                        break;
+                    }
+                    bufferCursor+=1;
+                    curEnd=buffer[bufferCursor];
+                    curState.layerLineNumber=curEnd.layerLineNumber;
+
+                    curState.rate=curEnd.rate;
+                    curState.extrude=curEnd.extrude;
+
+                }else
+                    return;//at end of buffer
+            }
+        }
+    }
+    this.updatePosition2=updatePosition2;
 
 }
 
