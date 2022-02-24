@@ -3,6 +3,7 @@ $(function () {
     console.log("Create PrettyGCode View Model");
     function PrettyGCodeViewModel(parameters) {
         var self = this;
+        self.settingView = parameters[0];
         self.printerProfiles = parameters[2];
         self.controlViewModel = parameters[3];
         
@@ -596,10 +597,10 @@ $(function () {
                 $("#files_wrapper").addClass("pghidden");
             }
             if (pgSettings.showWebcam) {
-                $(".gwin #webcam_rotator").removeClass("pghidden");
+                $(".gwin div.webcam_rotator_clone").removeClass("pghidden");
             }
             else {
-                $(".gwin #webcam_rotator").addClass("pghidden");
+                $(".gwin div.webcam_rotator_clone").addClass("pghidden");
             }
             if (pgSettings.showDash) {
                 $("#tab_plugin_dashboard").removeClass("pghidden");
@@ -763,6 +764,7 @@ $(function () {
 
                     //Create a web camera inset for the view. 
                     var camView = $("#webcam_rotator").clone();
+                    camView.removeAttr('id').addClass('webcam_rotator_clone');
                     let img=camView.find("#webcam_image")
                     img.attr("id","pg_webcam_image")
                     $(".gwin").append(camView)
@@ -793,22 +795,29 @@ $(function () {
                     $(".pgdashtoggle").on("click", function () {
                         pgSettings.showDash=!pgSettings.showDash;;
                         updateWindowStates();
-                    });                                         
+                    });
                     updateWindowStates();
                 }
 
                 //Activate webcam view in window. 
-                $(".gwin #pg_webcam_image").attr("src", "/webcam/?action=stream&" + Math.random())
-                self.controlViewModel._enableWebcam();
+                var camURL = null;
+                if (self.settingView.webcam_webcamEnabled()){
+                    var streamURL=self.settingView.webcam_streamUrl()
+                    if (determineWebcamStreamType(streamURL) == "mjpg"){
+                        camURL = streamURL;
+                    }
+                }
+                if (camURL != null){
+                    $(".gwin #pg_webcam_image").attr("src", camURL);
+                    self.controlViewModel._enableWebcam();
+                }else{
+                    $(".gwin #pg_webcam_image").attr("src", "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
+                }
 
             } else if (previous == "#tab_plugin_prettygcode") {
-                //todo. disable animation 
-                
-                //Disable camera when tab isnt visible.
-                $(".gwin #pg_webcam_image").attr("src", "")
-                self.controlViewModel._disableWebcam();
+                //Disable local camera when tab isnt visible.
+                $(".gwin #pg_webcam_image").attr("src", "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
             }
-            self.controlViewModel._enableWebcam();
         };
 
         //util function

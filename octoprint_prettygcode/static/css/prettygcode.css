@@ -16,6 +16,7 @@
     width: 100%;
     height: 100%;
     position: absolute;
+    z-index: 1;
 }
 #tab_plugin_prettygcode .fstoggle {
     top: 20px;
@@ -29,6 +30,12 @@
     position: absolute;
     z-index:10;
 }
+
+/* hide navbar and footer when in fullscreen */
+div.pgfullscreen #navbar, div.pgfullscreen div.footer{
+    display: none;
+}
+
 .pgfullscreen #tab_plugin_prettygcode .pgstatetoggle {
     top: 20px;
     left: 20px;
@@ -113,7 +120,7 @@
     width:0px;
 } */
 
-.gwin #webcam_rotator {
+.gwin div.webcam_rotator_clone {
     bottom: 20px;
     right: 40px;
     position: absolute;
@@ -122,10 +129,10 @@
     display:none;
 }
 
-.pgfullscreen .gwin #webcam_rotator {
+.pgfullscreen .gwin div.webcam_rotator_clone {
     display:unset;
 }
-.pgfullscreen .gwin #webcam_rotator.pghidden {
+.pgfullscreen .gwin div.webcam_rotator_clone.pghidden {
     display:none;
 }
 
