@@ -542,6 +542,7 @@ $(function () {
         //Scene globals
         var camera, cameraControls,cameraLight; 
         var scene, renderer; 
+        var lightBackground, darkBackground;
         var gcodeProxy;//used to display loaded gcode.
 
         var terminalGcodeProxy;//todo remove(prob not used anymore). used to display gcode actualy sent to printer.
@@ -565,6 +566,7 @@ $(function () {
             this.showMirror=false;//default changed
             this.fatLines=true;//default changed
             //this.reflections=false;//remove this
+            this.darkMode=false;
             this.syncToProgress=true;
             this.orbitWhenIdle=false;
             this.reloadGcode = function () {
@@ -657,6 +659,12 @@ $(function () {
                             if(pgSettings.syncToProgress){
 //                                syncLayerToZ();
                             }
+                        });
+
+                        gui.add(pgSettings, 'darkMode').onFinishChange(function(checked) {
+                            var color = checked ? 0x000000 : 0xd0d0d0;
+                            scene.background = new THREE.Color(color);
+                            renderer.render(scene, camera);
                         });
 
                         gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
@@ -1674,13 +1682,19 @@ $(function () {
             //todo handle other than lowerleft
             resetCamera();
 
+            lightBackground = 0xd0d0d0;
+            darkBackground = 0x000000;
 
             //for debugging
             window.myCameraControls = cameraControls;
 
             //scene
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xd0d0d0);
+            if (pgSettings.darkMode) {
+                scene.background = new THREE.Color(darkBackground);
+            } else {
+                scene.background = new THREE.Color(lightBackground);
+            }
 
             //for debugging
             window.myScene = scene;
