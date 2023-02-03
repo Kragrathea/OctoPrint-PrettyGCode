@@ -16,7 +16,7 @@ $(function () {
                 durJobDate = job.file.date;
                 if(viewInitialized && gcodeProxy)
                     {
-                        gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
                         printHeadSim=new PrintHeadSimulator();
 
                         //terminalGcodeProxy = new GCodeParser();
@@ -569,7 +569,7 @@ $(function () {
             this.orbitWhenIdle=false;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
-                    gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
+                    gcodeProxy.loadGcode('downloads/files/local/' + curJobName);  
                 };
             this.showState=true;
             this.showWebcam=false;
@@ -721,7 +721,7 @@ $(function () {
                     scene.add(gcodeObject);
 
                     if(curJobName!="")
-                        gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
 
                     if(false){
                         //terminal parser
@@ -1533,7 +1533,7 @@ $(function () {
             }
 
             var fontLoader = new THREE.FontLoader();
-            fontLoader.load('/plugin/prettygcode/static/js/helvetiker_bold.typeface.json', function (font) {
+            fontLoader.load('plugin/prettygcode/static/js/helvetiker_bold.typeface.json', function (font) {
                 var xMid, text;
                 var color = 0x006699;
                 var matDark = new THREE.LineBasicMaterial({
