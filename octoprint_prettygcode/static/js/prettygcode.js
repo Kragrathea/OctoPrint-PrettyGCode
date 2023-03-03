@@ -16,7 +16,7 @@ $(function () {
                 durJobDate = job.file.date;
                 if(viewInitialized && gcodeProxy)
                     {
-                        gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
                         printHeadSim=new PrintHeadSimulator();
 
                         //terminalGcodeProxy = new GCodeParser();
@@ -569,7 +569,7 @@ $(function () {
             this.orbitWhenIdle=false;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
-                    gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);  
+                    gcodeProxy.loadGcode('downloads/files/local/' + curJobName);  
                 };
             this.showState=true;
             this.showWebcam=false;
@@ -692,7 +692,7 @@ $(function () {
 
                     //load Nozzle model.
                     var objloader = new THREE.OBJLoader();
-                    objloader.load( '/plugin/prettygcode/static/js/models/ExtruderNozzle.obj', function ( obj ) {
+                    objloader.load( 'plugin/prettygcode/static/js/models/ExtruderNozzle.obj', function ( obj ) {
                         obj.quaternion.setFromEuler(new THREE.Euler( Math.PI / 2, 0, 0));
                         obj.scale.setScalar(0.1)
                         obj.position.set(0, 0, 10);
@@ -721,7 +721,7 @@ $(function () {
                     scene.add(gcodeObject);
 
                     if(curJobName!="")
-                        gcodeProxy.loadGcode('/downloads/files/local/' + curJobName);
+                        gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
 
                     if(false){
                         //terminal parser
@@ -1131,7 +1131,7 @@ $(function () {
                 currentUrl=url;
 
                 var parserObject=this;
-                var file_url = url;//'/downloads/files/local/xxx.gcode';
+                var file_url = url;//'downloads/files/local/xxx.gcode';
                 var myRequest = new Request(file_url);
                 fetch(myRequest)
                     .then(function (response) {
@@ -1533,7 +1533,7 @@ $(function () {
             }
 
             var fontLoader = new THREE.FontLoader();
-            fontLoader.load('/plugin/prettygcode/static/js/helvetiker_bold.typeface.json', function (font) {
+            fontLoader.load('plugin/prettygcode/static/js/helvetiker_bold.typeface.json', function (font) {
                 var xMid, text;
                 var color = 0x006699;
                 var matDark = new THREE.LineBasicMaterial({
