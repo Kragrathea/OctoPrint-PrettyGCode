@@ -609,7 +609,13 @@ $(function () {
             }
         }
 
-        var bedVolume = undefined;
+        var bedVolume = {
+            depth: 0,
+            formFactor: "",
+            height: 0,
+            origin: "",
+            width: 0,
+          };
         var viewInitialized = false;
         self.onTabChange = function (current, previous) {
 
@@ -845,9 +851,12 @@ $(function () {
         }
 
         function updateBedVolume() {
+            var currentProfileData = self.printerProfiles.currentProfileData();
+            if (!currentProfileData || !currentProfileData.volume) {
+                return;
+            }
 
-            //var volume = ko.mapping.toJS(self.printerProfiles.currentProfileData().volume);
-            var volume = self.printerProfiles.currentProfileData().volume;
+            var volume = currentProfileData.volume;
             //console.log([arguments.callee.name,volume]);
 
             if (typeof volume.custom_box === "function") //check for custom bounds.
