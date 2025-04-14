@@ -1687,6 +1687,7 @@ $(function () {
 
             var canvas = $("#mycanvas");
             cameraControls = new CameraControls(camera, canvas[0]);
+            cameraControls.maxPolarAngle = Math.PI;
 
             //todo handle other than lowerleft
             resetCamera();
