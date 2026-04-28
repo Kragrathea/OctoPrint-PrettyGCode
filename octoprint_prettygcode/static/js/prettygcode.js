@@ -548,6 +548,7 @@ $(function () {
         var terminalGcodeProxy;//todo remove(prob not used anymore). used to display gcode actualy sent to printer.
         var cubeCamera;//todo make reflections optional.
         var nozzleModel;
+        var highlightMaterial;
         
         var clock;
         var dimensionsGroup;
@@ -910,9 +911,7 @@ $(function () {
                 //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
                 vertexColors: THREE.VertexColors,
             });
-            //todo. handle window resize
-//            curMaterial.resolution.set(gcodeWid, gcodeHei);
-            curMaterial.resolution.set(500, 500);
+            curMaterial.resolution.set(gcodeWid, gcodeHei);
 
             //for plain lines
             var curLineBasicMaterial = new THREE.LineBasicMaterial( {
@@ -942,8 +941,11 @@ $(function () {
                 if(gcodeGroup){
                     for (var i = gcodeGroup.children.length - 1; i >= 0; i--) {
                         gcodeGroup.remove(gcodeGroup.children[i]);
-                    }            
+                    }
                 }
+            }
+            this.setResolution = function(w, h) {
+                curMaterial.resolution.set(w, h);
             }
             easeOutBounce= function (t, b, c, d) {  
                 if ((t/=d) < (1/2.75)) {  
@@ -1112,7 +1114,7 @@ $(function () {
                     if (child.name.startsWith("layer#")) {
                         var filePositions=child.userData.filePositions;
                         var fpMin=filePositions[0];
-                        var fpMax = filePositions[filePositions.length];
+                        var fpMax = filePositions[filePositions.length - 1];
                         if (fpMax<filePosition) { //way before.
                             child.visible = true;
 
@@ -1661,7 +1663,9 @@ $(function () {
                 gcodeWid = width;
                 gcodeHei = height;
                 cameraControls.setViewport(0, 0, width, height);
-                return true;//update needed. 
+                if(gcodeProxy) gcodeProxy.setResolution(width, height);
+                if(highlightMaterial) highlightMaterial.resolution.set(width, height);
+                return true;//update needed.
             }
             return false;//no update needed
         }
@@ -1742,18 +1746,13 @@ $(function () {
             var firstFrame=true;                 /*possible bug fix. this might not be needed.*/
 
             //material for fatline highlighter
-            var highlightMaterial = undefined;
-                        
             if(pgSettings.fatLines)
                 {
                     highlightMaterial=new THREE.LineMaterial({
                         linewidth: 4, // in pixels
-                        //transparent: true,
-                        //opacity: 0.5,
-                        //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
                         vertexColors: THREE.VertexColors,
                     });
-                    highlightMaterial.resolution.set(500, 500);
+                    highlightMaterial.resolution.set(gcodeWid, gcodeHei);
                 }else{
                     //highlightMaterial=
                 }
