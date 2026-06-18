@@ -24,6 +24,9 @@ class PrettyGCodePlugin(
             css=["css/prettygcode.css"],
         )
 
+    def is_template_autoescaped(self):
+        return True
+
     def get_update_information(self):
         return dict(
             prettygcode=dict(
