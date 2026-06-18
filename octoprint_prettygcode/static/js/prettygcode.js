@@ -393,6 +393,12 @@ $(function () {
         var printHeadSim=new PrintHeadSimulator();
         var curPrinterState=null;
         var curPrintFilePos=0;
+
+        // OctoPrint 2.x changed the terminal log prefixes from "Send:"/"Recv: " to ">>>"/"<<< ".
+        var isOctoPrint1 = parseInt(VERSION, 10) < 2;
+        var sendLogPrefix = isOctoPrint1 ? "Send:" : ">>>";
+        var recvLogPrefix = isOctoPrint1 ? "Recv: " : "<<< ";
+
         self.fromCurrentData= function (data) {
 
             //Dont do anything if view not initialized
@@ -413,18 +419,14 @@ $(function () {
 
             //parse logs position data for simulator
             if (data.logs.length) {
-                data.logs.forEach(function(e,i)
-                {
-                    if(e.startsWith("Send:"))
-                    {
+                data.logs.forEach(function(e,i) {
+                    if (e.startsWith(sendLogPrefix)) {
                         //console.log(["GCmd:",e]);
                         if (printHeadSim)
                             printHeadSim.addCommand(e);
-                    }
-                    else if(e.startsWith("Recv: T:"))
-                    {
+                    } else if (e.startsWith(recvLogPrefix + "T:")) {
                         //console.log(["GCmd:",e]);
-                        let parts = e.substr(6).split("@");//remove Recv: and checksum.
+                        let parts = e.substr(recvLogPrefix.length).split("@");//remove prefix and checksum.
                         let temps = parts[0];
                         let statusStr = temps;
                         $(".pgstatus").text(statusStr);
