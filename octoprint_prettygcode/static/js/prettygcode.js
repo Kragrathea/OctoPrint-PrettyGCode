@@ -5,12 +5,12 @@ $(function () {
         var self = this;
         self.printerProfiles = parameters[2];
         self.controlViewModel = parameters[3];
-        
+
         //Parse terminal data for file and pos updates.
         var curJobName="";
-        var durJobDate=0;//use date of file to check for update. 
+        var durJobDate=0;//use date of file to check for update.
         function updateJob(job){
-            
+
             if (durJobDate != job.file.date) {
                 curJobName = job.file.path;
                 durJobDate = job.file.date;
@@ -20,7 +20,7 @@ $(function () {
                         printHeadSim=new PrintHeadSimulator();
 
                         //terminalGcodeProxy = new GCodeParser();
-                        //terminalGcodeProxy;//used to display gcode actualy sent to printer.
+                        //terminalGcodeProxy;//used to display gcode actually sent to printer.
                     }
             }
 
@@ -381,10 +381,10 @@ $(function () {
                     //G91: Set to state.relative Positioning
                     parserCurState.relative = true;
                 }
-                
+
             }
-//window.myMaxRate=120.0; 
-//window.fudge=7; 
+//window.myMaxRate=120.0;
+//window.fudge=7;
 
             // Handle undefined and NaN for current coordinates.
             this.getCurrentCoordinate=function(cmdCoord, prevCoord) {
@@ -423,19 +423,19 @@ $(function () {
                     {
                         //move pos the distance along line
                         vectToCurEnd.setLength(dist);
-                        curState.position.add(vectToCurEnd);  
-                        dist=0;//all done 
+                        curState.position.add(vectToCurEnd);
+                        dist=0;//all done
                     }else{
                         //move pos to end point.
                         curState.position.copy(curEnd.position);
                         curState.rate=curEnd.rate;
-                        //subract dist for next loop.
+                        //subtract dist for next loop.
                         dist=dist-distToEnd;
 
                         //draw segment
                         //todo.
 
-                        //update lastZ for display of layers. 
+                        //update lastZ for display of layers.
                         if(curEnd.extrude && curEnd.position.z != curLastExtrudedZ )
                         {
                             curLastExtrudedZ=curEnd.position.z;
@@ -459,7 +459,7 @@ $(function () {
         var curPrintFilePos=0;
         self.fromCurrentData= function (data) {
 
-            //Dont do anything if view not initalized
+            //Dont do anything if view not initialized
             if(!viewInitialized)
                 return;
 
@@ -540,15 +540,15 @@ $(function () {
         }
 
         //Scene globals
-        var camera, cameraControls,cameraLight; 
-        var scene, renderer; 
+        var camera, cameraControls,cameraLight;
+        var scene, renderer;
         var lightBackground, darkBackground;
         var gcodeProxy;//used to display loaded gcode.
 
-        var terminalGcodeProxy;//todo remove(prob not used anymore). used to display gcode actualy sent to printer.
+        var terminalGcodeProxy;//todo remove(prob not used anymore). used to display gcode actually sent to printer.
         var cubeCamera;//todo make reflections optional.
         var nozzleModel;
-        
+
         var clock;
         var dimensionsGroup;
         var sceneBounds = new THREE.Box3();
@@ -571,7 +571,7 @@ $(function () {
             this.orbitWhenIdle=false;
             this.reloadGcode = function () {
                 if(gcodeProxy && curJobName!="")
-                    gcodeProxy.loadGcode('downloads/files/local/' + curJobName);  
+                    gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
                 };
             this.showState=true;
             this.showWebcam=false;
@@ -631,7 +631,7 @@ $(function () {
                             //get new build volume.
                             updateBedVolume();
                             //update scene if any
-                            updateGridMesh(); 
+                            updateGridMesh();
 
                             //Needed in case center has changed.
                             resetCamera();
@@ -648,16 +648,16 @@ $(function () {
                         dat.GUI.TEXT_OPEN="View Options"
                         dat.GUI.TEXT_CLOSED="View Options"
                         gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
-            
+
                         //Override default storage location to fix bug with tabs.
                         //Not working
                         //gui.setLocalStorageHash("PrettyGCodeSettings");
 
                         gui.useLocalStorage=true;
                         // var guielem = $("<div id='mygui' style='position:absolute;right:95px;top:20px;opacity:0.8;z-index:5;'></div>");
-            
+
                         // $('.gwin').prepend(guielem)
-            
+
                         $('#mygui').append(gui.domElement);
 
                         gui.remember(pgSettings);
@@ -680,17 +680,17 @@ $(function () {
                         gui.add(pgSettings, 'antialias').onFinishChange(function(){
                             new PNotify({
                                 title: "Reload page required",
-                                text: "Antialias chenges won't take effect until you refresh the page",
+                                text: "Antialias changes won't take effect until you refresh the page",
                                 type: "info"
 
                                 });
-                                //alert("Antialias chenges won't take effect until you refresh the page");
+                                //alert("Antialias changes won't take effect until you refresh the page");
                             });
 
                         gui.add(pgSettings, 'showNozzle');
-                            
+
                         //gui.add(pgSettings, 'reloadGcode');
-                      
+
                         var folder = gui.addFolder('Windows');//hidden.
                         folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                         folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
@@ -700,7 +700,7 @@ $(function () {
                         //dont show Windows. Automatically handled by toggle buttons
                         $(folder.domElement).attr("hidden", true);
 
-                    } 
+                    }
 
                     initThree();
 
@@ -750,8 +750,8 @@ $(function () {
                         terminalGcodeObject.position.set(100, -0, 0);
                         scene.add(terminalGcodeObject);
                     }
-       
-                    //note this is an octoprint version of a bootstrap slider. not a jquery ui slider. 
+
+                    //note this is an octoprint version of a bootstrap slider. not a jquery ui slider.
                     $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
                     $("#myslider-vertical").slider({
                         id: "myslider",
@@ -773,9 +773,9 @@ $(function () {
                     });
                     $("#myslider").attr("style", "height:90%;position:absolute;top:5%;right:20px")
 
-                    
 
-                    //Create a web camera inset for the view. 
+
+                    //Create a web camera inset for the view.
                     var camView = $("#webcam_rotator").clone();
                     let img=camView.find("#webcam_image")
                     img.attr("id","pg_webcam_image")
@@ -803,22 +803,22 @@ $(function () {
                     $(".pgcameratoggle").on("click", function () {
                         pgSettings.showWebcam=!pgSettings.showWebcam;
                         updateWindowStates();
-                    }); 
+                    });
                     $(".pgdashtoggle").on("click", function () {
                         pgSettings.showDash=!pgSettings.showDash;;
                         updateWindowStates();
-                    });                                         
+                    });
                     updateWindowStates();
                 }
 
-                //Activate webcam view in window. 
+                //Activate webcam view in window.
                 $(".gwin #pg_webcam_image").attr("src", "/webcam/?action=stream&" + Math.random())
                 self.controlViewModel._enableWebcam();
 
             } else if (previous == "#tab_plugin_prettygcode") {
-                //todo. disable animation 
-                
-                //Disable camera when tab isnt visible.
+                //todo. disable animation
+
+                //Disable camera when tab isn't visible.
                 $(".gwin #pg_webcam_image").attr("src", "")
                 self.controlViewModel._disableWebcam();
             }
@@ -893,7 +893,7 @@ $(function () {
 
             var state = { x: 0, y: 0, z: 0, e: 0, f: 0, extruding: false, relative: false };
             var layers = [];
-            
+
             var currentLayer = undefined;
 
             var defaultColor = new THREE.Color('white');
@@ -937,24 +937,24 @@ $(function () {
             this.getObject = function () {
                 return gcodeGroup;
             }
-           
+
             this.clearObject= function () {
                 if(gcodeGroup){
                     for (var i = gcodeGroup.children.length - 1; i >= 0; i--) {
                         gcodeGroup.remove(gcodeGroup.children[i]);
-                    }            
+                    }
                 }
             }
-            easeOutBounce= function (t, b, c, d) {  
-                if ((t/=d) < (1/2.75)) {  
-                 return c*(7.5625*t*t) + b;  
-                } else if (t < (2/2.75)) {  
-                 return c*(7.5625*(t-=(1.5/2.75))*t + .75) + b;  
-                } else if (t < (2.5/2.75)) {  
-                 return c*(7.5625*(t-=(2.25/2.75))*t + .9375) + b;  
-                } else {  
-                 return c*(7.5625*(t-=(2.625/2.75))*t + .984375) + b;  
-                }  
+            easeOutBounce= function (t, b, c, d) {
+                if ((t/=d) < (1/2.75)) {
+                 return c*(7.5625*t*t) + b;
+                } else if (t < (2/2.75)) {
+                 return c*(7.5625*(t-=(1.5/2.75))*t + .75) + b;
+                } else if (t < (2.5/2.75)) {
+                 return c*(7.5625*(t-=(2.25/2.75))*t + .9375) + b;
+                } else {
+                 return c*(7.5625*(t-=(2.625/2.75))*t + .984375) + b;
+                }
                }
             easeInBounce = function (t, b, c, d) {
                 return c - easeOutBounce (d-t, 0, c, d) + b;
@@ -1009,12 +1009,12 @@ $(function () {
                                 child.position.set(0,0,0);
                         }
                     });
-                    
+
                 }
             }
             this.highlightLayer=function (layerNumber,highlightMaterial)
             {
-                var needUpdate=false;//only need update if visiblity changes
+                var needUpdate=false;//only need update if visibility changes
                 var defaultMat=curLineBasicMaterial;
                 if(pgSettings.fatLines){
                     defaultMat=curMaterial;
@@ -1049,10 +1049,10 @@ $(function () {
 
             this.syncGcodeObjToLayer=function (layerNumber,lineNumber=Infinity)
             {
-                var needUpdate=false;//only need update if visiblity changes
+                var needUpdate=false;//only need update if visibility changes
 
                 //hack comp for mirror.
-                //todo. better handle of mirror object so this isnt needed. 
+                //todo. better handle of mirror object so this isn't needed.
                 if(pgSettings.showMirror && lineNumber!=Infinity)
                     lineNumber=lineNumber*2;
 
@@ -1085,7 +1085,7 @@ $(function () {
             this.syncGcodeObjTo=function (layerZ,lineNumber=Infinity)
             {
                 //hack comp for mirror.
-                //todo. better handle of mirror object so this isnt needed. 
+                //todo. better handle of mirror object so this isn't needed.
                 if(pgSettings.showMirror && lineNumber!=Infinity)
                     lineNumber=lineNumber*2;
 
@@ -1127,9 +1127,9 @@ $(function () {
                             var count =0;
                             while(count<filePositions.length && filePositions[count]<filePosition)
                                 count++;
-                            
+
                             //hack comp for mirror.
-                            //todo. better handle of mirror object so this isnt needed. 
+                            //todo. better handle of mirror object so this isn't needed.
                             if(pgSettings.showMirror)
                                 count=count*2;
 
@@ -1172,13 +1172,13 @@ $(function () {
                                 //                buffer += decoder.decode(result.value, {stream: true});
                                 /* process the buffer string */
                                 parserObject.parse(decoder.decode(result.value, { stream: true }));
-    
+
                                 // read the next piece of the stream and process the result
                                 return myReader.read().then(processResult);
                             })
                         }
                     })
-    
+
             }
             this.finishLoading=function()
             {
@@ -1210,11 +1210,11 @@ $(function () {
                 console.log(["lines:",totalLines])
 
                 //console.log([sceneBounds,layers])
-                
+
                 //gcodeProxy.syncGcodeObjTo(Infinity);
 
-                //updateDimensions(bsize); 
-                 
+                //updateDimensions(bsize);
+
                 //Move zoom camera to new bounds.
                 var dist = Math.max(Math.abs(bsize.x), Math.abs(bsize.y)) / 2;
                 dist=Math.max(20,dist);//min distance to model.
@@ -1259,11 +1259,11 @@ $(function () {
             }
             /*this.addArc= function (arc, material ) {
                 // let geometry = new THREE.Geometry();
-        
+
                 // let start  = new THREE.Vector3(arc.x1, arc.y1, arc.z1);
                 // let center = new THREE.Vector3(arc.i,  arc.j,  arc.k);
                 // let end    = new THREE.Vector3(arc.x2, arc.y2, arc.z2);
-        
+
                 let radius = Math.sqrt(
                     Math.pow((arc.x1 - arc.i), 2) + Math.pow((arc.y1 - arc.j), 2)
                 );
@@ -1387,8 +1387,8 @@ $(function () {
                 //Todo process the last line. Probably not needed since last line is usually gcode cleanup and not extruded lines.
                 for (var i = 0; i < lines.length - 1; i++) {
 
-                    filePos+=lines[i].length+1;//+1 because of split \n. 
-                    
+                    filePos+=lines[i].length+1;//+1 because of split \n.
+
                     //Process comments
                     //figure out line color from comments.
                     if (lines[i].indexOf(";")>-1 ) {
@@ -1661,7 +1661,7 @@ $(function () {
                 gcodeWid = width;
                 gcodeHei = height;
                 cameraControls.setViewport(0, 0, width, height);
-                return true;//update needed. 
+                return true;//update needed.
             }
             return false;//no update needed
         }
@@ -1712,7 +1712,7 @@ $(function () {
             var light = new THREE.PointLight(0xffffff);
             light.position.set(0, 0,-bedVolume.height);
             scene.add(light);
-            
+
             // light = new THREE.PointLight(0xffffff);
             // light.position.set(bedVolume.width/2, bedVolume.depth/2,bedVolume.height);
             // scene.add(light);
@@ -1727,9 +1727,9 @@ $(function () {
             // light = new THREE.PointLight(0xffffff);
             // light.position.copy(camera.position);
             // scene.add(light);
-                       
 
-            //Semi-transparent plane to represent the bed. 
+
+            //Semi-transparent plane to represent the bed.
             updateGridMesh();
 
             cubeCamera = new THREE.CubeCamera( 1, 100000, 128 );
@@ -1743,7 +1743,7 @@ $(function () {
 
             //material for fatline highlighter
             var highlightMaterial = undefined;
-                        
+
             if(pgSettings.fatLines)
                 {
                     highlightMaterial=new THREE.LineMaterial({
@@ -1776,8 +1776,8 @@ $(function () {
                 {
                     printHeadSim.updatePosition(delta);
                 }
-                if(curPrinterState && 
-                    (curPrinterState.flags.printing || curPrinterState.flags.paused) && 
+                if(curPrinterState &&
+                    (curPrinterState.flags.printing || curPrinterState.flags.paused) &&
                     pgSettings.syncToProgress && (!forceNoSync))
                 {
                     if(nozzleModel && printHeadSim)
@@ -1826,7 +1826,7 @@ $(function () {
 
                 if(highlightMaterial!==undefined){
                     //fake a glow by ramping the diffuse color.
-                    let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0); 
+                    let nv = 0.5+((Math.sin(elapsed*4)+1)/4.0);
                     //console.log(nv);
                     //highlightMaterial.uniforms.linewidth.value=nv*15;
                     nv=0.5;
@@ -1853,7 +1853,7 @@ $(function () {
                     if(pgSettings.orbitWhenIdle && cameraIdleTime>5)
                     {
                         cameraControls.rotate(delta/5.0,0,false);//auto orbit camera a bit.
-                        cameraControls.update(delta);//force update so it wont look like manual move next frame.
+                        cameraControls.update(delta);//force update so it won't look like manual move next frame.
                         needRender=true;
                     }
                 }
@@ -1862,13 +1862,13 @@ $(function () {
                 {
                     cameraLight.position.copy(camera.position);
                 }
-                
+
                 if(resizeCanvasToDisplaySize())
                     needRender=true;
 
                 if(needRender)
                 {
-                    // //do real time reflections. Probably overkill. Certianly overkill.
+                    // //do real time reflections. Probably overkill. Certainly overkill.
                     // if(pgSettings.reflections && cubeCamera && nozzleModel)
                     // {
                     //     cubeCamera.position.copy( nozzleModel.position );
@@ -1892,7 +1892,7 @@ $(function () {
 
         function resetCamera() {
 
-            if(!cameraControls)//Make sure controls exist. 
+            if(!cameraControls)//Make sure controls exist.
                 return;
 
             if (bedVolume.origin == "lowerleft")
@@ -1914,9 +1914,9 @@ $(function () {
             var existingGrid = scene.getObjectByName("grid");
             if(existingGrid)
                 scene.remove( existingGrid );
-                
+
             console.log([existingPlane,existingGrid]);
-            
+
             var planeGeometry = new THREE.PlaneGeometry(bedVolume.width, bedVolume.depth);
             var planeMaterial = new THREE.MeshBasicMaterial({
             color: 0x909090,
@@ -1931,7 +1931,7 @@ $(function () {
                 plane.position.set(bedVolume.width / 2, bedVolume.depth / 2, -0.1);
             //plane.quaternion.setFromEuler(new THREE.Euler(- Math.PI / 2, 0, 0));
             scene.add(plane);
-            //make bed sized grid. 
+            //make bed sized grid.
             var grid = new THREE.GridHelper(bedVolume.width, bedVolume.width / 10, 0x000000, 0x888888);
             grid.name="grid";
             //todo handle other than lowerleft
@@ -1953,5 +1953,3 @@ $(function () {
 
 
 });
-
-

@@ -388,4 +388,3 @@ THREE.LineMaterial.prototype.copy = function ( source ) {
 	return this;
 
 };
-

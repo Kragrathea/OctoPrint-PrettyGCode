@@ -83,4 +83,3 @@ tasks:
 
                 echo "Copying translations for locale ${locale} from ${source} to ${target}..."
                 cp -r "${source}" "${target}"
-

@@ -2340,7 +2340,7 @@ function getLocalStorageHash(gui, key) {
 
     if(true){
       ////////////////
-      ////This hack is to fix a bug/feature with dat.gui. 
+      ////This hack is to fix a bug/feature with dat.gui.
       ////Don't the use URL as part of the key for saving settings.
       //console.log("WARNING:Overriding default dat.gui localStorageHash with :"+"PrettyGCodeSettings");
       return "PrettyGCodeSettings" + '.' + key;
