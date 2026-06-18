@@ -53,4 +53,4 @@ extend-select = ["I"]
 ignore="H021"
 
 [tool.codespell]
-skip = "octoprint_prettygcode/static/js/LineMaterial.js,octoprint_prettygcode/static/js/three.min.js"
+skip = "octoprint_prettygcode/static/js/lib/*"
