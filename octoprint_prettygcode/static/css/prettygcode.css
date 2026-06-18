@@ -99,19 +99,6 @@
     background: rgba(204, 204, 204, 0.9);
     z-index:6;
 }
-/* .pgfullscreen #files .gcode_files .entry {
-    padding: 5px;
-    line-height: 20px;
-    border-bottom: 1px solid #ddd;
-    position: relative;
-    width: 220px;
-    display: inline-grid;
-    background: white;
-    height: 100px;
-} */
-/* .pgfullscreen #files.collapse {
-    width:0px;
-} */
 
 .gwin #webcam_rotator {
     bottom: 20px;
@@ -129,12 +116,6 @@
     display:none;
 }
 
-/* Hide notifications in fullscreen mode.*/
-/* todo. only do this if not logged in or as admin.
-.pgfullscreen .ui-notify {
-    display:none;
-}
-*/
 .pgfullscreen .pghidden {
     display:none;
 }
@@ -259,16 +240,13 @@
     display: none;
 }
 
-
-
 #tab_plugin_prettygcode code
 {
     border: 1px black;
     white-space: pre;
 }
 
-  /*Support Octoprint Dashboard plugin*/
-
+/*Support Octoprint Dashboard plugin*/
 
 .pgfullscreen #tab_plugin_dashboard {
     display: unset;
@@ -279,8 +257,6 @@
     z-index:4;
     background: rgba(255, 255, 255, 0.2);
     opacity: 0.8;
-    /* width: 300px;  */
-    /* transform: scale(0.8); */
 }
 
 .pgfullscreen #tab_plugin_prettygcode .pgdashtoggle {

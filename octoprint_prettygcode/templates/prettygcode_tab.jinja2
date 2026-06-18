@@ -1,7 +1,6 @@
 <div id="sexygcode" style="height:800px">
     <div class="gwin" id="gwin">
         <canvas id="mycanvas" style="width:100%;height:100%""></canvas>
-        {# <canvas id='pipcanvas' style='position:absolute;right:0px;width:30%;height:30%'></canvas> #}
         <div id="pgstatus" class="pgstatus">T:0/0 B:0/0</div>
         <div id="mygui" class="pghidden">View Settings</div>
         <button class="pgstatetoggle" title="Toggle state window">
@@ -37,7 +36,6 @@ You can open directly in fullscreen mode by using the link below.
         <li><b>Fatlines.</b> Display lines with thickness. This looks much better but can cause a performance hit on slower machines.</li>
         <li><b>Mirror.</b> Display a mirrored version of the object below the print bed. This looks better and allows you to see additional parts of the GCode but is a bit slower.</li>
         <li><b>Orbit when idle.</b> After 5 seconds of no mouse/camera movement the camera will orbit around the center.</li>
-        <li><b>Reflections.</b> Realtime reflections in the 3d nozzle. This is pure eye candy and can be disabled for more performance.</li>
     </ul>
     Options and window states are stored in cookies in the users browser. So options and opened and closed windows should persist across browser sessions.
     <h4>Syncing</h4>
@@ -65,7 +63,6 @@ You can open directly in fullscreen mode by using the link below.
     </code>
     <br>
     <h5>Additional CSS:</h5>
-    <button class="btn btn-primary" data-bind="click: updateCss">Add CSS</button>
     <textarea id="pg_add_css" rows="18" style='width:100%'></textarea>
     <button class="btn btn-primary" data-bind="click: updateCss">Add CSS</button>
     <h4>PrettyGCode Homepage:</h4>
