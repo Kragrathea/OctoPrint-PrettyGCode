@@ -1,6 +1,3 @@
-# coding=utf-8
-from __future__ import absolute_import
-
 import octoprint.plugin
 
 class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
@@ -38,7 +35,7 @@ class PrettyGCodePlugin(octoprint.plugin.StartupPlugin,
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
 __plugin_name__ = "PrettyGCode"
-__plugin_pythoncompat__ = ">=2.7,<4"
+__plugin_pythoncompat__ = ">=3.7,<4"
 
 def __plugin_load__():
     global __plugin_implementation__ 

@@ -1,0 +1,42 @@
+[build-system]
+requires = [
+    "setuptools>=68",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "OctoPrint-PrettyGCode"
+version = "1.2.4"
+description = "Pretty GCode Visualizer"
+authors = [
+    { name = "Kragrathea", email = "todo@example.com" },
+]
+requires-python = ">=3.7,<4"
+dependencies = []
+dynamic = [
+    "license",
+]
+
+[project.entry-points."octoprint.plugin"]
+prettygcode = "octoprint_prettygcode"
+
+[project.urls]
+Homepage = "https://github.com/Kragrathea/OctoPrint-PrettyGCode"
+
+[project.optional-dependencies]
+develop = [
+    "go-task-bin",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = [
+    "octoprint_prettygcode",
+    "octoprint_prettygcode.*",
+]

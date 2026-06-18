@@ -1,2 +1,4 @@
 include README.md
-include requirements.txt
+recursive-include octoprint_prettygcode/templates *
+recursive-include octoprint_prettygcode/translations *
+recursive-include octoprint_prettygcode/static *
