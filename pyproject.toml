@@ -9,7 +9,8 @@ name = "OctoPrint-PrettyGCode"
 version = "1.2.4"
 description = "Pretty GCode Visualizer"
 authors = [
-    { name = "Kragrathea", email = "todo@example.com" },
+    { name = "Jacopo Tediosi", email = "jacopotediosi@gmail.com" },
+    { name = "Kragrathea", email = "redacted@example.com" },
 ]
 requires-python = ">=3.7,<4"
 dependencies = []
@@ -21,7 +22,7 @@ dynamic = [
 prettygcode = "octoprint_prettygcode"
 
 [project.urls]
-Homepage = "https://github.com/Kragrathea/OctoPrint-PrettyGCode"
+Homepage = "https://github.com/jacopotediosi/OctoPrint-PrettyGCode"
 
 [project.optional-dependencies]
 develop = [
