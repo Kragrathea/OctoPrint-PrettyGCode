@@ -1,8 +1,8 @@
 $(function () {
     function PrettyGCodeViewModel(parameters) {
         var self = this;
-        self.printerProfiles = parameters[2];
-        self.controlViewModel = parameters[3];
+        self.settings = parameters[0];
+        self.printerProfiles = parameters[1];
 
         //Parse terminal data for file and pos updates.
         var curJobName="";
@@ -499,26 +499,22 @@ $(function () {
         function updateWindowStates() {
             if (pgSettings.showState) {
                 $("#state_wrapper").removeClass("pghidden");
-            }
-            else {
+            } else {
                 $("#state_wrapper").addClass("pghidden");
             }
             if (pgSettings.showFiles) {
                 $("#files_wrapper").removeClass("pghidden");
-            }
-            else {
+            } else {
                 $("#files_wrapper").addClass("pghidden");
             }
             if (pgSettings.showWebcam) {
-                $(".gwin #webcam_rotator").removeClass("pghidden");
-            }
-            else {
-                $(".gwin #webcam_rotator").addClass("pghidden");
+                $(".gwin #pg_webcam_rotator").removeClass("pghidden");
+            } else {
+                $(".gwin #pg_webcam_rotator").addClass("pghidden");
             }
             if (pgSettings.showDash) {
                 $("#tab_plugin_dashboard").removeClass("pghidden");
-            }
-            else {
+            } else {
                 $("#tab_plugin_dashboard").addClass("pghidden");
             }
         }
@@ -531,6 +527,21 @@ $(function () {
             width: 0,
           };
         var viewInitialized = false;
+
+        function webcamStreamUrl() {
+            var fallback = "/webcam/?action=stream";
+            try {
+                var w = self.settings.settings.webcam;
+                var cam = ko.utils.arrayFirst((w.webcams && w.webcams()) || [], function (c) {
+                    return ko.unwrap(c.name) === ko.unwrap(w.defaultWebcam);
+                });
+                var compat = cam && ko.unwrap(cam.compat);
+                return (compat && ko.unwrap(compat.stream)) || (w.streamUrl && w.streamUrl()) || fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
         self.onTabChange = function (current, previous) {
 
             if (current == "#tab_plugin_prettygcode") {
@@ -654,10 +665,7 @@ $(function () {
 
 
                     //Create a web camera inset for the view.
-                    var camView = $("#webcam_rotator").clone();
-                    let img=camView.find("#webcam_image")
-                    img.attr("id","pg_webcam_image")
-                    $(".gwin").append(camView)
+                    $(".gwin").append('<div id="pg_webcam_rotator"><img id="pg_webcam_image"></div>')
 
                     //check url for fullscreen mode
                     if (urlParam("fullscreen"))
@@ -690,17 +698,15 @@ $(function () {
                 }
 
                 //Activate webcam view in window.
-                $(".gwin #pg_webcam_image").attr("src", "/webcam/?action=stream&" + Math.random())
-                self.controlViewModel._enableWebcam();
+                var url = webcamStreamUrl();
+                $(".gwin #pg_webcam_image").attr("src", url + (url.indexOf("?") < 0 ? "?" : "&") + Math.random())
 
             } else if (previous == "#tab_plugin_prettygcode") {
                 //todo. disable animation
 
                 //Disable camera when tab isn't visible.
                 $(".gwin #pg_webcam_image").attr("src", "")
-                self.controlViewModel._disableWebcam();
             }
-            self.controlViewModel._enableWebcam();
         };
 
         //util function
@@ -1460,7 +1466,7 @@ $(function () {
 
     OCTOPRINT_VIEWMODELS.push({
         construct: PrettyGCodeViewModel,
-        dependencies: ["settingsViewModel","loginStateViewModel", "printerProfilesViewModel","controlViewModel"],
+        dependencies: ["settingsViewModel", "printerProfilesViewModel"],
         elements: ["#tab_plugin_prettygcode"]
     });
 

@@ -100,7 +100,7 @@
     z-index:6;
 }
 
-.gwin #webcam_rotator {
+.gwin #pg_webcam_rotator {
     bottom: 20px;
     right: 40px;
     position: absolute;
@@ -109,10 +109,10 @@
     display:none;
 }
 
-.pgfullscreen .gwin #webcam_rotator {
+.pgfullscreen .gwin #pg_webcam_rotator {
     display:unset;
 }
-.pgfullscreen .gwin #webcam_rotator.pghidden {
+.pgfullscreen .gwin #pg_webcam_rotator.pghidden {
     display:none;
 }
 
