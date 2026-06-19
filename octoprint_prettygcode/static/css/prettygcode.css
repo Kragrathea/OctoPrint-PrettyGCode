@@ -17,23 +17,31 @@
     height: 100%;
     position: absolute;
 }
+.pgfullscreen #tab_plugin_prettygcode #mycanvas {
+    position: relative;
+    z-index: 2000;
+}
+.pgfullscreen #tab_plugin_prettygcode #pgstatus,
+.pgfullscreen #tab_plugin_prettygcode #myslider {
+    z-index: 2001;
+}
 #tab_plugin_prettygcode .fstoggle {
     top: 20px;
     right: 60px;
     position: absolute;
-    z-index:10;
+    z-index:2010;
 }
 #tab_plugin_prettygcode .pgsettingstoggle {
     top: 20px;
     right: 95px;
     position: absolute;
-    z-index:10;
+    z-index:2010;
 }
 .pgfullscreen #tab_plugin_prettygcode .pgstatetoggle {
     top: 20px;
     left: 20px;
     position: absolute;
-    z-index:10;
+    z-index:2010;
     display:unset;
 }
 #tab_plugin_prettygcode .pgstatetoggle {
@@ -46,7 +54,7 @@
     top: 20px;
     left: 95px;
     position: absolute;
-    z-index:10;
+    z-index:2010;
     display:unset;
 }
 #tab_plugin_prettygcode .pgfilestoggle {
@@ -56,7 +64,7 @@
     bottom: 20px;
     right: 40px;
     position: absolute;
-    z-index:10;
+    z-index:2010;
     display:unset;
 }
 #tab_plugin_prettygcode .pgcameratoggle {
@@ -86,7 +94,7 @@
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
     background: rgba(255, 255, 255, 0.2);
-    z-index:5;
+    z-index:2005;
 }
 
 .pgfullscreen #files_wrapper {
@@ -97,7 +105,7 @@
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.70);
     background: rgba(204, 204, 204, 0.9);
-    z-index:6;
+    z-index:2006;
 }
 
 .gwin #pg_webcam_rotator {
@@ -105,7 +113,7 @@
     right: 40px;
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    z-index:5;
+    z-index:2005;
     display:none;
 }
 
@@ -129,9 +137,8 @@
     right:95px;
     top:20px;
     opacity:1.0;
-    z-index:5;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    z-index:4;
+    z-index:2004;
     background: rgba(255, 255, 255, 1.0);
     opacity: 0.8;
 
@@ -254,7 +261,7 @@
     bottom: 20px;
     left: 20px;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    z-index:4;
+    z-index:2004;
     background: rgba(255, 255, 255, 0.2);
     opacity: 0.8;
 }
@@ -263,7 +270,7 @@
     left: 20px;
     bottom: 20px;
     position: absolute;
-    z-index:10;
+    z-index:2010;
     display:unset;
 }
 #tab_plugin_prettygcode .pgdashtoggle {
