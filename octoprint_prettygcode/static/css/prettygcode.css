@@ -251,8 +251,3 @@
 .pg-fullscreen .pg-hidden {
     display: none !important;
 }
-
-#tab_plugin_prettygcode code {
-    border: 1px black;
-    white-space: pre;
-}

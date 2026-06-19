@@ -436,27 +436,6 @@ $(function () {
             }
         };
 
-        self.updateCss = function (newCss) {
-            //alert(this)
-            var newCss=$("#pg_add_css").val();
-            console.log(["Update css:",newCss]);
-            localStorage.setItem('pg_add_css_val',newCss)
-            $("#pgcss").html(newCss);
-
-        }
-        self.onAfterBinding = function () {
-            $("<style id='pgcss'>")
-            .prop("type", "text/css")
-            .html("")
-            .appendTo("head");
-
-            var css = localStorage.getItem('pg_add_css_val')
-            if (css) {
-                $("#pgcss").html(css);
-                $("#pg_add_css").val(css);
-            }
-        };
-
         //Scene globals
         var camera, cameraControls,cameraLight;
         var scene, renderer;
