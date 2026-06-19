@@ -3,11 +3,36 @@
     --pg-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
 }
 
+/* === Tab header === */
+#pg-header {
+    display: flex;
+    align-items: baseline;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+#pg-header h3 {
+    margin: 0;
+}
+#pg-subtitle {
+    font-size: 13px;
+}
+#pg-header .btn {
+    margin-left: auto;
+    align-self: center;
+}
+
 /* === 3D view === */
 .pg-view {
     width: 100%;
     height: 100%;
     position: relative;
+}
+#pg-container {
+    height: 600px;
+}
+#pg-canvas {
+    width: 100%;
+    height: 100%;
 }
 
 .pg-maximized .pg-view {

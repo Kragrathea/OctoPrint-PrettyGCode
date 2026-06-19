@@ -49,8 +49,5 @@ fix = true
 [tool.ruff.lint]
 extend-select = ["I"]
 
-[tool.djlint]
-ignore="H021"
-
 [tool.codespell]
 skip = "octoprint_prettygcode/static/js/lib/*"

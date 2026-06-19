@@ -1,5 +1,7 @@
 import octoprint.plugin
 
+GITHUB_URL = "https://github.com/jacopotediosi/OctoPrint-PrettyGCode"
+
 
 class PrettyGCodePlugin(
     octoprint.plugin.AssetPlugin,
@@ -27,6 +29,9 @@ class PrettyGCodePlugin(
     def is_template_autoescaped(self):
         return True
 
+    def get_template_vars(self):
+        return dict(github_url=GITHUB_URL)
+
     def get_update_information(self):
         return dict(
             prettygcode=dict(
@@ -36,7 +41,7 @@ class PrettyGCodePlugin(
                 user="jacopotediosi",
                 repo="OctoPrint-PrettyGCode",
                 current=self._plugin_version,
-                pip="https://github.com/jacopotediosi/OctoPrint-PrettyGCode/archive/{target_version}.zip",
+                pip=GITHUB_URL + "/archive/{target_version}.zip",
             )
         )
 

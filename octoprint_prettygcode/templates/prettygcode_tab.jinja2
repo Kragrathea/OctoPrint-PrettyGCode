@@ -1,6 +1,17 @@
-<div id="pg-container" style="height:800px">
+<div id="pg-header">
+    <h3 id="injector_link">PrettyGCode</h3>
+    <span id="pg-subtitle" class="muted">A 3D G-code visualizer</span>
+    <a class="btn"
+       href="{{ plugin_prettygcode_github_url }}"
+       target="_blank"
+       rel="noopener"
+       title="View on GitHub">
+        <i class="fa-brands fa-github"></i>
+    </a>
+</div>
+<div id="pg-container">
     <div class="pg-view">
-        <canvas id="pg-canvas" style="width:100%;height:100%""></canvas>
+        <canvas id="pg-canvas"></canvas>
         <div class="pg-status">T:0/0 B:0/0</div>
         <div id="pg-view-settings" class="pg-hidden">View Settings</div>
         <button class="pg-toggle pg-maximized-only pg-toggle-state"
@@ -29,28 +40,4 @@
             <i class="fa-solid fa-video"></i>
         </button>
     </div>
-</div>
-<h3 id="injector_link">PrettyGCode</h3>
-A GCode visualizer.
-<br>
-<br>
-<button id="pginstructions_button" onClick='$("#pginstructions").toggle();'>Show/Hide Instructions</button>
-<div style="display:none" id="pginstructions">
-    <h4>Syncing</h4>
-    Syncing to print progress is harder than it sounds. The built in OctoPrint GCode visualizer and PrettyGCode uses the <b>File Position</b> to sync the line drawing in the view. This is actually when the line of GCode is read from the file on disk and NOT when it is actually printed. In this plugin I also display the nozzle in the 3d view. This is calculated based on when the GCode line is <b>sent</b> to the printer. This means the print head should be closer to where it actually is. But it will not match the lines being drawn in the 3d view. It is a compromise.
-    <h4>Performance and WebGL:</h4>
-    PrettyGCode uses WebGL and Three.js for rendering. WebGL may not be supported on all browsers. And performance maybe slow on older computers, especially with larger GCode models.
-    <h5>Tested browsers</h5>
-    <ul>
-        <li>Chrome</li>
-        <li>Firefox</li>
-        <li>Edge</li>
-        <li>Android Chrome</li>
-    </ul>
-    <h4>Streaming via OBS Studio:</h4>
-    My primary use for this plugin is to visually show print status when I stream my prints on Twitch. I use OBSStudio for streaming, but to get the browser plugin to render the 3D view you need to launch OBS with the --enable-gpu flag:
-    <br>
-    <h4>PrettyGCode Homepage:</h4>
-    <a id="fs_link"
-       href="https://github.com/jacopotediosi/OctoPrint-PrettyGCode">PrettyGCode homepage</a>
 </div>
