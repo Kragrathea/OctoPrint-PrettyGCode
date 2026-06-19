@@ -429,7 +429,7 @@ $(function () {
                         let parts = e.substr(recvLogPrefix.length).split("@");//remove prefix and checksum.
                         let temps = parts[0];
                         let statusStr = temps;
-                        $(".pgstatus").text(statusStr);
+                        $(".pg-status").text(statusStr);
 
                     }
                 })
@@ -498,24 +498,24 @@ $(function () {
 
         function updateWindowStates() {
             if (pgSettings.showState) {
-                $("#state_wrapper").removeClass("pghidden");
+                $("#state_wrapper").removeClass("pg-hidden");
             } else {
-                $("#state_wrapper").addClass("pghidden");
+                $("#state_wrapper").addClass("pg-hidden");
             }
             if (pgSettings.showFiles) {
-                $("#files_wrapper").removeClass("pghidden");
+                $("#files_wrapper").removeClass("pg-hidden");
             } else {
-                $("#files_wrapper").addClass("pghidden");
+                $("#files_wrapper").addClass("pg-hidden");
             }
             if (pgSettings.showWebcam) {
-                $(".gwin #pg_webcam_rotator").removeClass("pghidden");
+                $(".pg-view #pg-webcam").removeClass("pg-hidden");
             } else {
-                $(".gwin #pg_webcam_rotator").addClass("pghidden");
+                $(".pg-view #pg-webcam").addClass("pg-hidden");
             }
             if (pgSettings.showDash) {
-                $("#tab_plugin_dashboard").removeClass("pghidden");
+                $("#tab_plugin_dashboard").removeClass("pg-hidden");
             } else {
-                $("#tab_plugin_dashboard").addClass("pghidden");
+                $("#tab_plugin_dashboard").addClass("pg-hidden");
             }
             updateWebcamStream();
         }
@@ -544,8 +544,8 @@ $(function () {
         }
 
         function updateWebcamStream() {
-            var img = $(".gwin #pg_webcam_image");
-            var show = OctoPrint.coreui.selectedTab === "#tab_plugin_prettygcode" && pgSettings.showWebcam && img.closest(".page-container").hasClass("pgfullscreen");
+            var img = $(".pg-view #pg-webcam-image");
+            var show = OctoPrint.coreui.selectedTab === "#tab_plugin_prettygcode" && pgSettings.showWebcam && img.closest(".page-container").hasClass("pg-fullscreen");
             if (show && !img.attr("src")) {
                 var url = webcamStreamUrl();
                 img.attr("src", url + (url.indexOf("?") < 0 ? "?" : "&") + Math.random());
@@ -583,7 +583,7 @@ $(function () {
 
                     gui.useLocalStorage=true;
 
-                    $('#mygui').append(gui.domElement);
+                    $('#pg-view-settings').append(gui.domElement);
 
                     gui.remember(pgSettings);
 
@@ -653,9 +653,9 @@ $(function () {
                         gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
 
                     //note this is an octoprint version of a bootstrap slider. not a jquery ui slider.
-                    $('.gwin').append($('<div id="myslider-vertical" style=""></div>'));
-                    $("#myslider-vertical").slider({
-                        id: "myslider",
+                    $('.pg-view').append($('<div id="pg-layer-slider" style=""></div>'));
+                    $("#pg-layer-slider").slider({
+                        id: "pg-layer-slider-ui",
                         orientation: "vertical",
                         reversed: true,
                         range: "min",
@@ -664,7 +664,7 @@ $(function () {
                         value: 100,
                     }).on("slide", function (event, ui) {
                         currentLayerNumber = event.value;
-                        $("#myslider .slider-handle").text(currentLayerNumber);
+                        $("#pg-layer-slider-ui .slider-handle").text(currentLayerNumber);
                     }).on("slideStart", function (event, ui) {
                         //console.log("slideStart");
                         forceNoSync=true;
@@ -672,38 +672,38 @@ $(function () {
                         //console.log("slideStop");
                         forceNoSync=false;
                     });
-                    $("#myslider").attr("style", "height:90%;position:absolute;top:5%;right:20px")
+                    $("#pg-layer-slider-ui").attr("style", "height:90%;position:absolute;top:5%;right:20px")
 
 
 
                     //Create a web camera inset for the view.
-                    $(".gwin").append('<div id="pg_webcam_rotator"><img id="pg_webcam_image"></div>')
+                    $(".pg-view").append('<div id="pg-webcam"><img id="pg-webcam-image"></div>')
 
                     //check url for fullscreen mode
                     if (urlParam("fullscreen"))
-                        $(".page-container").addClass("pgfullscreen");
+                        $(".page-container").addClass("pg-fullscreen");
 
                     //setup window toggle buttons
-                    $(".fstoggle").on("click", function () {
-                        $(".page-container").toggleClass("pgfullscreen");
+                    $(".pg-toggle-fullscreen").on("click", function () {
+                        $(".page-container").toggleClass("pg-fullscreen");
                         updateWebcamStream();
                     });
-                    $(".pgsettingstoggle").on("click", function () {
-                        $("#mygui").toggleClass("pghidden");
+                    $(".pg-toggle-settings").on("click", function () {
+                        $("#pg-view-settings").toggleClass("pg-hidden");
                     });
-                    $(".pgstatetoggle").on("click", function () {
+                    $(".pg-toggle-state").on("click", function () {
                         pgSettings.showState=!pgSettings.showState;
                         updateWindowStates();
                     });
-                    $(".pgfilestoggle").on("click", function () {
+                    $(".pg-toggle-files").on("click", function () {
                         pgSettings.showFiles=!pgSettings.showFiles;
                         updateWindowStates();
                     });
-                    $(".pgcameratoggle").on("click", function () {
+                    $(".pg-toggle-webcam").on("click", function () {
                         pgSettings.showWebcam=!pgSettings.showWebcam;
                         updateWindowStates();
                     });
-                    $(".pgdashtoggle").on("click", function () {
+                    $(".pg-toggle-dashboard").on("click", function () {
                         pgSettings.showDash=!pgSettings.showDash;;
                         updateWindowStates();
                     });
@@ -965,10 +965,10 @@ $(function () {
                 sceneBounds.getSize(bsize);
 
                 //update ui slider
-                if ($("#myslider-vertical").length) {
-                    $("#myslider-vertical").slider("setMax", layers.length)
-                    $("#myslider-vertical").slider("setValue", layers.length,false,true)
-                    $("#myslider .slider-handle").text(layers.length);
+                if ($("#pg-layer-slider").length) {
+                    $("#pg-layer-slider").slider("setMax", layers.length)
+                    $("#pg-layer-slider").slider("setValue", layers.length,false,true)
+                    $("#pg-layer-slider-ui .slider-handle").text(layers.length);
 
                     currentLayerNumber = layers.length;
                 }
@@ -1235,7 +1235,7 @@ $(function () {
         }
 
         function initThree() {
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("mycanvas"),antialias: pgSettings.antialias });
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("pg-canvas"),antialias: pgSettings.antialias });
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
 
@@ -1252,7 +1252,7 @@ $(function () {
             CameraControls.install({ THREE: THREE });
             clock = new THREE.Clock();
 
-            var canvas = $("#mycanvas");
+            var canvas = $("#pg-canvas");
             cameraControls = new CameraControls(camera, canvas[0]);
 
             //todo handle other than lowerleft
@@ -1348,8 +1348,8 @@ $(function () {
                             gcodeProxy.highlightLayer(calculatedLayer,highlightMaterial);
                         }
 
-                        $("#myslider-vertical").slider('setValue', calculatedLayer, false,true);
-                        $("#myslider .slider-handle").text(calculatedLayer);
+                        $("#pg-layer-slider").slider('setValue', calculatedLayer, false,true);
+                        $("#pg-layer-slider-ui .slider-handle").text(calculatedLayer);
 
                         needRender=true;
                     }
