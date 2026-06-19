@@ -84,7 +84,7 @@
     background: rgba(204, 204, 204, 0.9);
     z-index: 2006;
 }
-/* View Settings (dat.gui host) */
+/* View Settings (lil-gui host) */
 #pg-view-settings {
     position: absolute;
     right: 95px;
@@ -96,25 +96,15 @@
 .pg-fullscreen #pg-view-settings {
     z-index: 2004;
 }
-#pg-view-settings .property-name {
-    width: 70%;
-}
-#pg-view-settings .c {
-    width: 30%;
-}
-.pg-help {
-    display: inline-block;
-    margin-left: 5px;
-    width: 13px;
-    height: 13px;
-    line-height: 13px;
-    text-align: center;
-    font-size: 10px;
-    font-weight: bold;
-    color: #fff;
-    background: #806787;
-    border-radius: 50%;
-    cursor: help;
+#pg-view-settings .lil-gui {
+    --name-width: 62%;
+    --background-color: #fafafa;
+    --text-color: #555;
+    --title-background-color: #e8e8e8;
+    --title-text-color: #555;
+    --widget-color: #e9e9e9;
+    --hover-color: #eee;
+    --focus-color: #ddd;
 }
 /* Dashboard plugin */
 .pg-fullscreen #tab_plugin_dashboard {
@@ -189,79 +179,6 @@
     width: 24px;
 }
 #pg-layer-slider-ui .tooltip {
-    display: none;
-}
-
-/* === dat.gui theming === */
-.pg-view .dg {
-    color: #555;
-    text-shadow: none !important;
-}
-.pg-view .dg li:not(.folder) {
-    background: #fafafa;
-    border-bottom: 1px solid #ddd;
-}
-.pg-view .dg li.title {
-    background: #e8e8e8 url(data:image/gif;base64,R0lGODlhBQAFAJEAAP////Pz8////////yH5BAEAAAIALAAAAAAFAAUAAAIIlI+hKgFxoCgAOw==) 6px 10px no-repeat;
-}
-.pg-view .dg .cr.function:hover,
-.pg-view .dg .cr.boolean:hover {
-    background: #fff;
-}
-.pg-view .dg .c input[type=text] {
-    background: #e9e9e9;
-}
-.pg-view .dg .c input[type=text]:hover {
-    background: #eee;
-}
-.pg-view .dg .c input[type=text]:focus {
-    background: #eee;
-    color: #555;
-}
-.pg-view .dg .c .slider {
-    background: #e9e9e9;
-}
-.pg-view .dg .c .slider:hover {
-    background: #eee;
-}
-.pg-view .dg.main::-webkit-scrollbar {
-    background: #fafafa;
-}
-.pg-view .dg.main::-webkit-scrollbar-thumb {
-    background: #bbb;
-}
-.pg-view .dg.main .close-button {
-    background-color: #ccc;
-}
-.pg-view .dg.main .close-button:hover {
-    background-color: #ddd;
-}
-.pg-view .dg.main.taller-than-window .close-button {
-    border-top: 1px solid #ddd;
-}
-.pg-view .dg .close-button {
-    display: none;
-}
-.pg-view .has-save .save-row::before {
-    content: "Preset: ";
-}
-.pg-view .dg li.save-row {
-    background: black;
-    color: yellow;
-    display: none;
-}
-.pg-view .dg li.save-row .button {
-    background: black;
-    color: yellow;
-    text-shadow: none !important;
-}
-.pg-view .dg li.save-row select {
-    height: 100%;
-}
-.pg-view .dg li.save-row .button.revert {
-    display: none;
-}
-.pg-view .dg li.save-row .button.gears {
     display: none;
 }
 

@@ -19,7 +19,7 @@ class PrettyGCodePlugin(
                 "js/lib/LineSegments2.js",
                 "js/lib/Line2.js",
                 "js/lib/camera-controls.js",
-                "js/lib/dat.gui.js",
+                "js/lib/lil-gui.umd.min.js",
             ],
             css=["css/prettygcode.css"],
         )

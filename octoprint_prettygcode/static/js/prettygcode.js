@@ -467,13 +467,36 @@ $(function () {
             this.showState=true;
             this.showWebcam=false;
             this.showFiles=false;
-            this.showDash=false;
+            this.showDashboard=false;
             this.antialias=true;
 
             this.showNozzle=true;
             this.highlightCurrentLayer=true;
+
+            //overlay window sizes (0 = unset, fall back to default)
+            this.webcamHeight=0;
+            this.dashboardScale=0;
         };
         var pgSettings = new PGSettings();
+
+        //persist settings in localStorage
+        var PG_SETTINGS_KEY = 'pg-settings';
+        function loadSettings() {
+            try {
+                var saved = JSON.parse(localStorage.getItem(PG_SETTINGS_KEY));
+                for (var k in saved)
+                    if (k in pgSettings && typeof pgSettings[k] !== 'function') pgSettings[k] = saved[k];
+            } catch (e) {}
+        }
+        function saveSettings() {
+            try {
+                var data = {};
+                for (var k in pgSettings)
+                    if (typeof pgSettings[k] !== 'function') data[k] = pgSettings[k];
+                localStorage.setItem(PG_SETTINGS_KEY, JSON.stringify(data));
+            } catch (e) {}
+        }
+        loadSettings();
 
         function updateWindowStates() {
             if (pgSettings.showState) {
@@ -492,13 +515,14 @@ $(function () {
             } else {
                 $(".pg-view #pg-webcam").addClass("pg-hidden");
             }
-            if (pgSettings.showDash) {
+            if (pgSettings.showDashboard) {
                 $("#tab_plugin_dashboard").removeClass("pg-hidden");
                 if ($(".page-container").hasClass("pg-fullscreen")) applyDashDefaultScale();
             } else {
                 $("#tab_plugin_dashboard").addClass("pg-hidden");
             }
             updateWebcamStream();
+            saveSettings();
         }
 
         var bedVolume = {
@@ -511,7 +535,7 @@ $(function () {
         var viewInitialized = false;
 
         // Resizable overlay windows (webcam & dashboard)
-        var dashScale = parseFloat(localStorage.getItem("pg_dash_scale")) || 1;
+        var dashScale = pgSettings.dashboardScale || 1;
         function setDashScale(s) {
             dashScale = s;
             var el = document.getElementById("tab_plugin_dashboard");
@@ -524,12 +548,11 @@ $(function () {
             return Math.min(600, Math.max(200, Math.round(window.innerHeight / 3)));
         }
         function applyWebcamHeight() {
-            var saved = parseFloat(localStorage.getItem("pg_webcam_height"));
-            $("#pg-webcam").css("height", (saved || defaultOverlayHeight()) + "px");
+            $("#pg-webcam").css("height", (pgSettings.webcamHeight || defaultOverlayHeight()) + "px");
         }
         // Scale the dashboard so its natural height matches the default
         function applyDashDefaultScale() {
-            if (localStorage.getItem("pg_dash_scale")) return; // user picked a size
+            if (pgSettings.dashboardScale) return; // user picked a size
             var el = document.getElementById("tab_plugin_dashboard");
             if (!el) return;
             el.style.setProperty("--pg-dash-scale", 1); // measure unscaled height
@@ -574,7 +597,8 @@ $(function () {
                 $("#pg-webcam").css("height", h + "px");
             },
             persist: function () {
-                localStorage.setItem("pg_webcam_height", Math.round($("#pg-webcam").height()));
+                pgSettings.webcamHeight = Math.round($("#pg-webcam").height());
+                saveSettings();
             }
         };
 
@@ -585,7 +609,7 @@ $(function () {
                 return { size: dashScale, w: r.width, h: r.height };
             },
             apply: dashApply,
-            persist: function () { localStorage.setItem("pg_dash_scale", dashScale); }
+            persist: function () { pgSettings.dashboardScale = dashScale; saveSettings(); }
         };
 
         function webcamStreamUrl() {
@@ -636,39 +660,30 @@ $(function () {
                     updateBedVolume();
 
                     //simple gui
-                    dat.GUI.TEXT_OPEN="View Options"
-                    dat.GUI.TEXT_CLOSED="View Options"
-                    gui = new dat.GUI({ autoPlace: false,name:"View Options",closed:false,closeOnTop:true,useLocalStorage:true });
-
-                    gui.useLocalStorage=true;
-
+                    gui = new lil.GUI({ autoPlace: false, title: "View Options" });
                     $('#pg-view-settings').append(gui.domElement);
 
-                    gui.remember(pgSettings);
+                    gui.onChange(saveSettings);
 
-                    //attach a help tooltip and a "?" icon to a controller row
+                    //attach a help tooltip to a controller row
                     function addHelp(controller, text) {
-                        controller.__li.setAttribute('title', text);
-                        var help = document.createElement('span');
-                        help.className = 'pg-help';
-                        help.textContent = '?';
-                        controller.__li.querySelector('.property-name').appendChild(help);
+                        controller.domElement.title = text;
                         return controller;
                     }
 
-                    addHelp(gui.add(pgSettings, 'darkMode').onFinishChange(function(checked) {
+                    addHelp(gui.add(pgSettings, 'darkMode').name("Dark mode").onFinishChange(function(checked) {
                         var color = checked ? darkBackground : lightBackground;
                         scene.background = new THREE.Color(color);
                         renderer.render(scene, camera);
                     }), "Use a dark background for the 3D view.");
 
-                    addHelp(gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode),
+                    addHelp(gui.add(pgSettings, 'showMirror').name("Mirror").onFinishChange(pgSettings.reloadGcode),
                         "Display a mirrored version of the object below the print bed. This looks better and lets you see additional parts of the GCode but is a bit slower.");
-                    addHelp(gui.add(pgSettings, 'orbitWhenIdle'),
+                    addHelp(gui.add(pgSettings, 'orbitWhenIdle').name("Orbit when idle"),
                         "After 5 seconds with no mouse/camera movement the camera slowly orbits around the center.");
-                    addHelp(gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode),
+                    addHelp(gui.add(pgSettings, 'fatLines').name("Thick lines").onFinishChange(pgSettings.reloadGcode),
                         "Display lines with thickness. This looks much better but can cause a performance hit on slower machines.");
-                    addHelp(gui.add(pgSettings, 'antialias').onFinishChange(
+                    addHelp(gui.add(pgSettings, 'antialias').name("Antialiasing").onFinishChange(
                         function() {
                             new PNotify({
                                 title: "Reload page required",
@@ -678,17 +693,17 @@ $(function () {
                         }
                     ), "Smooth jagged edges in the 3D view. Changes take effect after refreshing the page.");
 
-                    addHelp(gui.add(pgSettings, 'showNozzle'),
+                    addHelp(gui.add(pgSettings, 'showNozzle').name("Show nozzle"),
                         "Show a 3D model of the nozzle at the position currently being sent to the printer.");
 
                     var folder = gui.addFolder('Windows');//hidden.
                     folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
                     folder.add(pgSettings, 'showWebcam').onFinishChange(updateWindowStates).listen();
                     folder.add(pgSettings, 'showFiles').onFinishChange(updateWindowStates).listen();
-                    folder.add(pgSettings, 'showDash').onFinishChange(updateWindowStates).listen();
+                    folder.add(pgSettings, 'showDashboard').onFinishChange(updateWindowStates).listen();
 
                     //dont show Windows. Automatically handled by toggle buttons
-                    $(folder.domElement).attr("hidden", true);
+                    folder.hide();
 
                     initThree();
 
@@ -789,7 +804,7 @@ $(function () {
                         updateWindowStates();
                     });
                     $(".pg-toggle-dashboard").on("click", function () {
-                        pgSettings.showDash=!pgSettings.showDash;;
+                        pgSettings.showDashboard=!pgSettings.showDashboard;;
                         updateWindowStates();
                     });
                     updateWindowStates();
