@@ -646,16 +646,29 @@ $(function () {
 
                     gui.remember(pgSettings);
 
-                    gui.add(pgSettings, 'darkMode').onFinishChange(function(checked) {
+                    //attach a help tooltip and a "?" icon to a controller row
+                    function addHelp(controller, text) {
+                        controller.__li.setAttribute('title', text);
+                        var help = document.createElement('span');
+                        help.className = 'pg-help';
+                        help.textContent = '?';
+                        controller.__li.querySelector('.property-name').appendChild(help);
+                        return controller;
+                    }
+
+                    addHelp(gui.add(pgSettings, 'darkMode').onFinishChange(function(checked) {
                         var color = checked ? darkBackground : lightBackground;
                         scene.background = new THREE.Color(color);
                         renderer.render(scene, camera);
-                    });
+                    }), "Use a dark background for the 3D view.");
 
-                    gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode);
-                    gui.add(pgSettings, 'orbitWhenIdle');
-                    gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode);
-                    gui.add(pgSettings, 'antialias').onFinishChange(
+                    addHelp(gui.add(pgSettings, 'showMirror').onFinishChange(pgSettings.reloadGcode),
+                        "Display a mirrored version of the object below the print bed. This looks better and lets you see additional parts of the GCode but is a bit slower.");
+                    addHelp(gui.add(pgSettings, 'orbitWhenIdle'),
+                        "After 5 seconds with no mouse/camera movement the camera slowly orbits around the center.");
+                    addHelp(gui.add(pgSettings, 'fatLines').onFinishChange(pgSettings.reloadGcode),
+                        "Display lines with thickness. This looks much better but can cause a performance hit on slower machines.");
+                    addHelp(gui.add(pgSettings, 'antialias').onFinishChange(
                         function() {
                             new PNotify({
                                 title: "Reload page required",
@@ -663,9 +676,10 @@ $(function () {
                                 type: "info"
                             });
                         }
-                    );
+                    ), "Smooth jagged edges in the 3D view. Changes take effect after refreshing the page.");
 
-                    gui.add(pgSettings, 'showNozzle');
+                    addHelp(gui.add(pgSettings, 'showNozzle'),
+                        "Show a 3D model of the nozzle at the position currently being sent to the printer.");
 
                     var folder = gui.addFolder('Windows');//hidden.
                     folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();

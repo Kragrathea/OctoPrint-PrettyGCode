@@ -96,6 +96,26 @@
 .pg-fullscreen #pg-view-settings {
     z-index: 2004;
 }
+#pg-view-settings .property-name {
+    width: 70%;
+}
+#pg-view-settings .c {
+    width: 30%;
+}
+.pg-help {
+    display: inline-block;
+    margin-left: 5px;
+    width: 13px;
+    height: 13px;
+    line-height: 13px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: #fff;
+    background: #806787;
+    border-radius: 50%;
+    cursor: help;
+}
 /* Dashboard plugin */
 .pg-fullscreen #tab_plugin_dashboard {
     display: unset;
