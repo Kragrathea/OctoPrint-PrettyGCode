@@ -28,6 +28,9 @@
 .pg-fullscreen {
     color: black;
 }
+html:has(.page-container.pg-fullscreen) {
+    overflow: hidden;
+}
 
 /* === Toggle buttons === */
 .pg-toggle {

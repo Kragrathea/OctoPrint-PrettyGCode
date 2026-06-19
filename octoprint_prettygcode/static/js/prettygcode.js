@@ -794,7 +794,11 @@ $(function () {
 
                     //setup window toggle buttons
                     $(".pg-toggle-fullscreen").on("click", function () {
-                        $(".page-container").toggleClass("pg-fullscreen");
+                        var fs = $(".page-container").toggleClass("pg-fullscreen").hasClass("pg-fullscreen");
+                        var url = new URL(window.location.href);
+                        if (fs) url.searchParams.set("fullscreen", "1");
+                        else url.searchParams.delete("fullscreen");
+                        history.replaceState(null, "", url);
                         updateWindowStates();
                     });
                     $(".pg-toggle-settings").on("click", function () {
