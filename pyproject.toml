@@ -27,6 +27,7 @@ Homepage = "https://github.com/jacopotediosi/OctoPrint-PrettyGCode"
 [project.optional-dependencies]
 develop = [
     "go-task-bin",
+    "nodeenv",
 ]
 
 [project.readme]

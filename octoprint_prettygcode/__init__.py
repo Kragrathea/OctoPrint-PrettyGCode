@@ -12,16 +12,9 @@ class PrettyGCodePlugin(
     def get_assets(self):
         return dict(
             js=[
-                "js/prettygcode.js",
-                "js/lib/three.min.js",
-                "js/lib/LineSegmentsGeometry.js",
-                "js/lib/LineGeometry.js",
-                "js/lib/OBJLoader.js",
-                "js/lib/LineMaterial.js",
-                "js/lib/LineSegments2.js",
-                "js/lib/Line2.js",
-                "js/lib/camera-controls.js",
+                "js/lib/pg-libs.bundle.js",  # frontend libs, bundled by `task build-frontend`
                 "js/lib/lil-gui.umd.min.js",
+                "js/prettygcode.js",
             ],
             css=["css/prettygcode.css"],
         )

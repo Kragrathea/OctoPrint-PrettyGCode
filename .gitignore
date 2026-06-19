@@ -6,6 +6,5 @@ build
 dist
 *.egg*
 .DS_Store
-/.vs
-/node_modules/three
-.vscode/*
+node_modules
+.vscode

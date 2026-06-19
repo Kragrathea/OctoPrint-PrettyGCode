@@ -36,6 +36,15 @@ tasks:
         cmds:
           - python -m build --wheel
 
+    build-frontend:
+        desc: Builds frontend
+        preconditions:
+          - sh: command -v npm
+            msg: "npm not found. Run 'python -m pip install -e .[develop]' then 'nodeenv -p' to provision Node.js."
+        cmds:
+          - npm install
+          - npm run build
+
     ### Translation related
 
     babel-new:

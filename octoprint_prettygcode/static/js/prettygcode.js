@@ -918,7 +918,7 @@ $(function () {
                 //transparent: true,
                 //opacity: 0.5,
                 //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
-                vertexColors: THREE.VertexColors,
+                vertexColors: true,
             });
             //todo. handle window resize
             curMaterial.resolution.set(500, 500);
@@ -926,7 +926,7 @@ $(function () {
             //for plain lines
             var curLineBasicMaterial = new THREE.LineBasicMaterial( {
                 color: 0xffffff,
-                vertexColors: THREE.VertexColors
+                vertexColors: true
             } );
 
             var gcodeGroup = new THREE.Group();
@@ -995,17 +995,17 @@ $(function () {
                     if (child.name.startsWith("layer#")) {
                         if (child.userData.layerNumber<layerNumber) {
 
-                            if (!child.visible || child.geometry.maxInstancedCount!=child.userData.numLines)
+                            if (!child.visible || child.geometry.instanceCount!=child.userData.numLines)
                                 needUpdate = true;
 
                             child.visible = true;
-                            child.geometry.maxInstancedCount=child.userData.numLines;
+                            child.geometry.instanceCount=child.userData.numLines;
                         } else if (child.userData.layerNumber==layerNumber) {
-                            if (!child.visible || child.geometry.maxInstancedCount!=Math.min(lineNumber,child.userData.numLines))
+                            if (!child.visible || child.geometry.instanceCount!=Math.min(lineNumber,child.userData.numLines))
                                 needUpdate = true;
 
                             child.visible = true;
-                            child.geometry.maxInstancedCount=Math.min(lineNumber,child.userData.numLines);
+                            child.geometry.instanceCount=Math.min(lineNumber,child.userData.numLines);
                         } else {
                             if (child.visible)
                                 needUpdate = true;
@@ -1026,7 +1026,7 @@ $(function () {
                         if (fpMax<filePosition) { //way before.
                             child.visible = true;
 
-                            child.geometry.maxInstancedCount=child.userData.numLines;
+                            child.geometry.instanceCount=child.userData.numLines;
                         } else if (fpMin>filePosition) { //way after
                             child.visible = false;
                         } else { //must be during. right?
@@ -1042,7 +1042,7 @@ $(function () {
                             if (pgSettings.showMirror)
                                 count=count*2;
 
-                            child.geometry.maxInstancedCount=Math.min(count,child.userData.numLines);
+                            child.geometry.instanceCount=Math.min(count,child.userData.numLines);
 
                             syncLayerNumber = child.userData.layerNumber
                         }
@@ -1126,18 +1126,18 @@ $(function () {
             function addObject(layer, extruding) {
                 if (layer.vertex.length > 2) { //Something to draw?
                     if (pgSettings.fatLines) {//fancy lines
-                        var geo = new THREE.LineGeometry();
+                        var geo = new THREE.LineSegmentsGeometry();
                         geo.setPositions(layer.vertex);
                         geo.setColors(layer.colors)
-                        var line = new THREE.Line2(geo, curMaterial);
+                        var line = new THREE.LineSegments2(geo, curMaterial);
                         line.name = 'layer#' + layers.length;
                         line.userData={layerZ:layer.z,layerNumber:layers.length,numLines:layer.vertex.length/6,filePositions:layer.filePositions};// 6 because 2 x triplets
                         gcodeGroup.add(line);
                         //line.renderOrder = 2;
                     } else {//plain lines
                         var geo = new THREE.BufferGeometry();
-                        geo.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array(layer.vertex), 3 ) );
-                        geo.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array(layer.colors), 3 ) );
+                        geo.setAttribute( 'position', new THREE.BufferAttribute( new Float32Array(layer.vertex), 3 ) );
+                        geo.setAttribute( 'color', new THREE.BufferAttribute( new Float32Array(layer.colors), 3 ) );
                         var line = new THREE.LineSegments( geo, curLineBasicMaterial );
                         line.name = 'layer#' + layers.length;
                         line.userData={layerZ:layer.z,layerNumber:layers.length,numLines:layer.vertex.length/6,filePositions:layer.filePositions};
@@ -1369,6 +1369,8 @@ $(function () {
         }
 
         function initThree() {
+            THREE.ColorManagement.enabled = false;
+
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("pg-canvas"),antialias: pgSettings.antialias });
             //todo. is this right?
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -1411,6 +1413,7 @@ $(function () {
 
             //add a light. might not be needed.
             var light = new THREE.PointLight(0xffffff);
+            light.decay = 0;
             light.position.set(0, 0,-bedVolume.height);
             scene.add(light);
 
@@ -1419,6 +1422,7 @@ $(function () {
             // scene.add(light);
 
             cameraLight = new THREE.PointLight(0xffffff);
+            cameraLight.decay = 0;
             cameraLight.position.copy(camera.position);
             scene.add(cameraLight);
 
@@ -1433,7 +1437,8 @@ $(function () {
             //Semi-transparent plane to represent the bed.
             updateGridMesh();
 
-            cubeCamera = new THREE.CubeCamera( 1, 100000, 128 );
+            var cubeRenderTarget = new THREE.WebGLCubeRenderTarget(128);
+            cubeCamera = new THREE.CubeCamera(1, 100000, cubeRenderTarget);
             cubeCamera.position.set(bedVolume.width/2, bedVolume.depth/2,10);
             scene.add( cubeCamera );
             cubeCamera.update( renderer, scene );
@@ -1450,7 +1455,7 @@ $(function () {
                     //transparent: true,
                     //opacity: 0.5,
                     //color: new THREE.Color(curColorHex),// rainbow.getColor(layers.length % 64).getHex()
-                    vertexColors: THREE.VertexColors,
+                    vertexColors: true,
                 });
                 highlightMaterial.resolution.set(500, 500);
             }
@@ -1516,9 +1521,7 @@ $(function () {
                     //console.log(nv);
                     //highlightMaterial.uniforms.linewidth.value=nv*15;
                     nv=0.5;
-                    highlightMaterial.uniforms.diffuse.value.r=nv;
-                    highlightMaterial.uniforms.diffuse.value.g=nv;
-                    highlightMaterial.uniforms.diffuse.value.b=nv;
+                    highlightMaterial.color.setRGB(nv, nv, nv);
                 }
 
                 cameraControls.dollyToCursor = true;//todo. needed every frame?
