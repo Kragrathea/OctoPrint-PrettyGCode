@@ -471,6 +471,7 @@ $(function () {
             this.antialias=true;
 
             this.showNozzle=true;
+            this.showStatusBar=true;
             this.highlightCurrentLayer=true;
 
             //overlay window sizes (0 = unset, fall back to default)
@@ -520,6 +521,11 @@ $(function () {
                 if ($(".page-container").hasClass("pg-fullscreen")) applyDashDefaultScale();
             } else {
                 $("#tab_plugin_dashboard").addClass("pg-hidden");
+            }
+            if (pgSettings.showStatusBar) {
+                $(".pg-status").removeClass("pg-hidden");
+            } else {
+                $(".pg-status").addClass("pg-hidden");
             }
             updateWebcamStream();
             saveSettings();
@@ -695,6 +701,9 @@ $(function () {
 
                     addHelp(gui.add(pgSettings, 'showNozzle').name("Show nozzle"),
                         "Show a 3D model of the nozzle at the position currently being sent to the printer.");
+
+                    addHelp(gui.add(pgSettings, 'showStatusBar').name("Status bar").onFinishChange(updateWindowStates),
+                        "Show the temperature status bar across the top of the view.");
 
                     var folder = gui.addFolder('Windows');//hidden.
                     folder.add(pgSettings, 'showState').onFinishChange(updateWindowStates).listen();
