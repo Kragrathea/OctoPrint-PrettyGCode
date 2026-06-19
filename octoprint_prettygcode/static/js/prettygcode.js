@@ -517,6 +517,7 @@ $(function () {
             } else {
                 $("#tab_plugin_dashboard").addClass("pghidden");
             }
+            updateWebcamStream();
         }
 
         var bedVolume = {
@@ -539,6 +540,17 @@ $(function () {
                 return (compat && ko.unwrap(compat.stream)) || (w.streamUrl && w.streamUrl()) || fallback;
             } catch (e) {
                 return fallback;
+            }
+        }
+
+        function updateWebcamStream() {
+            var img = $(".gwin #pg_webcam_image");
+            var show = OctoPrint.coreui.selectedTab === "#tab_plugin_prettygcode" && pgSettings.showWebcam && img.closest(".page-container").hasClass("pgfullscreen");
+            if (show && !img.attr("src")) {
+                var url = webcamStreamUrl();
+                img.attr("src", url + (url.indexOf("?") < 0 ? "?" : "&") + Math.random());
+            } else if (!show && img.attr("src")) {
+                img.attr("src", "");
             }
         }
 
@@ -674,6 +686,7 @@ $(function () {
                     //setup window toggle buttons
                     $(".fstoggle").on("click", function () {
                         $(".page-container").toggleClass("pgfullscreen");
+                        updateWebcamStream();
                     });
                     $(".pgsettingstoggle").on("click", function () {
                         $("#mygui").toggleClass("pghidden");
@@ -697,15 +710,10 @@ $(function () {
                     updateWindowStates();
                 }
 
-                //Activate webcam view in window.
-                var url = webcamStreamUrl();
-                $(".gwin #pg_webcam_image").attr("src", url + (url.indexOf("?") < 0 ? "?" : "&") + Math.random())
+                updateWebcamStream();
 
             } else if (previous == "#tab_plugin_prettygcode") {
-                //todo. disable animation
-
-                //Disable camera when tab isn't visible.
-                $(".gwin #pg_webcam_image").attr("src", "")
+                updateWebcamStream();
             }
         };
 
