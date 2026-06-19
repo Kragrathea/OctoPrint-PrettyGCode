@@ -10,25 +10,25 @@
     position: relative;
 }
 
-.pg-fullscreen .pg-view {
+.pg-maximized .pg-view {
     top: 0px;
     left: 0px;
     width: 100%;
     height: 100%;
     position: absolute;
 }
-.pg-fullscreen #pg-canvas {
+.pg-maximized #pg-canvas {
     position: relative;
     z-index: 2000;
 }
-.pg-fullscreen .pg-status,
-.pg-fullscreen #pg-layer-slider-ui {
+.pg-maximized .pg-status,
+.pg-maximized #pg-layer-slider-ui {
     z-index: 2001;
 }
-.pg-fullscreen {
+.pg-maximized {
     color: black;
 }
-html:has(.page-container.pg-fullscreen) {
+html:has(.page-container.pg-maximized) {
     overflow: hidden;
 }
 
@@ -36,17 +36,18 @@ html:has(.page-container.pg-fullscreen) {
 .pg-toggle {
     position: absolute;
 }
-.pg-fullscreen .pg-toggle {
+.pg-maximized .pg-toggle {
     z-index: 2010;
 }
-.pg-fullscreen-only {
+.pg-maximized-only {
     display: none;
 }
-.pg-fullscreen .pg-fullscreen-only {
+.pg-maximized .pg-maximized-only {
     display: unset;
 }
 .pg-toggle-fullscreen { top: 20px; right: 60px; }
-.pg-toggle-settings { top: 20px; right: 95px; }
+.pg-toggle-maximized { top: 20px; right: 95px; }
+.pg-toggle-settings { top: 20px; right: 130px; }
 .pg-toggle-state { top: 20px; left: 20px; }
 .pg-toggle-files { top: 20px; left: 95px; }
 .pg-toggle-webcam { bottom: 20px; right: 40px; }
@@ -63,12 +64,12 @@ html:has(.page-container.pg-fullscreen) {
     text-align: center;
     background: #ffffff50;
 }
-.pg-fullscreen .pg-status {
+.pg-maximized .pg-status {
     display: unset;
 }
 
 /* === Overlay windows === */
-.pg-fullscreen #state_wrapper {
+.pg-maximized #state_wrapper {
     top: 20px;
     left: 20px;
     width: 300px;
@@ -77,7 +78,7 @@ html:has(.page-container.pg-fullscreen) {
     background: rgba(255, 255, 255, 0.2);
     z-index: 2005;
 }
-.pg-fullscreen #files_wrapper {
+.pg-maximized #files_wrapper {
     left: 95px;
     top: 20px;
     max-width: 80%;
@@ -90,13 +91,13 @@ html:has(.page-container.pg-fullscreen) {
 /* View Settings (lil-gui host) */
 #pg-view-settings {
     position: absolute;
-    right: 95px;
+    right: 130px;
     top: 20px;
     box-shadow: var(--pg-shadow);
     background: rgba(255, 255, 255, 1.0);
     opacity: 0.8;
 }
-.pg-fullscreen #pg-view-settings {
+.pg-maximized #pg-view-settings {
     z-index: 2004;
 }
 #pg-view-settings .lil-gui {
@@ -110,7 +111,7 @@ html:has(.page-container.pg-fullscreen) {
     --focus-color: #ddd;
 }
 /* Dashboard plugin */
-.pg-fullscreen #tab_plugin_dashboard {
+.pg-maximized #tab_plugin_dashboard {
     display: unset;
     position: absolute;
     bottom: 20px;
@@ -137,7 +138,7 @@ html:has(.page-container.pg-fullscreen) {
     height: 100%;
     width: auto;
 }
-.pg-fullscreen #pg-webcam {
+.pg-maximized #pg-webcam {
     display: unset;
     z-index: 2005;
 }
@@ -149,7 +150,7 @@ html:has(.page-container.pg-fullscreen) {
     touch-action: none;
     z-index: 2020;
 }
-.pg-fullscreen .pg-resize-handle {
+.pg-maximized .pg-resize-handle {
     display: block;
 }
 .pg-resize-top {
@@ -188,6 +189,6 @@ html:has(.page-container.pg-fullscreen) {
 /* === Misc === */
 /* Elements toggled off via JS */
 .pg-view .pg-hidden,
-.pg-fullscreen .pg-hidden {
+.pg-maximized .pg-hidden {
     display: none !important;
 }

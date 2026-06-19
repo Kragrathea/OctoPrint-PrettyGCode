@@ -518,7 +518,7 @@ $(function () {
             }
             if (pgSettings.showDashboard) {
                 $("#tab_plugin_dashboard").removeClass("pg-hidden");
-                if ($(".page-container").hasClass("pg-fullscreen")) applyDashDefaultScale();
+                if ($(".page-container").hasClass("pg-maximized")) applyDashDefaultScale();
             } else {
                 $("#tab_plugin_dashboard").addClass("pg-hidden");
             }
@@ -634,7 +634,7 @@ $(function () {
 
         function updateWebcamStream() {
             var img = $(".pg-view #pg-webcam-image");
-            var show = OctoPrint.coreui.selectedTab === "#tab_plugin_prettygcode" && pgSettings.showWebcam && img.closest(".page-container").hasClass("pg-fullscreen");
+            var show = OctoPrint.coreui.selectedTab === "#tab_plugin_prettygcode" && pgSettings.showWebcam && img.closest(".page-container").hasClass("pg-maximized");
             if (show && !img.attr("src")) {
                 var url = webcamStreamUrl();
                 img.attr("src", url + (url.indexOf("?") < 0 ? "?" : "&") + Math.random());
@@ -788,18 +788,39 @@ $(function () {
                         makeResizable($dash.children(".pg-resize-right"), dashWin, "x", 1);
                     }
 
-                    //check url for fullscreen mode
-                    if (urlParam("fullscreen"))
-                        $(".page-container").addClass("pg-fullscreen");
+                    //check url for maximized mode
+                    if (urlParam("maximized"))
+                        $(".page-container").addClass("pg-maximized");
 
                     //setup window toggle buttons
-                    $(".pg-toggle-fullscreen").on("click", function () {
-                        var fs = $(".page-container").toggleClass("pg-fullscreen").hasClass("pg-fullscreen");
+                    var wasMaximized = false;
+                    $(".pg-toggle-maximized").on("click", function () {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                            return;
+                        }
+                        var max = $(".page-container").toggleClass("pg-maximized").hasClass("pg-maximized");
                         var url = new URL(window.location.href);
-                        if (fs) url.searchParams.set("fullscreen", "1");
-                        else url.searchParams.delete("fullscreen");
+                        if (max) url.searchParams.set("maximized", "1");
+                        else url.searchParams.delete("maximized");
                         history.replaceState(null, "", url);
                         updateWindowStates();
+                    });
+                    $(".pg-toggle-fullscreen").on("click", function () {
+                        if (document.fullscreenElement) document.exitFullscreen();
+                        else {
+                            wasMaximized = $(".page-container").hasClass("pg-maximized");
+                            $(".page-container").addClass("pg-maximized");
+                            $(".page-container")[0].requestFullscreen();
+                            updateWindowStates();
+                        }
+                    });
+                    //leaving fullscreen restores the state from before entering it
+                    $(document).on("fullscreenchange", function () {
+                        if (!document.fullscreenElement) {
+                            $(".page-container").toggleClass("pg-maximized", wasMaximized);
+                            updateWindowStates();
+                        }
                     });
                     $(".pg-toggle-settings").on("click", function () {
                         $("#pg-view-settings").toggleClass("pg-hidden");
