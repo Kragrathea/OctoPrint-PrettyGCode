@@ -509,11 +509,13 @@ $(function () {
             }
             if (pgSettings.showWebcam) {
                 $(".pg-view #pg-webcam").removeClass("pg-hidden");
+                applyWebcamHeight();
             } else {
                 $(".pg-view #pg-webcam").addClass("pg-hidden");
             }
             if (pgSettings.showDash) {
                 $("#tab_plugin_dashboard").removeClass("pg-hidden");
+                if ($(".page-container").hasClass("pg-fullscreen")) applyDashDefaultScale();
             } else {
                 $("#tab_plugin_dashboard").addClass("pg-hidden");
             }
@@ -528,6 +530,84 @@ $(function () {
             width: 0,
           };
         var viewInitialized = false;
+
+        // Resizable overlay windows (webcam & dashboard)
+        var dashScale = parseFloat(localStorage.getItem("pg_dash_scale")) || 1;
+        function setDashScale(s) {
+            dashScale = s;
+            var el = document.getElementById("tab_plugin_dashboard");
+            if (el) el.style.setProperty("--pg-dash-scale", s);
+        }
+        function dashApply(s) { setDashScale(Math.min(2.5, Math.max(0.4, s))); }
+
+        // Default overlay height (~1/3 of the viewport) used on first open
+        function defaultOverlayHeight() {
+            return Math.min(600, Math.max(200, Math.round(window.innerHeight / 3)));
+        }
+        function applyWebcamHeight() {
+            var saved = parseFloat(localStorage.getItem("pg_webcam_height"));
+            $("#pg-webcam").css("height", (saved || defaultOverlayHeight()) + "px");
+        }
+        // Scale the dashboard so its natural height matches the default
+        function applyDashDefaultScale() {
+            if (localStorage.getItem("pg_dash_scale")) return; // user picked a size
+            var el = document.getElementById("tab_plugin_dashboard");
+            if (!el) return;
+            el.style.setProperty("--pg-dash-scale", 1); // measure unscaled height
+            var natural = el.getBoundingClientRect().height;
+            if (natural > 0) dashApply(defaultOverlayHeight() / natural);
+        }
+
+        // Each window keeps its proportions, so resizing just scales a single
+        // "driver" (webcam height in px / dashboard scale factor). win.start()
+        // returns { size, w, h }; dragging `axis` ("x"/"y") in the `sign`
+        // direction multiplies the driver by that dimension's relative change.
+        function makeResizable($handle, win, axis, sign) {
+            var prop = axis === "x" ? "clientX" : "clientY";
+            $handle.on("pointerdown", function (e) {
+                var oe = e.originalEvent || e;
+                e.preventDefault();
+                e.stopPropagation();
+                var start = oe[prop];
+                var c = win.start();
+                var dim = axis === "x" ? c.w : c.h;
+                if (this.setPointerCapture) this.setPointerCapture(oe.pointerId);
+                function move(ev) {
+                    var d = sign * ((ev.originalEvent || ev)[prop] - start);
+                    if (dim) win.apply(c.size * (dim + d) / dim);
+                }
+                function up() {
+                    $handle.off("pointermove", move).off("pointerup pointercancel", up);
+                    win.persist();
+                }
+                $handle.on("pointermove", move).on("pointerup pointercancel", up);
+            });
+        }
+
+        // Webcam (anchored bottom-right): the driver is its height in pixels
+        var webcamWin = {
+            start: function () {
+                var r = $("#pg-webcam")[0].getBoundingClientRect();
+                return { size: r.height, w: r.width, h: r.height };
+            },
+            apply: function (h) {
+                h = Math.min(window.innerHeight - 40, Math.max(80, h));
+                $("#pg-webcam").css("height", h + "px");
+            },
+            persist: function () {
+                localStorage.setItem("pg_webcam_height", Math.round($("#pg-webcam").height()));
+            }
+        };
+
+        // Dashboard (anchored bottom-left): the driver is its scale factor
+        var dashWin = {
+            start: function () {
+                var r = document.getElementById("tab_plugin_dashboard").getBoundingClientRect();
+                return { size: dashScale, w: r.width, h: r.height };
+            },
+            apply: dashApply,
+            persist: function () { localStorage.setItem("pg_dash_scale", dashScale); }
+        };
 
         function webcamStreamUrl() {
             var fallback = "/webcam/?action=stream";
@@ -677,7 +757,19 @@ $(function () {
 
 
                     //Create a web camera inset for the view.
-                    $(".pg-view").append('<div id="pg-webcam"><img id="pg-webcam-image"></div>')
+                    $(".pg-view").append('<div id="pg-webcam"><img id="pg-webcam-image"><div class="pg-resize-handle pg-resize-top"></div><div class="pg-resize-handle pg-resize-left"></div></div>');
+                    applyWebcamHeight();
+                    makeResizable($("#pg-webcam .pg-resize-top"), webcamWin, "y", -1);
+                    makeResizable($("#pg-webcam .pg-resize-left"), webcamWin, "x", -1);
+
+                    //Make the dashboard window resizable too.
+                    var $dash = $("#tab_plugin_dashboard");
+                    if ($dash.length) {
+                        setDashScale(dashScale);
+                        $dash.append('<div class="pg-resize-handle pg-resize-top"></div><div class="pg-resize-handle pg-resize-right"></div>');
+                        makeResizable($dash.children(".pg-resize-top"), dashWin, "y", -1);
+                        makeResizable($dash.children(".pg-resize-right"), dashWin, "x", 1);
+                    }
 
                     //check url for fullscreen mode
                     if (urlParam("fullscreen"))
@@ -686,7 +778,7 @@ $(function () {
                     //setup window toggle buttons
                     $(".pg-toggle-fullscreen").on("click", function () {
                         $(".page-container").toggleClass("pg-fullscreen");
-                        updateWebcamStream();
+                        updateWindowStates();
                     });
                     $(".pg-toggle-settings").on("click", function () {
                         $("#pg-view-settings").toggleClass("pg-hidden");

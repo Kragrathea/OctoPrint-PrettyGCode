@@ -106,19 +106,59 @@
     z-index: 2004;
     background: rgba(255, 255, 255, 0.2);
     opacity: 0.8;
+    transform: scale(var(--pg-dash-scale, 1));
+    transform-origin: bottom left;
 }
 
 /* === Webcam === */
 #pg-webcam {
     bottom: 20px;
     right: 40px;
+    height: 300px;
     position: absolute;
     box-shadow: var(--pg-shadow);
     display: none;
 }
+#pg-webcam-image {
+    display: block;
+    height: 100%;
+    width: auto;
+}
 .pg-fullscreen #pg-webcam {
     display: unset;
     z-index: 2005;
+}
+
+/* === Resize handles === */
+.pg-resize-handle {
+    display: none;
+    position: absolute;
+    touch-action: none;
+    z-index: 2020;
+}
+.pg-fullscreen .pg-resize-handle {
+    display: block;
+}
+.pg-resize-top {
+    top: -6px;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    cursor: ns-resize;
+}
+.pg-resize-left {
+    top: 0;
+    left: -6px;
+    width: 12px;
+    height: 100%;
+    cursor: ew-resize;
+}
+.pg-resize-right {
+    top: 0;
+    right: -6px;
+    width: 12px;
+    height: 100%;
+    cursor: ew-resize;
 }
 
 /* === Layer slider === */
