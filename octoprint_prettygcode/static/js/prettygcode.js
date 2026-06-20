@@ -445,7 +445,7 @@ $(function () {
         var cubeCamera;
         var nozzleModel;
 
-        var clock;
+        var timer;
         var sceneBounds = new THREE.Box3();
         var gui;
 
@@ -1386,7 +1386,7 @@ $(function () {
             camera.position.set(bedVolume.width, 0, 50);
 
             CameraControls.install({ THREE: THREE });
-            clock = new THREE.Clock();
+            timer = new THREE.Timer();
 
             var canvas = $("#pg-canvas");
             cameraControls = new CameraControls(camera, canvas[0]);
@@ -1465,8 +1465,9 @@ $(function () {
             }
 
             function animate() {
-                const delta = clock.getDelta();
-                const elapsed = clock.getElapsedTime();
+                timer.update();
+                const delta = timer.getDelta();
+                const elapsed = timer.getElapsed();
 
                 var needRender = false;
 
