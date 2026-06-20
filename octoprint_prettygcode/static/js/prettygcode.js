@@ -1446,6 +1446,10 @@ $(function () {
             var cameraIdleTime=0;
             var firstFrame=true;                 /*possible bug fix. this might not be needed.*/
 
+            //Mirror acts like a real mirror: clip the reflection (z<0) when the camera is below the bed.
+            var mirrorClipping = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)];
+            var noClipping = [];
+
             //material for fatline highlighter
             var highlightMaterial = undefined;
 
@@ -1545,6 +1549,9 @@ $(function () {
 
                 if (resizeCanvasToDisplaySize())
                     needRender=true;
+
+                //hide the mirrored model when looking from below the bed.
+                renderer.clippingPlanes = (pgSettings.showMirror && camera.position.z < 0) ? mirrorClipping : noClipping;
 
                 if (needRender) {
                     renderer.render(scene, camera);
