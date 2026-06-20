@@ -13,7 +13,6 @@ class PrettyGCodePlugin(
         return dict(
             js=[
                 "js/lib/pg-libs.bundle.js",  # frontend libs, bundled by `task build-frontend`
-                "js/lib/lil-gui.umd.min.js",
                 "js/prettygcode.js",
             ],
             css=["css/prettygcode.css"],
