@@ -75,7 +75,7 @@ html:has(.page-container.pg-maximized) {
 .pg-toggle-settings { top: 20px; right: 130px; }
 .pg-toggle-state { top: 20px; left: 20px; }
 .pg-toggle-files { top: 20px; left: 95px; }
-.pg-toggle-webcam { bottom: 20px; right: 40px; }
+.pg-toggle-webcam { bottom: 20px; right: 50px; }
 .pg-toggle-dashboard { left: 20px; bottom: 20px; }
 
 /* === Status bar === */
@@ -152,7 +152,7 @@ html:has(.page-container.pg-maximized) {
 /* === Webcam === */
 #pg-webcam {
     bottom: 20px;
-    right: 40px;
+    right: 50px;
     height: 300px;
     position: absolute;
     box-shadow: var(--pg-shadow);
@@ -201,14 +201,28 @@ html:has(.page-container.pg-maximized) {
 }
 
 /* === Layer slider === */
+#pg-layer-slider-ui {
+    position: absolute;
+    top: 5%;
+    right: 20px;
+    height: 90%;
+}
 #pg-layer-slider-ui .slider-track {
     background: green;
 }
 #pg-layer-slider-ui .slider-handle {
-    width: 24px;
-}
-#pg-layer-slider-ui .tooltip {
-    display: none;
+    left: 50%;
+    width: auto;
+    min-width: 24px;
+    height: auto;
+    margin: 0;
+    padding: 2px 6px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    transform: translate(-50%, -50%);
+    line-height: 20px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 /* === Misc === */

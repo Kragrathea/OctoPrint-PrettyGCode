@@ -51,4 +51,4 @@ fix = true
 extend-select = ["I"]
 
 [tool.codespell]
-skip = "octoprint_prettygcode/static/js/lib/*"
+skip = "octoprint_prettygcode/static/js/pg-main.bundle.js"

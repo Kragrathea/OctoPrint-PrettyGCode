@@ -12,7 +12,7 @@ class PrettyGCodePlugin(
     def get_assets(self):
         return dict(
             js=[
-                "js/lib/pg-libs.bundle.js",  # frontend libs, bundled by `task build-frontend`
+                "js/pg-main.bundle.js",  # app bundle, built by `task build-frontend`
                 "js/prettygcode.js",
             ],
             css=["css/prettygcode.css"],
