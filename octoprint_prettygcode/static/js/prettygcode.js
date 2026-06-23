@@ -13,7 +13,7 @@ $(function () {
                 curJobName = job.file.path;
                 durJobDate = job.file.date;
                 if (viewInitialized && gcodeProxy) {
-                    gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
+                    gcodeProxy.loadGcode(curJobName);
                     printHeadSim=new PrintHeadSimulator();
                 }
             }
@@ -461,8 +461,8 @@ $(function () {
             this.syncToProgress=true;
             this.orbitWhenIdle=false;
             this.reloadGcode = function () {
-                if (gcodeProxy && curJobName!="")
-                    gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
+                if (gcodeProxy)
+                    gcodeProxy.loadGcode(curJobName);
                 };
             this.showState=true;
             this.showWebcam=false;
@@ -746,8 +746,7 @@ $(function () {
                     gcodeObject.position.set(-0, -0, 0);
                     scene.add(gcodeObject);
 
-                    if (curJobName!="")
-                        gcodeProxy.loadGcode('downloads/files/local/' + curJobName);
+                    gcodeProxy.loadGcode(curJobName);
 
                     //note this is an octoprint version of a bootstrap slider. not a jquery ui slider.
                     $('.pg-view').append($('<div id="pg-layer-slider" style=""></div>'));
@@ -1050,18 +1049,17 @@ $(function () {
                 });
                 return syncLayerNumber;//used to sync other elements.
             }
-            this.currentUrl="";
-            this.loadGcode=function(url) {
+            this.loadGcode=function(jobName) {
+                if (!jobName)
+                    return;
+
                 this.reset();
 
-                currentUrl=url;
+                var fileUrl = OctoPrint.files.downloadPath("local", jobName);
 
                 var parserObject=this;
-                var file_url = url;//'downloads/files/local/xxx.gcode';
-                var myRequest = new Request(file_url);
-                fetch(myRequest)
+                fetch(fileUrl)
                     .then(function (response) {
-                        var contentLength = response.headers.get('Content-Length');
                         if (!response.body || !window['TextDecoder']) {
                             response.text().then(function (text) {
                                 parserObject.parse(text);
@@ -1070,16 +1068,11 @@ $(function () {
                         } else {
                             var myReader = response.body.getReader();
                             var decoder = new TextDecoder();
-                            var buffer = '';
-                            var received = 0;
                             myReader.read().then(function processResult(result) {
                                 if (result.done) {
                                     parserObject.finishLoading();
                                     return;
                                 }
-                                received += result.value.length;
-                                //                buffer += decoder.decode(result.value, {stream: true});
-                                /* process the buffer string */
                                 parserObject.parse(decoder.decode(result.value, { stream: true }));
 
                                 // read the next piece of the stream and process the result
