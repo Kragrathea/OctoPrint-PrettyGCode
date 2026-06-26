@@ -32,6 +32,9 @@ export class PrettyGCodeApp {
     // Print bed geometry
     this.bedVolume = { depth: 0, formFactor: '', height: 0, origin: '', width: 0 }
 
+    // Nozzle diameter from the active printer profile
+    this.nozzleDiameter = null
+
     // Currently loaded job
     this.currentJobPath = ''
     this.currentJobDate = 0
@@ -51,10 +54,13 @@ export class PrettyGCodeApp {
   onTabChange (current, previous) {
     if (current === PG_TAB) {
       if (!this.viewInitialized) {
-        // Bed geometry, kept in sync with the active printer profile
+        // Bed geometry and nozzle size, kept in sync with the active printer profile
         this.updateBedVolume()
+        this.updateNozzleDiameter()
         this.printerProfilesVM.currentProfileData.subscribe(() => {
           this.updateBedVolume()
+          this.updateNozzleDiameter()
+          this.gcodeParser.applyLineWidth()
           this.viewer.updateGridMesh()
           this.viewer.resetCamera()
         })
@@ -133,6 +139,12 @@ export class PrettyGCodeApp {
     setLayerSliderMax(layerCount)
     if (layerCount) this.viewer.frameBounds()
     this.viewer.requestRender()
+  }
+
+  updateNozzleDiameter () {
+    const currentProfileData = this.printerProfilesVM.currentProfileData()
+    const extruder = currentProfileData && currentProfileData.extruder
+    this.nozzleDiameter = extruder && typeof extruder.nozzleDiameter === 'function' ? extruder.nozzleDiameter() : null
   }
 
   updateBedVolume () {

@@ -44,9 +44,6 @@ export class Viewer {
   // Nozzle model
   nozzleModel = null
 
-  // Material applied to the highlighted (current) layer
-  highlightLineMaterial = null
-
   // Bound the gcode reflection to the bed surface: 4 planes through the camera and the bed
   // edges, so a reflected point is shown only where the line of sight crosses the bed.
   // Updated each frame and applied to the mirror material only (see GCodeParser).
@@ -99,8 +96,6 @@ export class Viewer {
     this.reflectionCamera = new THREE.CubeCamera(1, 100000, new THREE.WebGLCubeRenderTarget(128))
     this.reflectionCamera.position.set(bedVolume.width / 2, bedVolume.depth / 2, 10)
     this.scene.add(this.reflectionCamera)
-
-    this.applyThickLines(settings.thickLines)
 
     this.timer = new THREE.Timer()
     this.animate()
@@ -168,7 +163,7 @@ export class Viewer {
       // Reveal gcode up to the live file position
       if (app.gcodeParser) {
         const calculatedLayer = app.gcodeParser.syncGcodeObjToFilePos(app.currentFilePosition)
-        if (this.highlightLineMaterial) app.gcodeParser.highlightLayer(calculatedLayer, this.highlightLineMaterial)
+        app.gcodeParser.highlightLayer(calculatedLayer)
         setLayerSliderValue(calculatedLayer)
         needRender = true
       }
@@ -180,7 +175,7 @@ export class Viewer {
       }
       // Reveal gcode up to the selected layer
       if (app.gcodeParser && app.gcodeParser.syncGcodeObjToLayer(app.currentLayerNumber)) {
-        if (this.highlightLineMaterial) app.gcodeParser.highlightLayer(app.currentLayerNumber, this.highlightLineMaterial)
+        app.gcodeParser.highlightLayer(app.currentLayerNumber)
         needRender = true
       }
     }
@@ -331,18 +326,6 @@ export class Viewer {
   applyBackground (darkMode) {
     this.scene.background = new THREE.Color(darkMode ? DARK_BACKGROUND : LIGHT_BACKGROUND)
     this.requestRender()
-  }
-
-  applyThickLines (thickLines) {
-    // Highlight material works only on thick lines
-    if (thickLines) {
-      this.highlightLineMaterial = new THREE.LineMaterial({ linewidth: 4, vertexColors: true })
-      this.highlightLineMaterial.color.setRGB(0.5, 0.5, 0.5)
-      this.highlightLineMaterial.resolution.set(500, 500)
-    } else {
-      this.highlightLineMaterial = null
-    }
-    this.app.gcodeParser.rebuildObject()
   }
 
   applyAntialias (antialias) {

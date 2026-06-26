@@ -34,8 +34,8 @@ export function initSettingsPanel (app) {
   option(
     'thickLines',
     'Thick lines',
-    'Display lines with thickness. This looks much better but can cause a performance hit on slower machines.'
-  ).onFinishChange(() => app.viewer.applyThickLines(settings.thickLines))
+    'Display lines with thickness, based on nozzle size.'
+  ).onFinishChange(() => app.gcodeParser.rebuildObject())
 
   option(
     'antialias',

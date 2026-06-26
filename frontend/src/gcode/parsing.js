@@ -20,13 +20,20 @@ const COLOR_KEYWORDS = [
 const LAYER_PREFIX = 'layer#'
 const isLayerObject = (child) => child.name.startsWith(LAYER_PREFIX)
 
+// Lines thickness based on nozzle size
+const NOZZLE_DIAMETER_COMMENT = /nozzle[_ ]?diameter\s*[:=]\s*([\d.]+)/i // E.g. "; nozzle_diameter = 0.4"
+const DEFAULT_NOZZLE_DIAMETER = 0.4
+const LINE_THICKNESS_FACTOR = 1.1 // A slightly oversize to avoid gaps
+
 // Material makers
-const makeThickMaterial = (clippingPlanes = null) => {
-  const thickMaterial = new THREE.LineMaterial({ linewidth: 3, vertexColors: true, clippingPlanes })
-  thickMaterial.resolution.set(500, 500)
-  return thickMaterial
-}
 const makeThinMaterial = (clippingPlanes = null) => new THREE.LineBasicMaterial({ vertexColors: true, clippingPlanes })
+const makeThickMaterial = (clippingPlanes = null) =>
+  new THREE.LineMaterial({ worldUnits: true, linewidth: DEFAULT_NOZZLE_DIAMETER * LINE_THICKNESS_FACTOR, vertexColors: true, clippingPlanes })
+const makeHighlightMaterial = () => {
+  const highlightMaterial = makeThickMaterial()
+  highlightMaterial.color.setRGB(0.5, 0.5, 0.5)
+  return highlightMaterial
+}
 
 // Reused across addSegment to avoid per-segment allocations
 const scratchDirection = new THREE.Vector3()
@@ -48,10 +55,12 @@ export class GCodeParser {
   pendingLine = ''
   filePos = 0
   relative = false
+  gcodeNozzleDiameter = null
 
   // Line materials for the gcode
-  thickMaterial = makeThickMaterial()
   thinMaterial = makeThinMaterial()
+  thickMaterial = makeThickMaterial()
+  highlightMaterial = makeHighlightMaterial()
 
   /* ---- Setup ---- */
 
@@ -72,6 +81,7 @@ export class GCodeParser {
     this.pendingLine = ''
     this.filePos = 0
     this.relative = false
+    this.gcodeNozzleDiameter = null
     this.gcodeGroup.clear()
     this.bounds.makeEmpty()
   }
@@ -106,6 +116,9 @@ export class GCodeParser {
     // Flush the last open layer
     if (this.currentLayer != null) this.addObject(this.currentLayer)
 
+    // Size the lines
+    this.applyLineWidth()
+
     // Report layers count to app
     this.app.onGcodeLoaded(this.layers.length)
   }
@@ -123,11 +136,18 @@ export class GCodeParser {
       const rawLine = lines[i]
       this.filePos += rawLine.length + 1
 
-      // Pick the color based on the line comment
       if (rawLine.includes(';')) {
         const commentLower = rawLine.toLowerCase()
+
+        // Pick the color based on the feature type
         const match = COLOR_KEYWORDS.find(([keyword]) => commentLower.includes(keyword))
         if (match) this.currentColor = new THREE.Color(match[1])
+
+        // First nozzle diameter the slicer states wins
+        if (this.gcodeNozzleDiameter == null) {
+          const nozzleMatch = commentLower.match(NOZZLE_DIAMETER_COMMENT)
+          if (nozzleMatch) this.gcodeNozzleDiameter = parseFloat(nozzleMatch[1])
+        }
       }
 
       // Parse gcode cmd and args
@@ -341,9 +361,24 @@ export class GCodeParser {
     this.app.viewer.requestRender()
   }
 
+  applyLineWidth () {
+    // The slicer's nozzle diameter wins over the printer profile
+    const nozzleDiameter = this.gcodeNozzleDiameter ?? this.app.nozzleDiameter ?? DEFAULT_NOZZLE_DIAMETER
+    const lineWidth = nozzleDiameter * LINE_THICKNESS_FACTOR
+
+    this.thickMaterial.linewidth = lineWidth
+    this.mirrorThickMaterial.linewidth = lineWidth
+    this.highlightMaterial.linewidth = lineWidth
+
+    this.app.viewer.requestRender()
+  }
+
   /* ---- Viewer sync ---- */
 
-  highlightLayer (layerNumber, highlightMaterial) {
+  highlightLayer (layerNumber) {
+    // Highlight material works only on thick lines
+    if (!this.app.settings.thickLines) return
+
     // Material for every layer except the highlighted one
     const defaultMaterial = this.app.settings.thickLines ? this.thickMaterial : this.thinMaterial
 
@@ -354,7 +389,7 @@ export class GCodeParser {
       if (child.userData.mirror) return
 
       // Highlight the target layer, default on the others
-      child.material = child.userData.layerNumber === layerNumber ? highlightMaterial : defaultMaterial
+      child.material = child.userData.layerNumber === layerNumber ? this.highlightMaterial : defaultMaterial
     })
   }
 
