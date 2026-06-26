@@ -87,7 +87,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 
 /* === Status bar === */
 .pg-status {
-    display: none;
+    display: block;
     position: absolute;
     top: 0px;
     left: 0px;
@@ -95,9 +95,6 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     font-size: large;
     text-align: center;
     background: #ffffff50;
-}
-.pg-maximized .pg-status {
-    display: unset;
 }
 
 /* === Overlay windows === */
