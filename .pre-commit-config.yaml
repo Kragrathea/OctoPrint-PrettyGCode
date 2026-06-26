@@ -14,10 +14,10 @@ repos:
         args: [--target-version=py37]
       - id: ruff-format
 
-  #- repo: https://github.com/standard/standard
-  #  rev: v17.1.2
-  #  hooks:
-  #    - id: standard
+  - repo: https://github.com/standard/standard
+    rev: v17.1.2
+    hooks:
+      - id: standard
 
   - repo: https://github.com/djlint/djLint
     rev: v1.39.2

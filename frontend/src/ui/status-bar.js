@@ -1,7 +1,7 @@
-export function setStatusBarText(text) {
-    $(".pg-status").text(text);
+export function setStatusBarText (text) {
+  $('.pg-status').text(text)
 }
 
-export function applyStatusBarVisibility(show) {
-    $(".pg-status").toggleClass("pg-hidden", !show);
+export function applyStatusBarVisibility (show) {
+  $('.pg-status').toggleClass('pg-hidden', !show)
 }

@@ -1,35 +1,35 @@
-export function initLayerSlider(app) {
-    $(".pg-view").append('<div id="pg-layer-slider"></div>');
-    $("#pg-layer-slider").slider({
-        id: "pg-layer-slider-ui",
-        orientation: "vertical",
-        reversed: true,
-        tooltip: "hide",
-        min: 0,
-        max: 100,
-        value: 100,
-    }).on("slide", (event) => {
-        app.currentLayerNumber = event.value;
-        $("#pg-layer-slider-ui .slider-handle").text(event.value);
-    }).on("slideStart", () => {
-        app.manualLayerControl = true;
-    }).on("slideStop", () => {
-        app.manualLayerControl = false;
-    });
+export function initLayerSlider (app) {
+  $('.pg-view').append('<div id="pg-layer-slider"></div>')
+  $('#pg-layer-slider').slider({
+    id: 'pg-layer-slider-ui',
+    orientation: 'vertical',
+    reversed: true,
+    tooltip: 'hide',
+    min: 0,
+    max: 100,
+    value: 100
+  }).on('slide', (event) => {
+    app.currentLayerNumber = event.value
+    $('#pg-layer-slider-ui .slider-handle').text(event.value)
+  }).on('slideStart', () => {
+    app.manualLayerControl = true
+  }).on('slideStop', () => {
+    app.manualLayerControl = false
+  })
 }
 
-export function setLayerSliderMax(layerCount) {
-    if (!$("#pg-layer-slider").length) return;
+export function setLayerSliderMax (layerCount) {
+  if (!$('#pg-layer-slider').length) return
 
-    $("#pg-layer-slider").slider("setMax", layerCount);
-    $("#pg-layer-slider").slider(layerCount ? "enable" : "disable");
+  $('#pg-layer-slider').slider('setMax', layerCount)
+  $('#pg-layer-slider').slider(layerCount ? 'enable' : 'disable')
 
-    setLayerSliderValue(layerCount);
+  setLayerSliderValue(layerCount)
 }
 
-export function setLayerSliderValue(layer) {
-    if (!$("#pg-layer-slider").length) return;
+export function setLayerSliderValue (layer) {
+  if (!$('#pg-layer-slider').length) return
 
-    $("#pg-layer-slider").slider("setValue", layer);
-    $("#pg-layer-slider-ui .slider-handle").text(layer);
+  $('#pg-layer-slider').slider('setValue', layer)
+  $('#pg-layer-slider-ui .slider-handle').text(layer)
 }

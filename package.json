@@ -13,5 +13,10 @@
     },
     "devDependencies": {
         "esbuild": "^0.28.0"
+    },
+    "standard": {
+        "env": ["browser"],
+        "globals": ["$", "ko", "OctoPrint", "OCTOPRINT_VIEWMODELS", "PrettyGCode", "VERSION", "PLUGIN_BASEURL"],
+        "ignore": ["octoprint_prettygcode/static/js/pg-main.bundle.js"]
     }
 }
