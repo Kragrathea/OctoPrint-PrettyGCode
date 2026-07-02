@@ -1,0 +1,33 @@
+name: Check frontend bundle
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - frontend/**
+      - package.json
+      - package-lock.json
+      - octoprint_prettygcode/static/js/pg-main.bundle.js
+      - .github/workflows/check-frontend-bundle.yml
+  pull_request:
+    paths:
+      - frontend/**
+      - package.json
+      - package-lock.json
+      - octoprint_prettygcode/static/js/pg-main.bundle.js
+      - .github/workflows/check-frontend-bundle.yml
+
+jobs:
+  check-frontend-bundle:
+    name: Check frontend bundle is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify committed frontend bundle matches sources
+        run: git diff --exit-code -- octoprint_prettygcode/static/js/pg-main.bundle.js
