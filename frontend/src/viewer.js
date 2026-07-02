@@ -139,6 +139,14 @@ export class Viewer {
     let needRender = this.forceRender
     this.forceRender = false
 
+    // Skip animation if canvas size is 0 (e.g. plugin tab is not shown)
+    const canvas = this.renderer.domElement
+    if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+      // Schedule the next frame and return
+      requestAnimationFrame(() => this.animate())
+      return
+    }
+
     // Rebuild the nozzle reflection (only on a forced render)
     if (needRender) this.reflectionCamera.update(this.renderer, this.scene)
 
