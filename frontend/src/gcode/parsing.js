@@ -77,7 +77,8 @@ export class GCodeParser {
   pendingLine = ''
   filePos = 0
   pendingTravelSeconds = 0
-  relative = false
+  axesRelative = false
+  extrusionRelative = false
   gcodeNozzleDiameter = null
 
   // Drawn segments indexed for lookup across layers
@@ -120,7 +121,8 @@ export class GCodeParser {
     this.pendingLine = ''
     this.filePos = 0
     this.pendingTravelSeconds = 0
-    this.relative = false
+    this.axesRelative = false
+    this.extrusionRelative = false
     this.gcodeNozzleDiameter = null
     this.drawnLayers = []
     this.totalSegments = 0
@@ -212,7 +214,8 @@ export class GCodeParser {
       const coord = (key) => {
         if (args[key] === undefined) return this.state[key]
         if (key === 'f') return args.f
-        return this.relative ? this.state[key] + args[key] : args[key]
+        const relative = key === 'e' ? this.extrusionRelative : this.axesRelative
+        return relative ? this.state[key] + args[key] : args[key]
       }
 
       switch (cmd) {
@@ -272,13 +275,38 @@ export class GCodeParser {
           this.state = segments[segments.length - 1]
           break
         }
+        // Dwell: the pause adds to the time of the travel toward the next segment
+        case 'G4':
+          this.pendingTravelSeconds += (args.s || 0) + (args.p || 0) / 1000
+          break
+        // Home: the named axes (all of them if none is given) end up at the origin
+        case 'G28': {
+          const all = args.x === undefined && args.y === undefined && args.z === undefined
+          this.state = {
+            ...this.state,
+            x: all || args.x !== undefined ? 0 : this.state.x,
+            y: all || args.y !== undefined ? 0 : this.state.y,
+            z: all || args.z !== undefined ? 0 : this.state.z
+          }
+          break
+        }
         // Absolute positioning
         case 'G90':
-          this.relative = false
+          this.axesRelative = false
+          this.extrusionRelative = false
           break
           // Relative positioning
         case 'G91':
-          this.relative = true
+          this.axesRelative = true
+          this.extrusionRelative = true
+          break
+          // Absolute extrusion
+        case 'M82':
+          this.extrusionRelative = false
+          break
+          // Relative extrusion
+        case 'M83':
+          this.extrusionRelative = true
           break
           // Set position without moving
         case 'G92':
@@ -297,7 +325,7 @@ export class GCodeParser {
   extrusionDelta (args, move) {
     // E increment brought by a single command, whatever the E mode
     if (args.e === undefined) return 0
-    return this.relative ? args.e : move.e - this.state.e
+    return this.extrusionRelative ? args.e : move.e - this.state.e
   }
 
   newLayer (line) {
