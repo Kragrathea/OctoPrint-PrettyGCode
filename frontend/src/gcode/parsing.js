@@ -1,5 +1,5 @@
 import * as THREE from '../three.js'
-import { interpolateArc } from './arc-interpolation.js'
+import { arcOffsetFromRadius, interpolateArc } from './arc-interpolation.js'
 
 /* ---- Gcode parsing ---- */
 
@@ -251,9 +251,15 @@ export class GCodeParser {
             this.newLayer(move)
           }
 
-          // Unsupported arc forms degrade to a straight segment, keeping later geometry anchored
-          if (args.k !== undefined || args.r !== undefined) {
-            console.warn(`PrettyGCode: Arcs in ${args.k !== undefined ? 'K' : 'R'} form are not currently supported`)
+          // Center offset from the I/J words, or computed from the radius of an R-form arc
+          const offset = args.r !== undefined
+            ? arcOffsetFromRadius(this.state, move, args.r, cmd === 'G2')
+            : { i: args.i ?? 0, j: args.j ?? 0 }
+
+          // Arcs with K, or an R that gives no usable center, fall back to a straight segment
+          // so the next moves still start from the right point
+          if (args.k !== undefined || (args.r !== undefined && !offset.i && !offset.j)) {
+            console.warn('PrettyGCode: Unsupported arc', rawLine)
             if (args.e !== undefined) this.addSegment(this.state, move)
             else this.addTravel(this.state, move)
             this.state = move
@@ -263,8 +269,8 @@ export class GCodeParser {
           // Split the arc into straight segments
           const arc = {
             ...move,
-            i: args.i ?? 0, // X offset from start to arc center
-            j: args.j ?? 0, // Y offset from start to arc center
+            i: offset.i, // X offset from start to arc center
+            j: offset.j, // Y offset from start to arc center
             is_clockwise: cmd === 'G2'
           }
           const segments = interpolateArc(this.state, arc)

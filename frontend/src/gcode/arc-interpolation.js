@@ -1,9 +1,4 @@
-// Copied from Prusa firmware's mc_arc so rendered arcs match what gets printed:
-// https://github.com/prusa3d/Prusa-Firmware/blob/74a577bc0e5902767b072ee85f499dc1361bf6ba/Firmware/motion_control.cpp#L29
-// which in turn derives from Marlin's plan_arc (e.g. the min_arc_segments handling):
-// https://github.com/MarlinFirmware/Marlin/blob/6ec4e744c07f4035312ab4f8d377c9c2d2154d5e/Marlin/src/gcode/motion/G2_G3.cpp
-// Local names mirror the C++ source on purpose, hence the snake_case in this file.
-
+// This file is snake_case because names mirror on purpose the original C++ sources from which the functions are copied from
 /* eslint camelcase: "off" */
 
 const arcParams = {
@@ -13,6 +8,10 @@ const arcParams = {
   n_arc_correction: 24
 }
 
+// Splits an arc into short straight segments.
+// The segment length follows the firmware rules, so drawn arcs match the printed ones.
+// Copied from Prusa firmware's mc_arc so rendered arcs match what gets printed:
+// https://github.com/prusa3d/Prusa-Firmware/blob/74a577bc0e5902767b072ee85f499dc1361bf6ba/Firmware/motion_control.cpp#L29
 export function interpolateArc (state, arc, params = arcParams) {
   const initial_position = {}
   const current_position = {}
@@ -94,4 +93,23 @@ export function interpolateArc (state, arc, params = arcParams) {
 
   interpolated_segments.push({ x: arc.x, y: arc.y, z: arc.z, e: arc.e, f: arc.f })
   return interpolated_segments
+}
+
+// Center offset of an R-form arc.
+// A radius too short for the endpoints clamps to the chord's mid-point, like the firmware does.
+// Copied from Marlin firmware's G2_G3 handler:
+// https://github.com/MarlinFirmware/Marlin/blob/6ec4e744c07f4035312ab4f8d377c9c2d2154d5e/Marlin/src/gcode/motion/G2_G3.cpp
+export function arcOffsetFromRadius (current_position, destination, r, clockwise) {
+  const arc_offset = { i: 0, j: 0 }
+  if (r && (current_position.x !== destination.x || current_position.y !== destination.y)) {
+    const d2 = { x: (destination.x - current_position.x) * 0.5, y: (destination.y - current_position.y) * 0.5 } // XY vector to midpoint of move from current
+    const e = clockwise !== (r < 0) ? -1 : 1 // clockwise -1/1, counterclockwise 1/-1
+    const len = Math.hypot(d2.x, d2.y) // Distance to mid-point of move from current
+    const h2 = (r - len) * (r + len) // factored to reduce rounding error
+    const h = h2 >= 0 ? Math.sqrt(h2) : 0.0 // Distance to the arc pivot-point from midpoint
+    const s = { x: -d2.y, y: d2.x } // Perpendicular bisector. (Divide by len for unit vector.)
+    arc_offset.i = d2.x + (s.x / len) * e * h // The calculated offset (mid-point if |r| <= len)
+    arc_offset.j = d2.y + (s.y / len) * e * h
+  }
+  return arc_offset
 }
