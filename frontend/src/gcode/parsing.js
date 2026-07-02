@@ -1,8 +1,20 @@
 import * as THREE from '../three.js'
 import { interpolateArc } from './arc-interpolation.js'
 
+/* ---- Gcode parsing ---- */
+
 // Initial state
 const INITIAL_STATE = Object.freeze({ x: 0, y: 0, z: 0, e: 0, f: 0 })
+
+// Feedrate (mm/min) to mm/s, with a sane pace for moves before any F word is seen
+const feedrateMmPerSecond = (feedrate) => (feedrate > 0 ? feedrate : 1500) / 60
+
+// OctoPrint's filepos counts bytes, so lines with non-ASCII characters need real encoding
+const NON_ASCII = /[\u0080-\uffff]/
+const textEncoder = new TextEncoder()
+
+// Z steps smaller than this stay in the same layer: vase mode rises continuously and would split a layer per segment
+const LAYER_EPSILON_MM = 0.04
 
 // Colors for slicer feature types; the first keyword found in a comment wins.
 const DEFAULT_COLOR = new THREE.Color('white')
@@ -15,6 +27,8 @@ const COLOR_KEYWORDS = [
   ['support', 'skyblue'],
   ['skirt', 'skyblue']
 ]
+
+/* ---- Object building ---- */
 
 // Layer names
 const LAYER_PREFIX = 'layer#'
@@ -40,6 +54,14 @@ const scratchDirection = new THREE.Vector3()
 const scratchColor = new THREE.Color()
 const scratchHsl = {}
 
+/* ---- Viewer sync ---- */
+
+// How far behind the live print the shown nozzle trails to absorb bursty updates.
+// Higher looks smoother but lags real time more, lower tracks tighter but can stutter.
+const NOZZLE_LAG_SECONDS = 1.5
+// A read position leaping farther ahead than this (a seek, a mid-print reload) snaps instead of sweeping the whole way
+const NOZZLE_SNAP_SECONDS = 120
+
 export class GCodeParser {
   // Group holding the gcode lines
   gcodeGroup = new THREE.Group()
@@ -54,8 +76,25 @@ export class GCodeParser {
   currentColor = DEFAULT_COLOR
   pendingLine = ''
   filePos = 0
+  pendingTravelSeconds = 0
   relative = false
   gcodeNozzleDiameter = null
+
+  // Drawn segments indexed for lookup across layers
+  drawnLayers = []
+  totalSegments = 0
+
+  // Cumulative estimated time (s) at each drawn segment's start/end, travel gaps included
+  segmentStartTimes = null
+  segmentEndTimes = null
+
+  // The nozzle eased along the estimated timeline: where it is and where the read position points
+  nozzleTime = 0
+  targetTime = 0
+  nozzlePosition = new THREE.Vector3()
+
+  // The growing tip drawn along the segment the nozzle is currently laying down
+  tipLine = null
 
   // Line materials for the gcode
   thinMaterial = makeThinMaterial()
@@ -80,8 +119,16 @@ export class GCodeParser {
     this.currentColor = DEFAULT_COLOR
     this.pendingLine = ''
     this.filePos = 0
+    this.pendingTravelSeconds = 0
     this.relative = false
     this.gcodeNozzleDiameter = null
+    this.drawnLayers = []
+    this.totalSegments = 0
+    this.segmentStartTimes = null
+    this.segmentEndTimes = null
+    this.nozzleTime = 0
+    this.targetTime = 0
+    this.tipLine = null
     this.gcodeGroup.clear()
     this.bounds.makeEmpty()
   }
@@ -119,6 +166,9 @@ export class GCodeParser {
     // Size the lines
     this.applyLineWidth()
 
+    // Index layers
+    this.indexLayers()
+
     // Report layers count to app
     this.app.onGcodeLoaded(this.layers.length)
   }
@@ -134,7 +184,7 @@ export class GCodeParser {
     for (let i = 0; i < lines.length - 1; i++) {
       // Get the line
       const rawLine = lines[i]
-      this.filePos += rawLine.length + 1
+      this.filePos += (NON_ASCII.test(rawLine) ? textEncoder.encode(rawLine).length : rawLine.length) + 1
 
       if (rawLine.includes(';')) {
         const commentLower = rawLine.toLowerCase()
@@ -159,7 +209,11 @@ export class GCodeParser {
       })
 
       // Axis value from args (absolute/relative aware), or the current one if omitted
-      const coord = (key) => args[key] !== undefined ? this.absolute(this.state[key], args[key]) : this.state[key]
+      const coord = (key) => {
+        if (args[key] === undefined) return this.state[key]
+        if (key === 'f') return args.f
+        return this.relative ? this.state[key] + args[key] : args[key]
+      }
 
       switch (cmd) {
         // Linear move
@@ -167,50 +221,53 @@ export class GCodeParser {
         case 'G1': {
           const move = { x: coord('x'), y: coord('y'), z: coord('z'), e: coord('e'), f: coord('f') }
 
-          // New layer when extrusion resumes at a new Z, not just on any Z move
-          if (this.delta(this.state.e, move.e) > 0 && (this.currentLayer == null || move.z !== this.currentLayer.z)) {
+          // New layer only when extrusion climbs to a higher Z
+          if (this.extrusionDelta(args, move) > 0 && (this.currentLayer == null || move.z > this.currentLayer.z + LAYER_EPSILON_MM)) {
             this.newLayer(move)
           }
 
-          // Extrude a segment when E is present
+          // Extrude a segment when E is present, otherwise track the travel time
           if (args.e !== undefined) this.addSegment(this.state, move)
+          else this.addTravel(this.state, move)
           this.state = move
           break
         }
         // Arc move (G2 clockwise, G3 counter-clockwise)
         case 'G2':
         case 'G3': {
-          if (args.k !== undefined) {
-            console.warn('PrettyGCode: Arcs with K parameter not currently supported')
-            break
-          }
-          if (args.r !== undefined) {
-            console.warn('PrettyGCode: Arc in R form are not currently supported')
-            break
-          }
-
-          const arc = {
+          const move = {
             x: coord('x'),
             y: coord('y'),
             z: coord('z'),
-            i: args.i ?? 0, // X offset from start to arc center
-            j: args.j ?? 0, // Y offset from start to arc center
             e: coord('e'), // extruder position
-            f: coord('f'), // feedrate
-            is_clockwise: cmd === 'G2'
+            f: coord('f') // feedrate
           }
 
-          // New layer when extrusion resumes at a new Z, not just on any Z move
-          if (this.delta(this.state.e, arc.e) > 0 && (this.currentLayer == null || arc.z !== this.currentLayer.z)) {
-            this.newLayer(arc)
+          // New layer only when extrusion climbs to a higher Z
+          if (this.extrusionDelta(args, move) > 0 && (this.currentLayer == null || move.z > this.currentLayer.z + LAYER_EPSILON_MM)) {
+            this.newLayer(move)
+          }
+
+          // Unsupported arc forms degrade to a straight segment, keeping later geometry anchored
+          if (args.k !== undefined || args.r !== undefined) {
+            console.warn(`PrettyGCode: Arcs in ${args.k !== undefined ? 'K' : 'R'} form are not currently supported`)
+            if (args.e !== undefined) this.addSegment(this.state, move)
+            else this.addTravel(this.state, move)
+            this.state = move
+            break
           }
 
           // Split the arc into straight segments
+          const arc = {
+            ...move,
+            i: args.i ?? 0, // X offset from start to arc center
+            j: args.j ?? 0, // Y offset from start to arc center
+            is_clockwise: cmd === 'G2'
+          }
           const segments = interpolateArc(this.state, arc)
-          if (args.e !== undefined) {
-            for (let segmentIndex = 1; segmentIndex < segments.length; segmentIndex++) {
-              this.addSegment(segments[segmentIndex - 1], segments[segmentIndex])
-            }
+          for (let segmentIndex = 1; segmentIndex < segments.length; segmentIndex++) {
+            if (args.e !== undefined) this.addSegment(segments[segmentIndex - 1], segments[segmentIndex])
+            else this.addTravel(segments[segmentIndex - 1], segments[segmentIndex])
           }
           this.state = segments[segments.length - 1]
           break
@@ -237,18 +294,22 @@ export class GCodeParser {
     }
   }
 
-  delta (previous, value) {
-    return this.relative ? value : value - previous
-  }
-
-  absolute (base, value) {
-    return this.relative ? base + value : value
+  extrusionDelta (args, move) {
+    // E increment brought by a single command, whatever the E mode
+    if (args.e === undefined) return 0
+    return this.relative ? args.e : move.e - this.state.e
   }
 
   newLayer (line) {
     if (this.currentLayer != null) this.addObject(this.currentLayer)
-    this.currentLayer = { vertex: [], z: line.z, colors: [], filePositions: [] }
+    this.currentLayer = { vertex: [], z: line.z, colors: [], filePositions: [], durations: [] }
     this.layers.push(this.currentLayer)
+  }
+
+  addTravel (start, end) {
+    // Time spent moving between segments, charged to the gap before the next one
+    const length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z)
+    this.pendingTravelSeconds += (length || 0) / feedrateMmPerSecond(end.f)
   }
 
   addSegment (start, end) {
@@ -265,6 +326,11 @@ export class GCodeParser {
     // Store the segment endpoints and its position in the file
     layer.vertex.push(start.x, start.y, start.z, end.x, end.y, end.z)
     layer.filePositions.push(this.filePos)
+
+    // Estimated seconds of the travel leading here and of the segment itself
+    const length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z) || Math.abs(end.e - start.e) || 0
+    layer.durations.push(this.pendingTravelSeconds, length / feedrateMmPerSecond(end.f))
+    this.pendingTravelSeconds = 0
 
     // Grow the model bounds only after a slicer color is set, so pre-print moves don't skew the framing
     if (this.currentColor !== DEFAULT_COLOR) {
@@ -358,7 +424,48 @@ export class GCodeParser {
     // This is needed e.g. when settings/materials change
     this.gcodeGroup.clear()
     this.layers.forEach((layer, i) => this.addObject(layer, i + 1))
+    this.indexLayers()
     this.app.viewer.requestRender()
+  }
+
+  indexLayers () {
+    // Flatten the drawn layers into print order, tracking each one's running segment offset
+    this.drawnLayers = []
+    let base = 0
+    this.layers.forEach((layer, i) => {
+      if (layer.vertex.length <= 2) return // empty layers have no drawn object
+      const numLines = layer.vertex.length / 6
+      this.drawnLayers.push({ layerNumber: i + 1, globalBase: base, numLines, vertex: layer.vertex, colors: layer.colors, filePositions: layer.filePositions, durations: layer.durations })
+      base += numLines
+    })
+    this.totalSegments = base
+
+    // Timeline coordinate of every segment, counting the travel gaps between them, so the
+    // nozzle can be eased along the whole path at each move's own pace
+    const starts = new Float64Array(this.totalSegments)
+    const ends = new Float64Array(this.totalSegments)
+    let time = 0
+    let globalIndex = 0
+    for (const layer of this.drawnLayers) {
+      const durations = layer.durations
+      for (let offset = 0; offset < durations.length; offset += 2) {
+        time += durations[offset]
+        starts[globalIndex] = time
+        time += durations[offset + 1]
+        ends[globalIndex] = time
+        globalIndex++
+      }
+    }
+    this.segmentStartTimes = starts
+    this.segmentEndTimes = ends
+
+    // Stamp each layer's segment offset onto its render objects, so the reveal reads it per child
+    const baseByLayer = new Map(this.drawnLayers.map((entry) => [entry.layerNumber, entry.globalBase]))
+    this.gcodeGroup.traverse((child) => {
+      if (isLayerObject(child)) child.userData.globalBase = baseByLayer.get(child.userData.layerNumber)
+    })
+
+    this.buildTipLine()
   }
 
   applyLineWidth () {
@@ -396,6 +503,12 @@ export class GCodeParser {
   syncGcodeObjToLayer (layerNumber) {
     let needUpdate = false
 
+    // Hide the growing tip while a layer is manually browsed
+    if (this.tipLine && this.tipLine.visible) {
+      this.tipLine.visible = false
+      needUpdate = true
+    }
+
     this.gcodeGroup.traverse((child) => {
       if (!isLayerObject(child)) return
 
@@ -407,43 +520,240 @@ export class GCodeParser {
       }
 
       // The rest are shown whole
-      const count = child.userData.numLines
-      if (!child.visible || child.geometry.instanceCount !== count) needUpdate = true
+      if (!child.visible) needUpdate = true
       child.visible = true
-      child.geometry.instanceCount = count
+      if (this.setRevealCount(child, child.userData.numLines)) needUpdate = true
     })
 
     return needUpdate
   }
 
-  syncGcodeObjToFilePos (filePosition) {
-    let currentLayerNumber = 0
+  syncGcodeObjToNozzle (filePosition, deltaSeconds) {
+    if (!this.drawnLayers.length) return 0
 
+    // How much of the print has been sent to the printer so far
+    const segmentsRead = this.segmentsReadAt(filePosition)
+    this.targetTime = segmentsRead < this.totalSegments
+      ? this.segmentStartTimes[segmentsRead]
+      : this.segmentEndTimes[this.totalSegments - 1]
+
+    // Follow that point smoothly: the nozzle stops when nothing new arrives and speeds up
+    // after a burst of commands; it jumps only when the point is behind it or very far ahead
+    const backlog = this.targetTime - this.nozzleTime
+    if (backlog < 0 || backlog > NOZZLE_SNAP_SECONDS) this.nozzleTime = this.targetTime
+    else this.nozzleTime += backlog * (1 - Math.exp(-deltaSeconds / NOZZLE_LAG_SECONDS))
+
+    // Where along the timeline the nozzle sits: reveal, tip and nozzle model all derive from here
+    const spot = this.locateTime(this.nozzleTime)
+    const revealed = spot.index
+
+    // Fully show layers the reveal has passed, a prefix of the one it's inside, hide those it hasn't reached
     this.gcodeGroup.traverse((child) => {
       if (!isLayerObject(child)) return
-
-      // File-position range this layer covers
-      const filePositions = child.userData.filePositions
-      const filePositionMin = filePositions[0]
-      const filePositionMax = filePositions[filePositions.length - 1]
-
-      if (filePositionMax < filePosition) {
-        // Already fully printed: show the whole layer
+      const base = child.userData.globalBase
+      const numLines = child.userData.numLines
+      if (revealed >= base + numLines) {
         child.visible = true
-        child.geometry.instanceCount = child.userData.numLines
-      } else if (filePositionMin > filePosition) {
-        // Not started yet: hide it
+        this.setRevealCount(child, numLines)
+      } else if (revealed <= base) {
         child.visible = false
       } else {
-        // In progress: show up to the playhead and mark this as the current layer
         child.visible = true
-        let count = 0
-        while (count < filePositions.length && filePositions[count] < filePosition) count++
-        child.geometry.instanceCount = Math.min(count, child.userData.numLines)
-        currentLayerNumber = child.userData.layerNumber
+        this.setRevealCount(child, revealed - base)
       }
     })
 
+    // Grow the segment the nozzle is mid-way through and place the nozzle model
+    this.updateTipLine(spot)
+    this.updateNozzlePosition(spot)
+
+    // Return layer holding the last revealed segment
+    let currentLayerNumber = 0
+    for (const layer of this.drawnLayers) {
+      if (revealed <= layer.globalBase) break
+      currentLayerNumber = layer.layerNumber
+    }
     return currentLayerNumber
+  }
+
+  segmentsReadAt (filePosition) {
+    // How many drawn segments the read position has reached
+    let count = 0
+
+    for (const layer of this.drawnLayers) {
+      const filePositions = layer.filePositions
+      if (filePositions[0] > filePosition) break
+      if (filePositions[filePositions.length - 1] < filePosition) {
+        count = layer.globalBase + layer.numLines
+      } else {
+        // Segments in this layer already read (binary search over the sorted file positions)
+        let lo = 0; let hi = filePositions.length
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1
+          if (filePositions[mid] < filePosition) lo = mid + 1
+          else hi = mid
+        }
+        count = layer.globalBase + lo
+        break
+      }
+    }
+
+    return count
+  }
+
+  locateTime (time) {
+    // Segment (or the travel gap before it) holding a timeline coordinate, and the fraction into it
+    const starts = this.segmentStartTimes
+    const ends = this.segmentEndTimes
+
+    // First segment whose end lies past the coordinate (binary search)
+    let lo = 0; let hi = ends.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (ends[mid] <= time) lo = mid + 1
+      else hi = mid
+    }
+    if (lo >= ends.length) return { index: ends.length, fraction: 1, onSegment: false }
+
+    if (time >= starts[lo]) {
+      const duration = ends[lo] - starts[lo]
+      return { index: lo, fraction: duration > 0 ? (time - starts[lo]) / duration : 1, onSegment: true }
+    }
+    const gapStart = lo > 0 ? ends[lo - 1] : 0
+    const gap = starts[lo] - gapStart
+    return { index: lo, fraction: gap > 0 ? (time - gapStart) / gap : 0, onSegment: false }
+  }
+
+  updateNozzlePosition (spot) {
+    const position = this.nozzlePosition
+
+    // Past the end: park on the last segment's endpoint
+    if (spot.index >= this.totalSegments) {
+      const last = this.segmentAt(this.totalSegments - 1)
+      position.fromArray(last.layer.vertex, last.local * 6 + 3)
+      return
+    }
+
+    const segment = this.segmentAt(spot.index)
+    const vertex = segment.layer.vertex
+    const offset = segment.local * 6
+
+    if (spot.onSegment) {
+      // Along the segment being drawn
+      position.set(
+        vertex[offset] + (vertex[offset + 3] - vertex[offset]) * spot.fraction,
+        vertex[offset + 1] + (vertex[offset + 4] - vertex[offset + 1]) * spot.fraction,
+        vertex[offset + 2] + (vertex[offset + 5] - vertex[offset + 2]) * spot.fraction
+      )
+    } else if (spot.index > 0) {
+      // In a travel gap: glide from the previous segment's end to this one's start
+      const previous = this.segmentAt(spot.index - 1)
+      const from = previous.layer.vertex
+      const fromOffset = previous.local * 6
+      position.set(
+        from[fromOffset + 3] + (vertex[offset] - from[fromOffset + 3]) * spot.fraction,
+        from[fromOffset + 4] + (vertex[offset + 1] - from[fromOffset + 4]) * spot.fraction,
+        from[fromOffset + 5] + (vertex[offset + 2] - from[fromOffset + 5]) * spot.fraction
+      )
+    } else {
+      // Wait at the start of the segment
+      position.fromArray(vertex, offset)
+    }
+  }
+
+  getNozzlePosition () {
+    // Not meaningful until the print reaches the first segment (e.g. homing, heating)
+    return this.targetTime > 0 ? this.nozzlePosition : null
+  }
+
+  setRevealCount (child, count) {
+    // Thick lines are instanced; thin ones aren't, so limit their drawn vertex range (2 per segment)
+    const geometry = child.geometry
+    if (this.app.settings.thickLines) {
+      if (geometry.instanceCount === count) return false
+      geometry.instanceCount = count
+    } else {
+      if (geometry.drawRange.count === count * 2) return false
+      geometry.setDrawRange(0, count * 2)
+    }
+    return true
+  }
+
+  /* ---- Growing tip line ---- */
+
+  buildTipLine () {
+    if (this.tipLine) {
+      this.gcodeGroup.remove(this.tipLine)
+      this.tipLine.geometry.dispose()
+    }
+
+    const positions = new Float32Array(6)
+    const colors = new Float32Array(6)
+    let line
+    if (this.app.settings.thickLines) {
+      const geometry = new THREE.LineSegmentsGeometry()
+      geometry.setPositions(positions)
+      geometry.setColors(colors)
+      line = new THREE.LineSegments2(geometry, this.highlightMaterial)
+    } else {
+      const geometry = new THREE.BufferGeometry()
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
+      line = new THREE.LineSegments(geometry, this.thinMaterial)
+    }
+
+    line.visible = false
+    line.frustumCulled = false
+
+    this.tipLine = line
+    this.gcodeGroup.add(line)
+  }
+
+  updateTipLine (spot) {
+    const tipLine = this.tipLine
+    if (!tipLine) return
+
+    // Nothing grows while traveling between segments or past the end
+    if (!spot.onSegment || spot.fraction <= 0) {
+      tipLine.visible = false
+      return
+    }
+
+    const segment = this.segmentAt(spot.index)
+    const vertex = segment.layer.vertex
+    const offset = segment.local * 6
+    const startX = vertex[offset]; const startY = vertex[offset + 1]; const startZ = vertex[offset + 2]
+
+    // Grow up to how far along the segment the nozzle has reached
+    const progress = spot.fraction
+    const colors = segment.layer.colors
+    this.setTipLineGeometry(startX, startY, startZ,
+      startX + (vertex[offset + 3] - startX) * progress, startY + (vertex[offset + 4] - startY) * progress, startZ + (vertex[offset + 5] - startZ) * progress,
+      colors[offset], colors[offset + 1], colors[offset + 2])
+    tipLine.visible = true
+  }
+
+  setTipLineGeometry (startX, startY, startZ, endX, endY, endZ, r, g, b) {
+    const geometry = this.tipLine.geometry
+    if (this.app.settings.thickLines) {
+      const positions = geometry.attributes.instanceStart.data
+      positions.array.set([startX, startY, startZ, endX, endY, endZ])
+      positions.needsUpdate = true
+      const colors = geometry.attributes.instanceColorStart.data
+      colors.array.set([r, g, b, r, g, b])
+      colors.needsUpdate = true
+    } else {
+      geometry.attributes.position.array.set([startX, startY, startZ, endX, endY, endZ])
+      geometry.attributes.position.needsUpdate = true
+      geometry.attributes.color.array.set([r, g, b, r, g, b])
+      geometry.attributes.color.needsUpdate = true
+    }
+  }
+
+  segmentAt (globalIndex) {
+    for (const layer of this.drawnLayers) {
+      if (globalIndex < layer.globalBase + layer.numLines) return { layer, local: globalIndex - layer.globalBase }
+    }
+    return null
   }
 }

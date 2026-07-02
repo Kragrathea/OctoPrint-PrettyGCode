@@ -1,7 +1,6 @@
 import { Settings } from './settings.js'
 import { Viewer } from './viewer.js'
 import { GCodeParser } from './gcode/parsing.js'
-import { PrintHeadSimulator } from './gcode/print-head-simulation.js'
 import { initSettingsPanel } from './ui/settings-panel.js'
 import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows.js'
 import { updateWebcamStream } from './ui/webcam.js'
@@ -27,7 +26,6 @@ export class PrettyGCodeApp {
     // 3D view components
     this.viewer = new Viewer(this)
     this.gcodeParser = new GCodeParser(this)
-    this.printHeadSimulator = new PrintHeadSimulator()
 
     // Print bed geometry
     this.bedVolume = { depth: 0, formFactor: '', height: 0, origin: '', width: 0 }
@@ -46,9 +44,7 @@ export class PrettyGCodeApp {
     this.manualLayerControl = false
 
     // OctoPrint 2.x changed the terminal log prefixes
-    const isOctoPrint1 = parseInt(VERSION, 10) < 2
-    this.sendLogPrefix = isOctoPrint1 ? 'Send: ' : '>>>'
-    this.recvLogPrefix = isOctoPrint1 ? 'Recv: ' : '<<< '
+    this.recvLogPrefix = parseInt(VERSION, 10) < 2 ? 'Recv: ' : '<<< '
   }
 
   onTabChange (current, previous) {
@@ -91,15 +87,9 @@ export class PrettyGCodeApp {
     this.updateData(data)
     if (!this.viewInitialized) return
 
-    // Seed the nozzle's Z after a mid-print reload
-    this.printHeadSimulator.seedZ(data.currentZ)
-
+    // Update status bar with the reported temperatures
     data.logs.forEach((e) => {
-      if (e.startsWith(this.sendLogPrefix)) {
-        // Update nozzle simulation
-        this.printHeadSimulator.addCommand(e)
-      } else if (e.startsWith(this.recvLogPrefix + 'T:')) {
-        // Update status bar
+      if (e.startsWith(this.recvLogPrefix + 'T:')) {
         setStatusBarText(e.substr(this.recvLogPrefix.length).split('@')[0])
       }
     })
@@ -110,22 +100,12 @@ export class PrettyGCodeApp {
   }
 
   updateData (data) {
-    // On a newly selected file, reload the gcode and start a fresh nozzle simulation
+    // On a newly selected file, reload the gcode
     const job = data.job
     if (this.currentJobPath !== job.file.path || this.currentJobDate !== job.file.date) {
       this.currentJobPath = job.file.path
       this.currentJobDate = job.file.date
-      if (this.viewInitialized) {
-        this.gcodeParser.loadGcode(this.currentJobPath)
-        this.printHeadSimulator = new PrintHeadSimulator()
-      }
-    }
-
-    // When a print ends (the printer was active and now isn't) drop the moves still queued in the nozzle simulation.
-    const wasPrinting = this.currentPrinterState && (this.currentPrinterState.flags.printing || this.currentPrinterState.flags.paused)
-    const isPrinting = data.state.flags.printing || data.state.flags.paused
-    if (wasPrinting && !isPrinting) {
-      this.printHeadSimulator = new PrintHeadSimulator()
+      if (this.viewInitialized) this.gcodeParser.loadGcode(this.currentJobPath)
     }
 
     // Live printer state and progress

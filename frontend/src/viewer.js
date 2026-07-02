@@ -150,30 +150,21 @@ export class Viewer {
     // Rebuild the nozzle reflection (only on a forced render)
     if (needRender) this.reflectionCamera.update(this.renderer, this.scene)
 
-    // Drain buffered moves to advance the nozzle animation
-    if (app.printHeadSimulator) app.printHeadSimulator.updatePosition(delta)
-
     // Track the live print, otherwise follow the manually selected layer
     const trackingLivePrint = app.currentPrinterState && !app.manualLayerControl &&
             (app.currentPrinterState.flags.printing || app.currentPrinterState.flags.paused)
     if (trackingLivePrint) {
-      // Nozzle follows the simulated print head, or parks at origin until its position is known
-      if (this.nozzleModel && app.printHeadSimulator) {
-        const headPosition = app.printHeadSimulator.getCurrentPosition()
-        if (headPosition) {
-          this.nozzleModel.position.copy(headPosition)
-          needRender = true
-        } else if (this.nozzleModel.position.lengthSq()) {
-          this.nozzleModel.position.set(0, 0, 0)
-          needRender = true
-        }
-      }
-      // Reveal gcode up to the live file position
-      if (app.gcodeParser) {
-        const calculatedLayer = app.gcodeParser.syncGcodeObjToFilePos(app.currentFilePosition)
-        app.gcodeParser.highlightLayer(calculatedLayer)
-        setLayerSliderValue(calculatedLayer)
-        needRender = true
+      // Reveal gcode up to where the nozzle has passed
+      const calculatedLayer = app.gcodeParser.syncGcodeObjToNozzle(app.currentFilePosition, delta)
+      app.gcodeParser.highlightLayer(calculatedLayer)
+      setLayerSliderValue(calculatedLayer)
+      needRender = true
+
+      // Nozzle model follows, or parks at origin until the print reaches the gcode
+      if (this.nozzleModel) {
+        const headPosition = app.gcodeParser.getNozzlePosition()
+        if (headPosition) this.nozzleModel.position.copy(headPosition)
+        else this.nozzleModel.position.set(0, 0, 0)
       }
     } else {
       // Park the nozzle at the origin

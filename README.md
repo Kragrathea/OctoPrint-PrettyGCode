@@ -17,13 +17,9 @@ This plugin adds a 3D GCode visualizer tab in Octoprint. It displays colored lin
 ## Common Issues
 
 ### 3D view sync
-Keeping the 3D view perfectly in sync with the print is harder than it sounds.
+PrettyGCode does its best to simulate the nozzle position during a print, but it's only an estimate with no guarantee of accuracy: OctoPrint has no real way of knowing where the print head actually is. Please note also that a short delay behind the printer is expected and unavoidable.
 
-Like OctoPrint's built-in visualizer, PrettyGCode draws the toolpath from the **file position** - the moment OctoPrint *reads* a line from the G-code file on disk, which is not when that line is actually printed.
-
-The 3D view of the nozzle, instead, is placed from when each line is **sent** to the printer, so it should track the real print head more closely.
-
-As a result the two won't line up exactly: it's a compromise.
+If, however, the sync looks completely off during a print, please [open a bug report](#how-to-report-bugs) and attach the file you were printing.
 
 ### Performance and WebGL
 PrettyGCode renders with WebGL via Three.js.
