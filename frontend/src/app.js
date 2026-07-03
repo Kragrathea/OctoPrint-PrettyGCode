@@ -1,10 +1,12 @@
 import { Settings } from './settings.js'
 import { Viewer } from './viewer.js'
-import { GCodeParser } from './gcode/parsing.js'
+import { parseGcodeFile } from './gcode/parser.js'
+import { PrintTimeline } from './gcode/print-timeline.js'
+import { GCodeModel } from './gcode/gcode-model.js'
 import { initSettingsPanel } from './ui/settings-panel.js'
 import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows.js'
 import { updateWebcamStream } from './ui/webcam.js'
-import { initLayerSlider, setLayerSliderMax } from './ui/layer-slider.js'
+import { initLayerSlider, setLayerSliderMax, setLayerSliderValue } from './ui/layer-slider.js'
 import { initToggleButtons } from './ui/toggle-buttons.js'
 import { setStatusBarText } from './ui/status-bar.js'
 
@@ -25,7 +27,11 @@ export class PrettyGCodeApp {
 
     // 3D view components
     this.viewer = new Viewer(this)
-    this.gcodeParser = new GCodeParser(this)
+    this.printTimeline = new PrintTimeline()
+    this.gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.viewer.mirrorBoundsPlanes)
+
+    // Parsed gcode of the currently loaded job
+    this.parsedGcode = null
 
     // Print bed geometry
     this.bedVolume = { depth: 0, formFactor: '', height: 0, origin: '', width: 0 }
@@ -47,6 +53,8 @@ export class PrettyGCodeApp {
     this.recvLogPrefix = parseInt(VERSION, 10) < 2 ? 'Recv: ' : '<<< '
   }
 
+  /* ---- OctoPrint events ---- */
+
   onTabChange (current, previous) {
     if (current === PG_TAB) {
       if (!this.viewInitialized) {
@@ -56,16 +64,16 @@ export class PrettyGCodeApp {
         this.printerProfilesVM.currentProfileData.subscribe(() => {
           this.updateBedVolume()
           this.updateNozzleDiameter()
-          this.gcodeParser.applyLineWidth()
-          this.viewer.updateGridMesh()
-          this.viewer.resetCamera()
+          this.updateLineWidth()
+          this.viewer.updateBedMesh()
+          this.viewer.resetCameraTarget()
         })
 
         // 3D view and gcode
         this.viewer.init()
         this.viewer.loadNozzle()
-        this.viewer.scene.add(this.gcodeParser.getObject())
-        this.gcodeParser.loadGcode(this.currentJobPath)
+        this.viewer.scene.add(this.gcodeModel.linesGroup)
+        this.loadGcode(this.currentJobPath)
 
         // UI controls
         initSettingsPanel(this)
@@ -84,7 +92,7 @@ export class PrettyGCodeApp {
   }
 
   fromCurrentData (data) {
-    this.updateData(data)
+    this.updatePrinterData(data)
     if (!this.viewInitialized) return
 
     // Update status bar with the reported temperatures
@@ -96,16 +104,16 @@ export class PrettyGCodeApp {
   }
 
   fromHistoryData (data) {
-    this.updateData(data)
+    this.updatePrinterData(data)
   }
 
-  updateData (data) {
+  updatePrinterData (data) {
     // On a newly selected file, reload the gcode
     const job = data.job
     if (this.currentJobPath !== job.file.path || this.currentJobDate !== job.file.date) {
       this.currentJobPath = job.file.path
       this.currentJobDate = job.file.date
-      if (this.viewInitialized) this.gcodeParser.loadGcode(this.currentJobPath)
+      if (this.viewInitialized) this.loadGcode(this.currentJobPath)
     }
 
     // Live printer state and progress
@@ -113,13 +121,88 @@ export class PrettyGCodeApp {
     this.currentFilePosition = data.progress.filepos
   }
 
-  onGcodeLoaded (layerCount) {
-    // After a (re)load show the whole model: slider max and current layer at the top
+  /* ---- Gcode loading ---- */
+
+  async loadGcode (jobPath) {
+    this.parsedGcode = await parseGcodeFile(jobPath)
+
+    // Index the timeline and build the model
+    this.printTimeline.index(this.parsedGcode.layers)
+    this.gcodeModel.build(this.parsedGcode.layers)
+    this.updateLineWidth()
+
+    // Show the whole model: slider max and current layer at the top
+    const layerCount = this.parsedGcode.layers.length
     this.currentLayerNumber = layerCount
     setLayerSliderMax(layerCount)
     if (layerCount) this.viewer.frameBounds()
     this.viewer.requestRender()
   }
+
+  updateLineWidth () {
+    // The slicer's nozzle diameter wins over the printer profile
+    this.gcodeModel.applyLineWidth(this.parsedGcode?.slicerNozzleDiameter ?? this.nozzleDiameter)
+    this.viewer.requestRender()
+  }
+
+  /* ---- Print tracking ---- */
+
+  // Reveal the gcode up to the live print position, or up to the manually selected layer.
+  // Returns whether the scene changed and the nozzle position.
+  updatePrintView (deltaSeconds) {
+    const state = this.currentPrinterState
+    const tracking = state && !this.manualLayerControl && (state.flags.printing || state.flags.paused)
+
+    let needRender = false
+    let nozzlePosition = null
+    let revealedLayer = null
+
+    if (tracking) {
+      // Reveal gcode up to where the nozzle has passed
+      const spot = this.printTimeline.advance(this.currentFilePosition, deltaSeconds)
+      if (spot) {
+        this.gcodeModel.revealTo(spot)
+        revealedLayer = this.printTimeline.layerNumberAt(spot.segmentIndex)
+        setLayerSliderValue(revealedLayer)
+      }
+      needRender = true
+      nozzlePosition = this.printTimeline.getNozzlePosition()
+    } else {
+      // Reveal gcode up to the selected layer
+      needRender = this.gcodeModel.syncToLayer(this.currentLayerNumber)
+      if (needRender) revealedLayer = this.currentLayerNumber
+    }
+
+    // Highlight the revealed layer
+    if (revealedLayer != null) this.gcodeModel.highlightLayer(revealedLayer)
+
+    return { needRender, nozzlePosition }
+  }
+
+  /* ---- UI events ---- */
+
+  setCurrentLayerNumber (layerNumber) {
+    this.currentLayerNumber = layerNumber
+  }
+
+  setManualLayerControl (manual) {
+    this.manualLayerControl = manual
+  }
+
+  updateDarkMode () {
+    this.viewer.applyBackground(this.settings.darkMode)
+  }
+
+  updateAntialias () {
+    this.viewer.applyAntialias(this.settings.antialias)
+  }
+
+  rebuildGcodeModel () {
+    this.gcodeModel.rebuild()
+    this.viewer.requestRender()
+  }
+
+  /* ---- Printer profile ---- */
 
   updateNozzleDiameter () {
     const currentProfileData = this.printerProfilesVM.currentProfileData()

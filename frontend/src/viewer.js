@@ -1,7 +1,6 @@
-import * as THREE from './three.js'
+import * as THREE from './three-exports.js'
 import CameraControls from 'camera-controls'
 import { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster } from 'three'
-import { setLayerSliderValue } from './ui/layer-slider.js'
 
 // Copied from camera-controls/readme.md's `subsetOfTHREE` to keep three.js tree-shakeable
 const CAMERA_CONTROLS_THREE = { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster }
@@ -11,10 +10,10 @@ const LIGHT_BACKGROUND = 0xd0d0d0
 const DARK_BACKGROUND = 0x000000
 
 // Seconds the camera must sit idle before it starts auto-orbiting
-const ORBIT_IDLE_DELAY = 5
+const ORBIT_IDLE_DELAY_SECONDS = 5
 
 // Nozzle model
-const NOZZLE_URL = PLUGIN_BASEURL + 'prettygcode/static/js/models/ExtruderNozzle.obj'
+const NOZZLE_MODEL_URL = PLUGIN_BASEURL + 'prettygcode/static/js/models/ExtruderNozzle.obj'
 
 // Planes used to clip the gcode reflection when the camera is below the bed
 const BELOW_BED_CLIP_PLANES = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)]
@@ -46,7 +45,7 @@ export class Viewer {
 
   // Bound the gcode reflection to the bed surface: 4 planes through the camera and the bed
   // edges, so a reflected point is shown only where the line of sight crosses the bed.
-  // Updated each frame and applied to the mirror material only (see GCodeParser).
+  // Updated each frame and applied to the mirror material only.
   mirrorBoundsPlanes = [new THREE.Plane(), new THREE.Plane(), new THREE.Plane(), new THREE.Plane()]
 
   /* ---- Setup ---- */
@@ -71,14 +70,14 @@ export class Viewer {
     CameraControls.install({ THREE: CAMERA_CONTROLS_THREE })
     this.cameraControls = new CameraControls(this.camera, canvas)
     this.cameraControls.dollyToCursor = true
-    this.resetCamera()
+    this.resetCameraTarget()
 
     // Scene
     this.scene = new THREE.Scene()
     this.applyBackground(settings.darkMode)
 
     // Bed (grid)
-    this.updateGridMesh()
+    this.updateBedMesh()
 
     // Under bed light
     this.underBedLight = new THREE.PointLight(0xffffff)
@@ -108,7 +107,7 @@ export class Viewer {
   }
 
   loadNozzle () {
-    new THREE.OBJLoader().load(NOZZLE_URL, (obj) => {
+    new THREE.OBJLoader().load(NOZZLE_MODEL_URL, (obj) => {
       obj.rotation.x = Math.PI / 2
       obj.scale.setScalar(0.1)
       obj.position.set(0, 0, 10)
@@ -134,7 +133,7 @@ export class Viewer {
     const settings = app.settings
 
     this.timer.update()
-    const delta = this.timer.getDelta()
+    const deltaSeconds = this.timer.getDelta()
 
     let needRender = this.forceRender
     this.forceRender = false
@@ -147,34 +146,19 @@ export class Viewer {
       return
     }
 
-    // Rebuild the nozzle reflection (only on a forced render)
+    // Rebuild the nozzle reflection
     if (needRender) this.reflectionCamera.update(this.renderer, this.scene)
 
-    // Track the live print, otherwise follow the manually selected layer
-    const trackingLivePrint = app.currentPrinterState && !app.manualLayerControl &&
-            (app.currentPrinterState.flags.printing || app.currentPrinterState.flags.paused)
-    if (trackingLivePrint) {
-      // Reveal gcode up to where the nozzle has passed
-      const calculatedLayer = app.gcodeParser.syncGcodeObjToNozzle(app.currentFilePosition, delta)
-      app.gcodeParser.highlightLayer(calculatedLayer)
-      setLayerSliderValue(calculatedLayer)
-      needRender = true
+    // Update and get the print view
+    const printView = app.updatePrintView(deltaSeconds)
+    if (printView.needRender) needRender = true
 
-      // Nozzle model follows, or parks at origin until the print reaches the gcode
-      if (this.nozzleModel) {
-        const headPosition = app.gcodeParser.getNozzlePosition()
-        if (headPosition) this.nozzleModel.position.copy(headPosition)
-        else this.nozzleModel.position.set(0, 0, 0)
-      }
-    } else {
-      // Park the nozzle at the origin
-      if (this.nozzleModel && this.nozzleModel.position.lengthSq()) {
+    // Update nozzle model position
+    if (this.nozzleModel) {
+      if (printView.nozzlePosition) {
+        this.nozzleModel.position.copy(printView.nozzlePosition)
+      } else if (this.nozzleModel.position.lengthSq()) {
         this.nozzleModel.position.set(0, 0, 0)
-        needRender = true
-      }
-      // Reveal gcode up to the selected layer
-      if (app.gcodeParser && app.gcodeParser.syncGcodeObjToLayer(app.currentLayerNumber)) {
-        app.gcodeParser.highlightLayer(app.currentLayerNumber)
         needRender = true
       }
     }
@@ -186,14 +170,14 @@ export class Viewer {
     }
 
     // Auto-orbit once the camera has sat idle a while
-    if (this.cameraControls.update(delta)) {
+    if (this.cameraControls.update(deltaSeconds)) {
       this.cameraIdleTime = 0
       needRender = true
     } else {
-      this.cameraIdleTime += delta
-      if (settings.orbitWhenIdle && this.cameraIdleTime > ORBIT_IDLE_DELAY) {
-        this.cameraControls.rotate(delta / 5.0, 0, false)
-        this.cameraControls.update(delta)
+      this.cameraIdleTime += deltaSeconds
+      if (settings.orbitWhenIdle && this.cameraIdleTime > ORBIT_IDLE_DELAY_SECONDS) {
+        this.cameraControls.rotate(deltaSeconds / 5.0, 0, false)
+        this.cameraControls.update(deltaSeconds)
         needRender = true
       }
     }
@@ -239,7 +223,7 @@ export class Viewer {
 
   /* ---- Scene and camera ---- */
 
-  updateGridMesh () {
+  updateBedMesh () {
     if (!this.scene) return
 
     const bedVolume = this.app.bedVolume
@@ -272,7 +256,7 @@ export class Viewer {
     this.scene.add(grid)
   }
 
-  resetCamera (enableTransition = false) {
+  resetCameraTarget (enableTransition = false) {
     if (!this.cameraControls) return
 
     const bedVolume = this.app.bedVolume
@@ -287,10 +271,10 @@ export class Viewer {
 
   frameBounds () {
     // Re-center on the bed first
-    this.resetCamera(true)
+    this.resetCameraTarget(true)
 
     // Pull back to roughly the print's footprint, with a floor for tiny models
-    const size = this.app.gcodeParser.bounds.getSize(new THREE.Vector3())
+    const size = this.app.parsedGcode.bounds.getSize(new THREE.Vector3())
     this.cameraControls.dollyTo(Math.max(40, size.x, size.y), true)
   }
 

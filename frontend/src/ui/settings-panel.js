@@ -17,13 +17,13 @@ export function initSettingsPanel (app) {
     'darkMode',
     'Dark mode',
     'Use a dark background for the 3D view.'
-  ).onFinishChange(() => app.viewer.applyBackground(settings.darkMode))
+  ).onFinishChange(() => app.updateDarkMode())
 
   option(
     'showMirror',
     'Mirror',
     'Show a reflection of the print on the bed.'
-  ).onFinishChange(() => app.gcodeParser.rebuildObject())
+  ).onFinishChange(() => app.rebuildGcodeModel())
 
   option(
     'orbitWhenIdle',
@@ -35,13 +35,13 @@ export function initSettingsPanel (app) {
     'thickLines',
     'Thick lines',
     'Display lines with thickness, based on nozzle size.'
-  ).onFinishChange(() => app.gcodeParser.rebuildObject())
+  ).onFinishChange(() => app.rebuildGcodeModel())
 
   option(
     'antialias',
     'Antialiasing',
     'Smooth jagged edges in the 3D view.'
-  ).onFinishChange(() => app.viewer.applyAntialias(settings.antialias))
+  ).onFinishChange(() => app.updateAntialias())
 
   option(
     'showNozzle',

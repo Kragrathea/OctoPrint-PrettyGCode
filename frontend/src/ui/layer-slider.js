@@ -9,12 +9,12 @@ export function initLayerSlider (app) {
     max: 100,
     value: 100
   }).on('slide', (event) => {
-    app.currentLayerNumber = event.value
+    app.setCurrentLayerNumber(event.value)
     $('#pg-layer-slider-ui .slider-handle').text(event.value)
   }).on('slideStart', () => {
-    app.manualLayerControl = true
+    app.setManualLayerControl(true)
   }).on('slideStop', () => {
-    app.manualLayerControl = false
+    app.setManualLayerControl(false)
   })
 }
 

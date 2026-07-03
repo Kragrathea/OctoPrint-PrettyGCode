@@ -20,12 +20,12 @@ function setWebcamHeight (height) {
 }
 
 function setDashboardScale (scale) {
-  const dasboardElement = document.getElementById('tab_plugin_dashboard')
-  if (!dasboardElement) return
+  const dashboardElement = document.getElementById('tab_plugin_dashboard')
+  if (!dashboardElement) return
 
-  if (dasboardElement.offsetHeight) { scale = clampOverlayHeight(dasboardElement.offsetHeight * scale) / dasboardElement.offsetHeight }
+  if (dashboardElement.offsetHeight) { scale = clampOverlayHeight(dashboardElement.offsetHeight * scale) / dashboardElement.offsetHeight }
 
-  dasboardElement.style.setProperty('--pg-dash-scale', scale)
+  dashboardElement.style.setProperty('--pg-dash-scale', scale)
   dashboardScale = scale
 }
 
