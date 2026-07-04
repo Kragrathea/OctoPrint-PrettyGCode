@@ -3,52 +3,83 @@ import type { Settings } from '../settings'
 import type { Layer } from './parser'
 import type { PrintTimeline, TimelineSpot } from './print-timeline'
 
-// A layer's rendered line object
+/** A layer's rendered line object */
 type LayerLine = THREE.LineSegments2 | THREE.LineSegments
 
-// Layer names
+/** Name prefix of the layer line objects */
 const LAYER_PREFIX = 'layer#'
+
+/**
+ * Tells whether a scene object is one of the rendered gcode layers
+ * @param child - Scene object to test
+ * @returns True for layer line objects
+ */
 const isLayerObject = (child: THREE.Object3D): child is LayerLine => child.name.startsWith(LAYER_PREFIX)
 
-// Lines thickness based on nozzle size
+/** Nozzle diameter in mm assumed when none is known */
 const DEFAULT_NOZZLE_DIAMETER = 0.4
-const LINE_THICKNESS_FACTOR = 1.1 // A slightly oversize to avoid gaps
+/** Oversize factor of the drawn lines, to avoid gaps */
+const LINE_THICKNESS_FACTOR = 1.1
 
-// Material makers
+/**
+ * Makes the material for thin gcode lines
+ * @param clippingPlanes - Clipping planes to apply, if any
+ * @returns The new material
+ */
 const makeThinMaterial = (clippingPlanes: THREE.Plane[] | null = null) => new THREE.LineBasicMaterial({ vertexColors: true, clippingPlanes })
+
+/**
+ * Makes the material for thick gcode lines
+ * @param clippingPlanes - Clipping planes to apply, if any
+ * @returns The new material
+ */
 const makeThickMaterial = (clippingPlanes: THREE.Plane[] | null = null) =>
   new THREE.LineMaterial({ worldUnits: true, linewidth: DEFAULT_NOZZLE_DIAMETER * LINE_THICKNESS_FACTOR, vertexColors: true, clippingPlanes })
+
+/**
+ * Makes the material for the highlighted layer
+ * @returns The new material
+ */
 const makeHighlightMaterial = () => {
   const highlightMaterial = makeThickMaterial()
   highlightMaterial.color.setRGB(0.5, 0.5, 0.5)
   return highlightMaterial
 }
 
+/** The rendered gcode model, made of per-layer line objects */
 export class GCodeModel {
-  // Group holding the gcode model lines
+  /** Group holding the gcode model lines */
   linesGroup = new THREE.Group()
 
-  // Layers last built from, kept to rebuild when settings change
+  /** Layers the model was last built from */
   layers: Layer[] = []
 
-  // The growing tip drawn along the segment the nozzle is currently laying down
+  /** The growing tip drawn along the segment the nozzle is currently laying down */
   tipLine: LayerLine | null = null
 
-  // Line materials for the gcode model
+  /** Material for thin lines */
   thinMaterial = makeThinMaterial()
+  /** Material for thick lines */
   thickMaterial = makeThickMaterial()
+  /** Material for the highlighted layer */
   highlightMaterial = makeHighlightMaterial()
 
-  // Mirror materials, clipped to the bed
+  /** Thick line material for the mirror, clipped to the bed */
   mirrorThickMaterial: THREE.LineMaterial
+  /** Thin line material for the mirror, clipped to the bed */
   mirrorThinMaterial: THREE.LineBasicMaterial
 
-  // Settings
+  /** Plugin frontend settings */
   settings: Settings
 
-  // Print timeline
+  /** Print timeline of the loaded gcode */
   timeline: PrintTimeline
 
+  /**
+   * @param settings - Plugin frontend settings
+   * @param timeline - Print timeline of the loaded gcode
+   * @param mirrorBoundsPlanes - Planes clipping the mirror to the bed
+   */
   constructor (settings: Settings, timeline: PrintTimeline, mirrorBoundsPlanes: THREE.Plane[]) {
     this.settings = settings
     this.timeline = timeline
@@ -59,6 +90,10 @@ export class GCodeModel {
 
   /* ---- Object building ---- */
 
+  /**
+   * Builds the model's line objects from parsed layers
+   * @param layers - Parsed gcode layers
+   */
   build (layers: Layer[]) {
     this.layers = layers
     this.linesGroup.clear()
@@ -73,11 +108,18 @@ export class GCodeModel {
     this.buildTipLine()
   }
 
+  /** Rebuilds the model from the last given layers, e.g. after a settings change */
   rebuild () {
-    // Rebuild the 3D object from already-parsed data, e.g. when settings/materials change
     this.build(this.layers)
   }
 
+  /**
+   * Creates a line object
+   * @param vertices - Segment endpoints as flat XYZ triplets
+   * @param colors - Vertex colors as flat RGB triplets
+   * @param material - Material to render with
+   * @returns The new line object
+   */
   makeLine (vertices: number[], colors: number[], material: THREE.LineMaterial | THREE.LineBasicMaterial): LayerLine {
     if (this.settings.thickLines) {
       // Thick lines
@@ -94,6 +136,11 @@ export class GCodeModel {
     }
   }
 
+  /**
+   * Adds a layer's lines to the model
+   * @param layer - Parsed layer
+   * @param layerNumber - 1-based layer number
+   */
   addLayerLines (layer: Layer, layerNumber: number) {
     // Skip empty layers
     if (layer.vertices.length <= 2) return
@@ -124,6 +171,11 @@ export class GCodeModel {
     }
   }
 
+  /**
+   * Derives a layer's geometry mirrored through the bed
+   * @param layer - Parsed layer
+   * @returns The mirror's vertices and colors
+   */
   makeMirrorData (layer: Layer) {
     // Mirror through the bed: flip the Z of every vertex
     const vertices = layer.vertices.slice()
@@ -145,6 +197,10 @@ export class GCodeModel {
     return { vertices, colors }
   }
 
+  /**
+   * Sets the drawn line thickness from the nozzle size
+   * @param nozzleDiameter - Nozzle diameter in mm, or null for the default
+   */
   applyLineWidth (nozzleDiameter: number | null) {
     const lineWidth = (nozzleDiameter ?? DEFAULT_NOZZLE_DIAMETER) * LINE_THICKNESS_FACTOR
 
@@ -155,6 +211,10 @@ export class GCodeModel {
 
   /* ---- Reveal and highlight ---- */
 
+  /**
+   * Highlights a layer, unhighlighting the others
+   * @param layerNumber - 1-based layer number to highlight
+   */
   highlightLayer (layerNumber: number) {
     // Highlight material works only on thick lines
     if (!this.settings.thickLines) return
@@ -170,6 +230,11 @@ export class GCodeModel {
     })
   }
 
+  /**
+   * Shows the layers up to the given one, hiding the ones above
+   * @param layerNumber - 1-based topmost layer to show
+   * @returns True if anything changed
+   */
   syncToLayer (layerNumber: number) {
     let needUpdate = false
 
@@ -198,6 +263,10 @@ export class GCodeModel {
     return needUpdate
   }
 
+  /**
+   * Reveals the model up to a print timeline position
+   * @param spot - Timeline position to reveal up to
+   */
   revealTo (spot: TimelineSpot) {
     const revealed = spot.segmentIndex
 
@@ -221,6 +290,12 @@ export class GCodeModel {
     this.updateTipLine(spot)
   }
 
+  /**
+   * Limits how many of a layer's segments are drawn
+   * @param child - Layer line object
+   * @param count - Segments to draw
+   * @returns True if the count changed
+   */
   setRevealCount (child: LayerLine, count: number) {
     // Thick lines are instanced; thin ones aren't, so limit their drawn vertex range (2 per segment)
     if (this.settings.thickLines) {
@@ -237,6 +312,7 @@ export class GCodeModel {
 
   /* ---- Growing tip line ---- */
 
+  /** (Re)creates the line used to draw the partially printed segment */
   buildTipLine () {
     if (this.tipLine) {
       this.linesGroup.remove(this.tipLine)
@@ -265,6 +341,10 @@ export class GCodeModel {
     this.linesGroup.add(line)
   }
 
+  /**
+   * Grows the partially printed segment's line up to a timeline position
+   * @param spot - Timeline position
+   */
   updateTipLine (spot: TimelineSpot) {
     const tipLine = this.tipLine
     if (!tipLine) return
@@ -289,6 +369,18 @@ export class GCodeModel {
     tipLine.visible = true
   }
 
+  /**
+   * Writes new endpoints and color into the tip line
+   * @param startX - Start point X
+   * @param startY - Start point Y
+   * @param startZ - Start point Z
+   * @param endX - End point X
+   * @param endY - End point Y
+   * @param endZ - End point Z
+   * @param r - Red component (0-1)
+   * @param g - Green component (0-1)
+   * @param b - Blue component (0-1)
+   */
   setTipLineGeometry (startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, r: number, g: number, b: number) {
     if (!this.tipLine) return
 

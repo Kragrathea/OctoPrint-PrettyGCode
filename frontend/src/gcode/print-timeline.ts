@@ -1,7 +1,7 @@
 import * as THREE from '../three-exports'
 import type { Layer } from './parser'
 
-// A non-empty layer in print order, carrying its offset into the global segment numbering
+/** A non-empty layer in print order, carrying its offset into the global segment numbering */
 interface DrawnLayer {
   layerNumber: number
   globalBase: number
@@ -12,33 +12,44 @@ interface DrawnLayer {
   durations: number[]
 }
 
-// A point along the timeline: a segment (or the travel gap before it) and the fraction into it
+/** A point along the timeline: a segment (or the travel gap before it) and the fraction into it */
 export interface TimelineSpot {
   segmentIndex: number
   fraction: number
   onSegment: boolean
 }
 
-// How far behind the live print the shown nozzle trails to absorb bursty updates.
-// Higher looks smoother but lags real time more, lower tracks tighter but can stutter.
+/**
+ * How far behind the live print the shown nozzle trails to absorb bursty updates.
+ * Higher looks smoother but lags real time more, lower tracks tighter but can stutter
+ */
 const NOZZLE_LAG_SECONDS = 1.5
-// A read position leaping farther ahead than this (a seek, a mid-print reload) snaps instead of sweeping the whole way
+/** Read position leap beyond which the nozzle snaps instead of sweeping the whole way (a seek, a mid-print reload) */
 const NOZZLE_SNAP_SECONDS = 120
 
+/** Estimated timeline of the print, mapping file progress to positions along the path */
 export class PrintTimeline {
-  // Drawn segments indexed for lookup across layers
+  /** Drawn layers in print order */
   drawnLayers: DrawnLayer[] = []
+  /** Total drawn segments across all layers */
   totalSegments = 0
 
-  // Cumulative estimated time(s) at each drawn segment's start/end, travel gaps included
+  /** Cumulative estimated time at each segment's start, travel gaps included */
   segmentStartTimes = new Float64Array(0)
+  /** Cumulative estimated time at each segment's end, travel gaps included */
   segmentEndTimes = new Float64Array(0)
 
-  // The nozzle eased along the estimated timeline: where it is and where the read position points
+  /** Timeline coordinate the nozzle has been eased to */
   nozzleTime = 0
+  /** Timeline coordinate of the printer's read position */
   targetTime = 0
+  /** Nozzle position in scene coordinates */
   nozzlePosition = new THREE.Vector3()
 
+  /**
+   * Indexes parsed layers into a new timeline
+   * @param layers - Parsed gcode layers
+   */
   index (layers: Layer[]) {
     // Flatten the drawn layers into print order, tracking each one's running segment offset
     this.drawnLayers = []
@@ -75,6 +86,12 @@ export class PrintTimeline {
     this.targetTime = 0
   }
 
+  /**
+   * Moves the nozzle along the timeline toward the printer's read position
+   * @param filePosition - Bytes of the file sent to the printer so far
+   * @param deltaSeconds - Seconds elapsed since the previous call
+   * @returns Where the nozzle now sits, or null when no gcode is indexed
+   */
   advance (filePosition: number, deltaSeconds: number) {
     if (!this.drawnLayers.length) return null
 
@@ -96,8 +113,12 @@ export class PrintTimeline {
     return spot
   }
 
+  /**
+   * Finds the layer holding the last revealed segment
+   * @param segmentIndex - Global index of the reveal position
+   * @returns The 1-based layer number, or 0 before the first segment
+   */
   layerNumberAt (segmentIndex: number) {
-    // Layer holding the last revealed segment
     let layerNumber = 0
     for (const layer of this.drawnLayers) {
       if (segmentIndex <= layer.globalBase) break
@@ -106,8 +127,12 @@ export class PrintTimeline {
     return layerNumber
   }
 
+  /**
+   * Counts the drawn segments a file position has passed
+   * @param filePosition - Bytes of the file sent to the printer
+   * @returns The number of drawn segments passed
+   */
   segmentsReadAt (filePosition: number) {
-    // How many drawn segments the read position has reached
     let count = 0
 
     for (const layer of this.drawnLayers) {
@@ -131,8 +156,12 @@ export class PrintTimeline {
     return count
   }
 
+  /**
+   * Finds the segment, or the travel gap before it, holding a timeline coordinate
+   * @param time - Timeline coordinate in seconds
+   * @returns The spot at that coordinate
+   */
   locateTime (time: number): TimelineSpot {
-    // Segment (or the travel gap before it) holding a timeline coordinate, and the fraction into it
     const starts = this.segmentStartTimes
     const ends = this.segmentEndTimes
 
@@ -154,6 +183,10 @@ export class PrintTimeline {
     return { segmentIndex: lo, fraction: gap > 0 ? (time - gapStart) / gap : 0, onSegment: false }
   }
 
+  /**
+   * Moves the nozzle position to a timeline spot
+   * @param spot - Timeline position
+   */
   updateNozzlePosition (spot: TimelineSpot) {
     const position = this.nozzlePosition
 
@@ -191,11 +224,19 @@ export class PrintTimeline {
     }
   }
 
+  /**
+   * Gets the current nozzle position
+   * @returns The position, or null until the print reaches the first segment
+   */
   getNozzlePosition () {
-    // Not meaningful until the print reaches the first segment (e.g. homing, heating)
     return this.targetTime > 0 ? this.nozzlePosition : null
   }
 
+  /**
+   * Resolves a global segment index to its layer and index within it
+   * @param globalIndex - Global segment index
+   * @returns The layer and local index, or null when out of range
+   */
   segmentAt (globalIndex: number) {
     for (const layer of this.drawnLayers) {
       if (globalIndex < layer.globalBase + layer.numSegments) return { layer, localIndex: globalIndex - layer.globalBase }

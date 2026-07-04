@@ -2,31 +2,52 @@ import { updateWebcamStream } from './webcam'
 import { applyStatusBarVisibility } from './status-bar'
 import type { PrettyGCodeApp } from '../app'
 
-// A resizable overlay scales through a single driver value (webcam height in px, dashboard scale)
+/** A resizable overlay that scales through a single driver value (webcam height in px, dashboard scale) */
 interface Overlay {
   measure: () => { driver: number, width: number, height: number }
   apply: (driver: number) => void
   persist: () => void
 }
 
-const MIN_OVERLAY_HEIGHT = 50 // px
-const MAX_OVERLAY_HEIGHT_FRACTION = 0.9 // share of viewport height
-const DEFAULT_OVERLAY_HEIGHT_FRACTION = 1 / 3 // share of viewport height
+/** Minimum overlay height in px */
+const MIN_OVERLAY_HEIGHT = 50
+/** Maximum overlay height as a share of the viewport height */
+const MAX_OVERLAY_HEIGHT_FRACTION = 0.9
+/** Default overlay height as a share of the viewport height */
+const DEFAULT_OVERLAY_HEIGHT_FRACTION = 1 / 3
 
+/** Current dashboard overlay scale */
 let dashboardScale = 1
 
+/**
+ * Computes the default overlay height for the current viewport
+ * @returns Height in px
+ */
 function defaultOverlayHeight () {
   return Math.round(window.innerHeight * DEFAULT_OVERLAY_HEIGHT_FRACTION)
 }
 
+/**
+ * Clamps an overlay height to the allowed range
+ * @param height - Desired height in px
+ * @returns The clamped height in px
+ */
 function clampOverlayHeight (height: number) {
   return Math.min(window.innerHeight * MAX_OVERLAY_HEIGHT_FRACTION, Math.max(MIN_OVERLAY_HEIGHT, height))
 }
 
+/**
+ * Resizes the webcam overlay
+ * @param height - Height in px, clamped to the allowed range
+ */
 function setWebcamHeight (height: number) {
   $('#pg-webcam').css('height', clampOverlayHeight(height) + 'px')
 }
 
+/**
+ * Scales the dashboard overlay
+ * @param scale - Scale factor to apply
+ */
 function setDashboardScale (scale: number) {
   const dashboardElement = document.getElementById('tab_plugin_dashboard')
   if (!dashboardElement) return
@@ -37,13 +58,21 @@ function setDashboardScale (scale: number) {
   dashboardScale = scale
 }
 
+/**
+ * Applies the default dashboard size when none is saved
+ * @param app - Application instance
+ */
 function setDashboardDefaultScale (app: PrettyGCodeApp) {
-  if (app.settings.dashboardScale) return // The scale is already saved in settings
+  if (app.settings.dashboardScale) return
 
   const naturalHeight = document.getElementById('tab_plugin_dashboard')?.offsetHeight
   if (naturalHeight) setDashboardScale(defaultOverlayHeight() / naturalHeight)
 }
 
+/**
+ * Shows or hides the windows and overlays to match the current settings
+ * @param app - Application instance
+ */
 export function updateWindowStates (app: PrettyGCodeApp) {
   const settings = app.settings
 
@@ -60,9 +89,13 @@ export function updateWindowStates (app: PrettyGCodeApp) {
   updateWebcamStream(app)
 }
 
-// Each overlay keeps its proportions, so resizing scales a single driver (webcam
-// height in px, dashboard scale): dragging `axis` in `direction` changes the dragged
-// dimension, and the driver scales by the same relative amount.
+/**
+ * Makes an overlay resizable by dragging a handle, scaling its driver value proportionally
+ * @param $handle - Drag handle element
+ * @param overlay - Overlay to resize
+ * @param axis - Pointer axis the drag follows
+ * @param direction - 1 if dragging along the axis grows the overlay, -1 otherwise
+ */
 function makeResizable ($handle: JQuery, overlay: Overlay, axis: 'x' | 'y', direction: 1 | -1) {
   const pointerCoord = axis === 'x' ? 'clientX' : 'clientY'
   $handle.on('pointerdown', function (e) {
@@ -87,6 +120,10 @@ function makeResizable ($handle: JQuery, overlay: Overlay, axis: 'x' | 'y', dire
   })
 }
 
+/**
+ * Creates the overlays
+ * @param app - Application instance
+ */
 export function initOverlayWindows (app: PrettyGCodeApp) {
   const webcamOverlay: Overlay = {
     measure () {

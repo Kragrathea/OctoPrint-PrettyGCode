@@ -3,6 +3,7 @@
 
 import type { MachineState } from './parser'
 
+/** Firmware arc segmentation parameters */
 const arcParams = {
   mm_per_arc_segment: 1.0,
   min_arc_segments: 20,
@@ -11,10 +12,15 @@ const arcParams = {
 }
 type ArcParams = typeof arcParams
 
-// Splits an arc into short straight segments.
-// The segment length follows the firmware rules, so drawn arcs match the printed ones.
-// Copied from Prusa firmware's mc_arc so rendered arcs match what gets printed:
-// https://github.com/prusa3d/Prusa-Firmware/blob/74a577bc0e5902767b072ee85f499dc1361bf6ba/Firmware/motion_control.cpp#L29
+/**
+ * Splits an arc into short straight segments, sized like the firmware's.
+ * Copied from Prusa firmware's mc_arc so rendered arcs match what gets printed:
+ * https://github.com/prusa3d/Prusa-Firmware/blob/74a577bc0e5902767b072ee85f499dc1361bf6ba/Firmware/motion_control.cpp#L29
+ * @param state - Machine state at the arc start
+ * @param arc - Arc end state, with I/J center offsets and direction
+ * @param params - Firmware segmentation parameters
+ * @returns The machine states along the arc, endpoints included
+ */
 export function interpolateArc (state: MachineState, arc: MachineState & { i: number, j: number, is_clockwise: boolean }, params: ArcParams = arcParams): MachineState[] {
   const initial_position = { ...state }
   const current_position = { ...state }
@@ -96,10 +102,16 @@ export function interpolateArc (state: MachineState, arc: MachineState & { i: nu
   return interpolated_segments
 }
 
-// Center offset of an R-form arc.
-// A radius too short for the endpoints clamps to the chord's mid-point, like the firmware does.
-// Copied from Marlin firmware's G2_G3 handler:
-// https://github.com/MarlinFirmware/Marlin/blob/6ec4e744c07f4035312ab4f8d377c9c2d2154d5e/Marlin/src/gcode/motion/G2_G3.cpp
+/**
+ * Computes the center offset of an R-form arc; a radius too short for the endpoints clamps to the chord's mid-point, like the firmware does.
+ * Copied from Marlin firmware's G2_G3 handler:
+ * https://github.com/MarlinFirmware/Marlin/blob/6ec4e744c07f4035312ab4f8d377c9c2d2154d5e/Marlin/src/gcode/motion/G2_G3.cpp
+ * @param current_position - Machine state at the arc start
+ * @param destination - Machine state at the arc end
+ * @param r - Signed arc radius in mm
+ * @param clockwise - True for a clockwise (G2) arc
+ * @returns The I/J offsets from the start point to the arc center
+ */
 export function arcOffsetFromRadius (current_position: MachineState, destination: MachineState, r: number, clockwise: boolean) {
   const arc_offset = { i: 0, j: 0 }
   if (r && (current_position.x !== destination.x || current_position.y !== destination.y)) {

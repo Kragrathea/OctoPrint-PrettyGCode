@@ -1,7 +1,7 @@
 import * as THREE from '../three-exports'
 import { arcOffsetFromRadius, interpolateArc } from './arc-interpolation'
 
-// Machine state the parser tracks
+/** Machine state the parser tracks */
 export interface MachineState {
   x: number
   y: number
@@ -10,7 +10,7 @@ export interface MachineState {
   f: number
 }
 
-// One parsed layer and its properties
+/** One parsed layer and its properties */
 export interface Layer {
   vertices: number[]
   z: number
@@ -19,21 +19,28 @@ export interface Layer {
   durations: number[]
 }
 
-// Initial machine state
+/** Initial machine state */
 const INITIAL_MACHINE_STATE: MachineState = Object.freeze({ x: 0, y: 0, z: 0, e: 0, f: 0 })
 
-// Feedrate (mm/min) to mm/s, with a sane pace for moves before any F word is seen
+/**
+ * Converts a feedrate to mm/s, with a sane pace for moves before any F word is seen
+ * @param feedrate - Feedrate in mm/min
+ * @returns Speed in mm/s
+ */
 const feedrateMmPerSecond = (feedrate: number) => (feedrate > 0 ? feedrate : 1500) / 60
 
-// OctoPrint's filepos counts bytes, so lines with non-ASCII characters need real encoding
+/** Matches non-ASCII characters, whose lines need real encoding since OctoPrint's filepos counts bytes */
 const NON_ASCII = /[\u0080-\uffff]/
+
+/** Encoder measuring lines in bytes */
 const textEncoder = new TextEncoder()
 
-// Z steps smaller than this stay in the same layer: vase mode rises continuously and would split a layer per segment
+/** Z step below which a move stays in the same layer: vase mode rises continuously and would split a layer per segment */
 const LAYER_EPSILON_MM = 0.04
 
-// Colors for slicer feature types; the first keyword found in a comment wins.
+/** Color used before any slicer feature type is seen */
 const DEFAULT_COLOR = new THREE.Color('white')
+/** Colors for slicer feature types; the first keyword found in a comment wins */
 const COLOR_KEYWORDS = [
   ['inner', 'green'],
   ['outer', 'red'],
@@ -44,35 +51,50 @@ const COLOR_KEYWORDS = [
   ['skirt', 'skyblue']
 ]
 
-// Nozzle diameter stated by the slicer, e.g. "; nozzle_diameter = 0.4"
+/** Matches the nozzle diameter stated by the slicer, e.g. "; nozzle_diameter = 0.4" */
 const NOZZLE_DIAMETER_COMMENT = /nozzle[_ ]?diameter\s*[:=]\s*([\d.]+)/i
 
-// Reused across addSegment to avoid per-segment allocations
+/** Scratch vector reused across segments to avoid allocations */
 const scratchPoint = new THREE.Vector3()
+/** Scratch vector reused across segments to avoid allocations */
 const scratchDirection = new THREE.Vector3()
+/** Scratch color reused across segments to avoid allocations */
 const scratchColor = new THREE.Color()
+/** Scratch HSL values reused across segments to avoid allocations */
 const scratchHsl = { h: 0, s: 0, l: 0 }
 
+/** Streaming gcode parser: feed it text chunks to get colored layers of segments with file positions and time estimates */
 export class GCodeParser {
-  // Parsed layers: segment endpoints, colors, file positions and estimated durations
+  /** Parsed layers: segment endpoints, colors, file positions and estimated durations */
   layers: Layer[] = []
 
-  // Bounding box of the extruded gcode
+  /** Bounding box of the extruded gcode */
   bounds = new THREE.Box3()
 
-  // Nozzle diameter the slicer states, if any
+  /** Nozzle diameter the slicer states, if any */
   slicerNozzleDiameter: number | null = null
 
-  // Parsing states
+  /** Current machine state */
   machineState: MachineState = INITIAL_MACHINE_STATE
+  /** Layer being filled, if any */
   currentLayer: Layer | null = null
+  /** Color of the current feature type */
   currentColor = DEFAULT_COLOR
+  /** Partial line left over from the previous chunk */
   pendingLine = ''
+  /** Bytes parsed so far */
   filePosition = 0
+  /** Travel time accumulated since the last segment */
   pendingTravelSeconds = 0
+  /** Whether axis moves are relative */
   axesRelative = false
+  /** Whether extrusion is relative */
   extrusionRelative = false
 
+  /**
+   * Parses the next chunk of gcode text; chunks may split lines anywhere
+   * @param chunk - Raw gcode text
+   */
   parse (chunk: string) {
     // Chunks may split a line in two: prepend last call's leftover, hold the new trailing partial for next time
     const lines = chunk.split('\n')
@@ -224,24 +246,43 @@ export class GCodeParser {
     }
   }
 
+  /**
+   * Computes the E increment brought by a single command, whatever the E mode
+   * @param args - Parsed command arguments
+   * @param move - Machine state after the command
+   * @returns The extruded length in mm
+   */
   extrusionDelta (args: Record<string, number>, move: MachineState) {
-    // E increment brought by a single command, whatever the E mode
     if (args.e === undefined) return 0
     return this.extrusionRelative ? args.e : move.e - this.machineState.e
   }
 
+  /**
+   * Opens a new layer and makes it current
+   * @param move - Machine state starting the layer
+   * @returns The new layer
+   */
   newLayer (move: MachineState) {
     this.currentLayer = { vertices: [], z: move.z, colors: [], filePositions: [], durations: [] }
     this.layers.push(this.currentLayer)
     return this.currentLayer
   }
 
+  /**
+   * Accounts the time of a non-extruding move, charged to the gap before the next segment
+   * @param start - Machine state at the move start
+   * @param end - Machine state at the move end
+   */
   addTravel (start: MachineState, end: MachineState) {
-    // Time spent moving between segments, charged to the gap before the next one
     const length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z)
     this.pendingTravelSeconds += (length || 0) / feedrateMmPerSecond(end.f)
   }
 
+  /**
+   * Appends an extruded segment to the current layer
+   * @param start - Machine state at the segment start
+   * @param end - Machine state at the segment end
+   */
   addSegment (start: MachineState, end: MachineState) {
     // Check coordinates
     if (Number.isNaN(start.x) || Number.isNaN(start.y) || Number.isNaN(start.z) || Number.isNaN(end.x) || Number.isNaN(end.y) || Number.isNaN(end.z)) {
@@ -280,7 +321,11 @@ export class GCodeParser {
   }
 }
 
-// Download and parse a job's gcode; an empty path yields an empty result
+/**
+ * Downloads and parses a job's gcode; an empty path yields an empty result
+ * @param jobPath - Server path of the job file
+ * @returns The parser holding the parsed gcode
+ */
 export async function parseGcodeFile (jobPath: string) {
   const parser = new GCodeParser()
   if (!jobPath) return parser

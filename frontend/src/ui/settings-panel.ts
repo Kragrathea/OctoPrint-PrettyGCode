@@ -3,6 +3,11 @@ import { applyStatusBarVisibility } from './status-bar'
 import type { Settings } from '../settings'
 import type { PrettyGCodeApp } from '../app'
 
+/**
+ * Builds the plugin settings panel
+ * @param app - Application instance
+ * @returns The created panel
+ */
 export function initSettingsPanel (app: PrettyGCodeApp) {
   const settings = app.settings
   const gui = new GUI({ autoPlace: false, title: 'View Options' })

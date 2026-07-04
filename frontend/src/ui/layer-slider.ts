@@ -1,5 +1,9 @@
 import type { PrettyGCodeApp } from '../app'
 
+/**
+ * Creates the layer slider
+ * @param app - Application instance
+ */
 export function initLayerSlider (app: PrettyGCodeApp) {
   $('.pg-view').append('<div id="pg-layer-slider"></div>')
   $('#pg-layer-slider').slider({
@@ -20,6 +24,10 @@ export function initLayerSlider (app: PrettyGCodeApp) {
   })
 }
 
+/**
+ * Adapts the slider to a new layer count
+ * @param layerCount - Total layers; 0 disables the slider
+ */
 export function setLayerSliderMax (layerCount: number) {
   if (!$('#pg-layer-slider').length) return
 
@@ -29,6 +37,10 @@ export function setLayerSliderMax (layerCount: number) {
   setLayerSliderValue(layerCount)
 }
 
+/**
+ * Moves the slider to a layer
+ * @param layer - 1-based layer number
+ */
 export function setLayerSliderValue (layer: number) {
   if (!$('#pg-layer-slider').length) return
 

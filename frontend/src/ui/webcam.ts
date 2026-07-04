@@ -1,5 +1,10 @@
 import type { PrettyGCodeApp } from '../app'
 
+/**
+ * Resolves the webcam stream URL from the OctoPrint settings
+ * @param app - Application instance
+ * @returns The stream URL
+ */
 function getStreamUrl (app: PrettyGCodeApp) {
   const fallback = '/webcam/?action=stream'
   try {
@@ -12,6 +17,10 @@ function getStreamUrl (app: PrettyGCodeApp) {
   }
 }
 
+/**
+ * Starts or stops the webcam stream to match its visibility
+ * @param app - Application instance
+ */
 export function updateWebcamStream (app: PrettyGCodeApp) {
   const image = $('.pg-view #pg-webcam-image')
 

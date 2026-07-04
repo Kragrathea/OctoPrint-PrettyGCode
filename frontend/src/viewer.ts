@@ -3,60 +3,77 @@ import CameraControls from 'camera-controls'
 import { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster } from 'three'
 import type { PrettyGCodeApp } from './app'
 
-// Copied from camera-controls/readme.md's `subsetOfTHREE` to keep three.js tree-shakeable
+/**
+ * Subset of three.js required by camera-controls.
+ * Copied from camera-controls/readme.md's `subsetOfTHREE` to keep three.js tree-shakeable
+ */
 const CAMERA_CONTROLS_THREE = { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster }
 
-// Themes
+/** Light theme background color */
 const LIGHT_BACKGROUND = 0xd0d0d0
+/** Dark theme background color */
 const DARK_BACKGROUND = 0x000000
 
-// Seconds the camera must sit idle before it starts auto-orbiting
+/** Seconds the camera must sit idle before it starts auto-orbiting */
 const ORBIT_IDLE_DELAY_SECONDS = 5
 
-// Nozzle model
+/** URL of the nozzle 3D model */
 const NOZZLE_MODEL_URL = PLUGIN_BASEURL + 'prettygcode/static/js/models/ExtruderNozzle.obj'
 
-// Planes used to clip the gcode reflection when the camera is below the bed
+/** Planes clipping the gcode reflection when the camera is below the bed */
 const BELOW_BED_CLIP_PLANES = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)]
+/** Empty plane set, to disable clipping */
 const NO_CLIP_PLANES: THREE.Plane[] = []
 
+/** The plugin's 3D view: renders the bed, the gcode model and the nozzle */
 export class Viewer {
+  /** Owning application instance */
   app: PrettyGCodeApp
 
-  // Renderer
+  /** WebGL renderer */
   renderer!: THREE.WebGLRenderer
+  /** Whether to render the next frame regardless of changes */
   forceRender = true
+  /** Timer measuring frame deltas */
   timer!: THREE.Timer
 
-  // Scene
+  /** The 3D scene */
   scene!: THREE.Scene
 
-  // Camera
+  /** Perspective camera */
   camera!: THREE.PerspectiveCamera
+  /** Camera controls */
   cameraControls!: CameraControls
+  /** Seconds the camera has sat idle */
   cameraIdleTime = 0
 
-  // Camera to render metallic reflections on the nozzle
+  /** Camera rendering the metallic reflections on the nozzle */
   reflectionCamera!: THREE.CubeCamera
 
-  // Lights
+  /** Light under the bed */
   underBedLight!: THREE.PointLight
+  /** Light following the camera */
   cameraLight!: THREE.PointLight
 
-  // Nozzle model
+  /** Nozzle model, once loaded */
   nozzleModel: THREE.Group | null = null
 
-  // Bound the gcode reflection to the bed surface: 4 planes through the camera and the bed
-  // edges, so a reflected point is shown only where the line of sight crosses the bed.
-  // Updated each frame and applied to the mirror material only.
+  /**
+   * Planes bounding the gcode reflection to the bed surface, each through the camera and a bed
+   * edge, so a reflected point shows only where the line of sight crosses the bed; updated each frame
+   */
   mirrorBoundsPlanes = [new THREE.Plane(), new THREE.Plane(), new THREE.Plane(), new THREE.Plane()]
 
   /* ---- Setup ---- */
 
+  /**
+   * @param app - Owning application instance
+   */
   constructor (app: PrettyGCodeApp) {
     this.app = app
   }
 
+  /** Sets up the 3D view and starts its render loop */
   init () {
     const settings = this.app.settings
     const bedVolume = this.app.bedVolume
@@ -103,12 +120,18 @@ export class Viewer {
     this.animate()
   }
 
+  /**
+   * Creates the WebGL renderer bound to a canvas
+   * @param canvas - Canvas to render into
+   * @param antialias - True to enable antialiasing
+   */
   createRenderer (canvas: HTMLCanvasElement, antialias: boolean) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias })
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.localClippingEnabled = true // Needed for the gcode reflection on the bed surface
   }
 
+  /** Loads the nozzle model and shows it in the scene once ready */
   loadNozzle () {
     new THREE.OBJLoader().load(NOZZLE_MODEL_URL, (obj) => {
       obj.rotation.x = Math.PI / 2
@@ -131,6 +154,7 @@ export class Viewer {
 
   /* ---- Render loop ---- */
 
+  /** Renders a frame when needed and schedules the next one */
   animate () {
     const app = this.app
     const settings = app.settings
@@ -202,11 +226,15 @@ export class Viewer {
     requestAnimationFrame(() => this.animate())
   }
 
+  /** Forces a render on the next animation frame */
   requestRender () {
-    // Force a render on the next animation frame
     this.forceRender = true
   }
 
+  /**
+   * Matches the rendering size to the canvas display size
+   * @returns True if the size changed
+   */
   resizeCanvasToDisplaySize () {
     const canvas = this.renderer.domElement
     const width = canvas.clientWidth
@@ -226,6 +254,7 @@ export class Viewer {
 
   /* ---- Scene and camera ---- */
 
+  /** (Re)builds the bed plane and grid to match the current bed geometry */
   updateBedMesh () {
     if (!this.scene) return
 
@@ -259,6 +288,10 @@ export class Viewer {
     this.scene.add(grid)
   }
 
+  /**
+   * Points the camera back at the bed center
+   * @param enableTransition - True to animate the move
+   */
   resetCameraTarget (enableTransition = false) {
     if (!this.cameraControls) return
 
@@ -272,6 +305,10 @@ export class Viewer {
     this.cameraControls.setTarget(targetX, targetY, 0, enableTransition)
   }
 
+  /**
+   * Adjusts the camera to show the given bounds
+   * @param bounds - Box to frame, in scene coordinates
+   */
   frameBounds (bounds: THREE.Box3) {
     // Re-center on the bed first
     this.resetCameraTarget(true)
@@ -281,6 +318,7 @@ export class Viewer {
     this.cameraControls.dollyTo(Math.max(40, size.x, size.y), true)
   }
 
+  /** (Re)computes the planes that clip the bed reflection to the bed surface */
   updateMirrorBoundsPlanes () {
     const bedVolume = this.app.bedVolume
     const lowerleft = bedVolume.origin === 'lowerleft'
@@ -309,11 +347,19 @@ export class Viewer {
 
   /* ---- Apply settings ---- */
 
+  /**
+   * Applies the light or dark background to the scene
+   * @param darkMode - True for the dark background
+   */
   applyBackground (darkMode: boolean) {
     this.scene.background = new THREE.Color(darkMode ? DARK_BACKGROUND : LIGHT_BACKGROUND)
     this.requestRender()
   }
 
+  /**
+   * Turns renderer antialiasing on or off
+   * @param antialias - True to enable antialiasing
+   */
   applyAntialias (antialias: boolean) {
     // Antialias is a fixed WebGL context attribute, so toggling it means recreating the
     // context. A context stays bound to its canvas, so swap in a fresh canvas too.
