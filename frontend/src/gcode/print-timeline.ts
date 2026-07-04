@@ -1,4 +1,23 @@
-import * as THREE from '../three-exports.js'
+import * as THREE from '../three-exports'
+import type { Layer } from './parser'
+
+// A non-empty layer in print order, carrying its offset into the global segment numbering
+interface DrawnLayer {
+  layerNumber: number
+  globalBase: number
+  numSegments: number
+  vertices: number[]
+  colors: number[]
+  filePositions: number[]
+  durations: number[]
+}
+
+// A point along the timeline: a segment (or the travel gap before it) and the fraction into it
+export interface TimelineSpot {
+  segmentIndex: number
+  fraction: number
+  onSegment: boolean
+}
 
 // How far behind the live print the shown nozzle trails to absorb bursty updates.
 // Higher looks smoother but lags real time more, lower tracks tighter but can stutter.
@@ -8,19 +27,19 @@ const NOZZLE_SNAP_SECONDS = 120
 
 export class PrintTimeline {
   // Drawn segments indexed for lookup across layers
-  drawnLayers = []
+  drawnLayers: DrawnLayer[] = []
   totalSegments = 0
 
   // Cumulative estimated time(s) at each drawn segment's start/end, travel gaps included
-  segmentStartTimes = null
-  segmentEndTimes = null
+  segmentStartTimes = new Float64Array(0)
+  segmentEndTimes = new Float64Array(0)
 
   // The nozzle eased along the estimated timeline: where it is and where the read position points
   nozzleTime = 0
   targetTime = 0
   nozzlePosition = new THREE.Vector3()
 
-  index (layers) {
+  index (layers: Layer[]) {
     // Flatten the drawn layers into print order, tracking each one's running segment offset
     this.drawnLayers = []
     let base = 0
@@ -56,7 +75,7 @@ export class PrintTimeline {
     this.targetTime = 0
   }
 
-  advance (filePosition, deltaSeconds) {
+  advance (filePosition: number, deltaSeconds: number) {
     if (!this.drawnLayers.length) return null
 
     // How much of the print has been sent to the printer so far
@@ -77,7 +96,7 @@ export class PrintTimeline {
     return spot
   }
 
-  layerNumberAt (segmentIndex) {
+  layerNumberAt (segmentIndex: number) {
     // Layer holding the last revealed segment
     let layerNumber = 0
     for (const layer of this.drawnLayers) {
@@ -87,7 +106,7 @@ export class PrintTimeline {
     return layerNumber
   }
 
-  segmentsReadAt (filePosition) {
+  segmentsReadAt (filePosition: number) {
     // How many drawn segments the read position has reached
     let count = 0
 
@@ -112,7 +131,7 @@ export class PrintTimeline {
     return count
   }
 
-  locateTime (time) {
+  locateTime (time: number): TimelineSpot {
     // Segment (or the travel gap before it) holding a timeline coordinate, and the fraction into it
     const starts = this.segmentStartTimes
     const ends = this.segmentEndTimes
@@ -135,17 +154,17 @@ export class PrintTimeline {
     return { segmentIndex: lo, fraction: gap > 0 ? (time - gapStart) / gap : 0, onSegment: false }
   }
 
-  updateNozzlePosition (spot) {
+  updateNozzlePosition (spot: TimelineSpot) {
     const position = this.nozzlePosition
 
     // Past the end: park on the last segment's endpoint
     if (spot.segmentIndex >= this.totalSegments) {
-      const last = this.segmentAt(this.totalSegments - 1)
+      const last = this.segmentAt(this.totalSegments - 1)!
       position.fromArray(last.layer.vertices, last.localIndex * 6 + 3)
       return
     }
 
-    const segment = this.segmentAt(spot.segmentIndex)
+    const segment = this.segmentAt(spot.segmentIndex)!
     const vertices = segment.layer.vertices
     const offset = segment.localIndex * 6
 
@@ -158,7 +177,7 @@ export class PrintTimeline {
       )
     } else if (spot.segmentIndex > 0) {
       // In a travel gap: glide from the previous segment's end to this one's start
-      const previous = this.segmentAt(spot.segmentIndex - 1)
+      const previous = this.segmentAt(spot.segmentIndex - 1)!
       const from = previous.layer.vertices
       const fromOffset = previous.localIndex * 6
       position.set(
@@ -177,7 +196,7 @@ export class PrintTimeline {
     return this.targetTime > 0 ? this.nozzlePosition : null
   }
 
-  segmentAt (globalIndex) {
+  segmentAt (globalIndex: number) {
     for (const layer of this.drawnLayers) {
       if (globalIndex < layer.globalBase + layer.numSegments) return { layer, localIndex: globalIndex - layer.globalBase }
     }

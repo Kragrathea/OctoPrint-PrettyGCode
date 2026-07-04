@@ -1,11 +1,29 @@
-import * as THREE from '../three-exports.js'
-import { arcOffsetFromRadius, interpolateArc } from './arc-interpolation.js'
+import * as THREE from '../three-exports'
+import { arcOffsetFromRadius, interpolateArc } from './arc-interpolation'
+
+// Machine state the parser tracks
+export interface MachineState {
+  x: number
+  y: number
+  z: number
+  e: number
+  f: number
+}
+
+// One parsed layer and its properties
+export interface Layer {
+  vertices: number[]
+  z: number
+  colors: number[]
+  filePositions: number[]
+  durations: number[]
+}
 
 // Initial machine state
-const INITIAL_MACHINE_STATE = Object.freeze({ x: 0, y: 0, z: 0, e: 0, f: 0 })
+const INITIAL_MACHINE_STATE: MachineState = Object.freeze({ x: 0, y: 0, z: 0, e: 0, f: 0 })
 
 // Feedrate (mm/min) to mm/s, with a sane pace for moves before any F word is seen
-const feedrateMmPerSecond = (feedrate) => (feedrate > 0 ? feedrate : 1500) / 60
+const feedrateMmPerSecond = (feedrate: number) => (feedrate > 0 ? feedrate : 1500) / 60
 
 // OctoPrint's filepos counts bytes, so lines with non-ASCII characters need real encoding
 const NON_ASCII = /[\u0080-\uffff]/
@@ -30,23 +48,24 @@ const COLOR_KEYWORDS = [
 const NOZZLE_DIAMETER_COMMENT = /nozzle[_ ]?diameter\s*[:=]\s*([\d.]+)/i
 
 // Reused across addSegment to avoid per-segment allocations
+const scratchPoint = new THREE.Vector3()
 const scratchDirection = new THREE.Vector3()
 const scratchColor = new THREE.Color()
-const scratchHsl = {}
+const scratchHsl = { h: 0, s: 0, l: 0 }
 
 export class GCodeParser {
   // Parsed layers: segment endpoints, colors, file positions and estimated durations
-  layers = []
+  layers: Layer[] = []
 
   // Bounding box of the extruded gcode
   bounds = new THREE.Box3()
 
   // Nozzle diameter the slicer states, if any
-  slicerNozzleDiameter = null
+  slicerNozzleDiameter: number | null = null
 
   // Parsing states
-  machineState = INITIAL_MACHINE_STATE
-  currentLayer = null
+  machineState: MachineState = INITIAL_MACHINE_STATE
+  currentLayer: Layer | null = null
   currentColor = DEFAULT_COLOR
   pendingLine = ''
   filePosition = 0
@@ -54,7 +73,7 @@ export class GCodeParser {
   axesRelative = false
   extrusionRelative = false
 
-  parse (chunk) {
+  parse (chunk: string) {
     // Chunks may split a line in two: prepend last call's leftover, hold the new trailing partial for next time
     const lines = chunk.split('\n')
     lines[0] = this.pendingLine + lines[0]
@@ -82,13 +101,13 @@ export class GCodeParser {
       // Parse gcode cmd and args
       const tokens = rawLine.replace(/;.*/, '').trim().split(/\s+/)
       const cmd = tokens[0].toUpperCase()
-      const args = {}
+      const args: Record<string, number> = {}
       tokens.slice(1).forEach((token) => {
         if (token) args[token[0].toLowerCase()] = parseFloat(token.substring(1))
       })
 
       // Axis value from args (absolute/relative aware), or the current one if omitted
-      const coord = (key) => {
+      const coord = (key: keyof MachineState) => {
         if (args[key] === undefined) return this.machineState[key]
         if (key === 'f') return args.f
         const relative = key === 'e' ? this.extrusionRelative : this.axesRelative
@@ -205,24 +224,25 @@ export class GCodeParser {
     }
   }
 
-  extrusionDelta (args, move) {
+  extrusionDelta (args: Record<string, number>, move: MachineState) {
     // E increment brought by a single command, whatever the E mode
     if (args.e === undefined) return 0
     return this.extrusionRelative ? args.e : move.e - this.machineState.e
   }
 
-  newLayer (move) {
+  newLayer (move: MachineState) {
     this.currentLayer = { vertices: [], z: move.z, colors: [], filePositions: [], durations: [] }
     this.layers.push(this.currentLayer)
+    return this.currentLayer
   }
 
-  addTravel (start, end) {
+  addTravel (start: MachineState, end: MachineState) {
     // Time spent moving between segments, charged to the gap before the next one
     const length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z)
     this.pendingTravelSeconds += (length || 0) / feedrateMmPerSecond(end.f)
   }
 
-  addSegment (start, end) {
+  addSegment (start: MachineState, end: MachineState) {
     // Check coordinates
     if (Number.isNaN(start.x) || Number.isNaN(start.y) || Number.isNaN(start.z) || Number.isNaN(end.x) || Number.isNaN(end.y) || Number.isNaN(end.z)) {
       console.warn('PrettyGCode: bad line segment', start, end)
@@ -230,8 +250,7 @@ export class GCodeParser {
     }
 
     // Open a layer if none is active yet
-    if (this.currentLayer == null) this.newLayer(start)
-    const layer = this.currentLayer
+    const layer = this.currentLayer ?? this.newLayer(start)
 
     // Store the segment endpoints and its position in the file
     layer.vertices.push(start.x, start.y, start.z, end.x, end.y, end.z)
@@ -244,8 +263,8 @@ export class GCodeParser {
 
     // Grow the model bounds only after a slicer color is set, so pre-print moves don't skew the framing
     if (this.currentColor !== DEFAULT_COLOR) {
-      this.bounds.expandByPoint(start)
-      this.bounds.expandByPoint(end)
+      this.bounds.expandByPoint(scratchPoint.set(start.x, start.y, start.z))
+      this.bounds.expandByPoint(scratchPoint.set(end.x, end.y, end.z))
     }
 
     // Fake shading: tint by the segment's angle, alternating per layer for readability
@@ -262,12 +281,14 @@ export class GCodeParser {
 }
 
 // Download and parse a job's gcode; an empty path yields an empty result
-export async function parseGcodeFile (jobPath) {
+export async function parseGcodeFile (jobPath: string) {
   const parser = new GCodeParser()
   if (!jobPath) return parser
 
   const fileUrl = OctoPrint.files.downloadPath('local', jobPath)
   const response = await fetch(fileUrl)
+  if (!response.body) return parser
+
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   while (true) {

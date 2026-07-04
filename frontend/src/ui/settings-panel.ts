@@ -1,13 +1,15 @@
 import GUI from 'lil-gui'
-import { applyStatusBarVisibility } from './status-bar.js'
+import { applyStatusBarVisibility } from './status-bar'
+import type { Settings } from '../settings'
+import type { PrettyGCodeApp } from '../app'
 
-export function initSettingsPanel (app) {
+export function initSettingsPanel (app: PrettyGCodeApp) {
   const settings = app.settings
   const gui = new GUI({ autoPlace: false, title: 'View Options' })
   $('#pg-view-settings').append(gui.domElement)
   gui.onChange(() => settings.save())
 
-  const option = (prop, name, help) => {
+  const option = (prop: keyof Settings, name: string, help: string) => {
     const controller = gui.add(settings, prop).name(name)
     controller.domElement.title = help
     return controller

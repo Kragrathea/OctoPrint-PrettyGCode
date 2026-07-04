@@ -1,16 +1,22 @@
-import * as THREE from '../three-exports.js'
+import * as THREE from '../three-exports'
+import type { Settings } from '../settings'
+import type { Layer } from './parser'
+import type { PrintTimeline, TimelineSpot } from './print-timeline'
+
+// A layer's rendered line object
+type LayerLine = THREE.LineSegments2 | THREE.LineSegments
 
 // Layer names
 const LAYER_PREFIX = 'layer#'
-const isLayerObject = (child) => child.name.startsWith(LAYER_PREFIX)
+const isLayerObject = (child: THREE.Object3D): child is LayerLine => child.name.startsWith(LAYER_PREFIX)
 
 // Lines thickness based on nozzle size
 const DEFAULT_NOZZLE_DIAMETER = 0.4
 const LINE_THICKNESS_FACTOR = 1.1 // A slightly oversize to avoid gaps
 
 // Material makers
-const makeThinMaterial = (clippingPlanes = null) => new THREE.LineBasicMaterial({ vertexColors: true, clippingPlanes })
-const makeThickMaterial = (clippingPlanes = null) =>
+const makeThinMaterial = (clippingPlanes: THREE.Plane[] | null = null) => new THREE.LineBasicMaterial({ vertexColors: true, clippingPlanes })
+const makeThickMaterial = (clippingPlanes: THREE.Plane[] | null = null) =>
   new THREE.LineMaterial({ worldUnits: true, linewidth: DEFAULT_NOZZLE_DIAMETER * LINE_THICKNESS_FACTOR, vertexColors: true, clippingPlanes })
 const makeHighlightMaterial = () => {
   const highlightMaterial = makeThickMaterial()
@@ -23,28 +29,37 @@ export class GCodeModel {
   linesGroup = new THREE.Group()
 
   // Layers last built from, kept to rebuild when settings change
-  layers = []
+  layers: Layer[] = []
 
   // The growing tip drawn along the segment the nozzle is currently laying down
-  tipLine = null
+  tipLine: LayerLine | null = null
 
   // Line materials for the gcode model
   thinMaterial = makeThinMaterial()
   thickMaterial = makeThickMaterial()
   highlightMaterial = makeHighlightMaterial()
 
-  constructor (settings, timeline, mirrorBoundsPlanes) {
+  // Mirror materials, clipped to the bed
+  mirrorThickMaterial: THREE.LineMaterial
+  mirrorThinMaterial: THREE.LineBasicMaterial
+
+  // Settings
+  settings: Settings
+
+  // Print timeline
+  timeline: PrintTimeline
+
+  constructor (settings: Settings, timeline: PrintTimeline, mirrorBoundsPlanes: THREE.Plane[]) {
     this.settings = settings
     this.timeline = timeline
 
-    // Mirror materials, clipped to the bed
     this.mirrorThickMaterial = makeThickMaterial(mirrorBoundsPlanes)
     this.mirrorThinMaterial = makeThinMaterial(mirrorBoundsPlanes)
   }
 
   /* ---- Object building ---- */
 
-  build (layers) {
+  build (layers: Layer[]) {
     this.layers = layers
     this.linesGroup.clear()
     layers.forEach((layer, i) => this.addLayerLines(layer, i + 1))
@@ -63,13 +78,13 @@ export class GCodeModel {
     this.build(this.layers)
   }
 
-  makeLine (vertices, colors, material) {
+  makeLine (vertices: number[], colors: number[], material: THREE.LineMaterial | THREE.LineBasicMaterial): LayerLine {
     if (this.settings.thickLines) {
       // Thick lines
       const geometry = new THREE.LineSegmentsGeometry()
       geometry.setPositions(vertices)
       geometry.setColors(colors)
-      return new THREE.LineSegments2(geometry, material)
+      return new THREE.LineSegments2(geometry, material as THREE.LineMaterial)
     } else {
       // Thin lines
       const geometry = new THREE.BufferGeometry()
@@ -79,7 +94,7 @@ export class GCodeModel {
     }
   }
 
-  addLayerLines (layer, layerNumber) {
+  addLayerLines (layer: Layer, layerNumber: number) {
     // Skip empty layers
     if (layer.vertices.length <= 2) return
 
@@ -109,7 +124,7 @@ export class GCodeModel {
     }
   }
 
-  makeMirrorData (layer) {
+  makeMirrorData (layer: Layer) {
     // Mirror through the bed: flip the Z of every vertex
     const vertices = layer.vertices.slice()
     for (let i = 2; i < vertices.length; i += 3) vertices[i] = -vertices[i]
@@ -117,7 +132,7 @@ export class GCodeModel {
     // Halve each color's lightness so the reflection reads as dimmer
     const colors = layer.colors.slice()
     const color = new THREE.Color()
-    const hsl = {}
+    const hsl = { h: 0, s: 0, l: 0 }
     for (let i = 0; i < colors.length; i += 3) {
       color.setRGB(colors[i], colors[i + 1], colors[i + 2])
       color.getHSL(hsl)
@@ -130,7 +145,7 @@ export class GCodeModel {
     return { vertices, colors }
   }
 
-  applyLineWidth (nozzleDiameter) {
+  applyLineWidth (nozzleDiameter: number | null) {
     const lineWidth = (nozzleDiameter ?? DEFAULT_NOZZLE_DIAMETER) * LINE_THICKNESS_FACTOR
 
     this.thickMaterial.linewidth = lineWidth
@@ -140,7 +155,7 @@ export class GCodeModel {
 
   /* ---- Reveal and highlight ---- */
 
-  highlightLayer (layerNumber) {
+  highlightLayer (layerNumber: number) {
     // Highlight material works only on thick lines
     if (!this.settings.thickLines) return
 
@@ -155,7 +170,7 @@ export class GCodeModel {
     })
   }
 
-  syncToLayer (layerNumber) {
+  syncToLayer (layerNumber: number) {
     let needUpdate = false
 
     // Hide the growing tip while a layer is manually browsed
@@ -183,7 +198,7 @@ export class GCodeModel {
     return needUpdate
   }
 
-  revealTo (spot) {
+  revealTo (spot: TimelineSpot) {
     const revealed = spot.segmentIndex
 
     // Fully show layers the reveal has passed, a prefix of the one it's inside, hide those it hasn't reached
@@ -206,13 +221,14 @@ export class GCodeModel {
     this.updateTipLine(spot)
   }
 
-  setRevealCount (child, count) {
+  setRevealCount (child: LayerLine, count: number) {
     // Thick lines are instanced; thin ones aren't, so limit their drawn vertex range (2 per segment)
-    const geometry = child.geometry
     if (this.settings.thickLines) {
+      const geometry = child.geometry as THREE.LineSegmentsGeometry
       if (geometry.instanceCount === count) return false
       geometry.instanceCount = count
     } else {
+      const geometry = child.geometry
       if (geometry.drawRange.count === count * 2) return false
       geometry.setDrawRange(0, count * 2)
     }
@@ -229,7 +245,7 @@ export class GCodeModel {
 
     const positions = new Float32Array(6)
     const colors = new Float32Array(6)
-    let line
+    let line: LayerLine
     if (this.settings.thickLines) {
       const geometry = new THREE.LineSegmentsGeometry()
       geometry.setPositions(positions)
@@ -249,7 +265,7 @@ export class GCodeModel {
     this.linesGroup.add(line)
   }
 
-  updateTipLine (spot) {
+  updateTipLine (spot: TimelineSpot) {
     const tipLine = this.tipLine
     if (!tipLine) return
 
@@ -259,7 +275,7 @@ export class GCodeModel {
       return
     }
 
-    const segment = this.timeline.segmentAt(spot.segmentIndex)
+    const segment = this.timeline.segmentAt(spot.segmentIndex)!
     const vertices = segment.layer.vertices
     const offset = segment.localIndex * 6
     const startX = vertices[offset]; const startY = vertices[offset + 1]; const startZ = vertices[offset + 2]
@@ -273,13 +289,16 @@ export class GCodeModel {
     tipLine.visible = true
   }
 
-  setTipLineGeometry (startX, startY, startZ, endX, endY, endZ, r, g, b) {
+  setTipLineGeometry (startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, r: number, g: number, b: number) {
+    if (!this.tipLine) return
+
     const geometry = this.tipLine.geometry
     if (this.settings.thickLines) {
-      const positions = geometry.attributes.instanceStart.data
+      const attributes = geometry.attributes as Record<string, THREE.InterleavedBufferAttribute>
+      const positions = attributes.instanceStart.data
       positions.array.set([startX, startY, startZ, endX, endY, endZ])
       positions.needsUpdate = true
-      const colors = geometry.attributes.instanceColorStart.data
+      const colors = attributes.instanceColorStart.data
       colors.array.set([r, g, b, r, g, b])
       colors.needsUpdate = true
     } else {

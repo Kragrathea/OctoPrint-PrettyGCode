@@ -1,13 +1,21 @@
 repos:
   - repo: local
     hooks:
-      - id: build-frontend
-        name: build frontend bundle
-        entry: task build-frontend
-        language: python
-        additional_dependencies: [go-task-bin]
-        files: ^(frontend/|package(-lock)?\.json)
+      - id: install-frontend
+        name: install frontend
+        entry: npm install
+        language: system
+        files: (\.(m?js|ts)|^package(-lock)?\.json)$
         pass_filenames: false
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.39.1
+    hooks:
+      - id: eslint
+        args: [--fix]
+        types: [file]
+        files: \.(m?js|ts)$
+        exclude: ^octoprint_prettygcode/static/js/pg-main\.bundle\.js$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -24,11 +32,6 @@ repos:
         args: [--target-version=py37]
       - id: ruff-format
 
-  - repo: https://github.com/standard/standard
-    rev: v17.1.2
-    hooks:
-      - id: standard
-
   - repo: https://github.com/djlint/djLint
     rev: v1.39.2
     hooks:
@@ -41,3 +44,12 @@ repos:
       - id: codespell
         additional_dependencies:
         - tomli
+
+  - repo: local
+    hooks:
+      - id: build-frontend
+        name: build frontend
+        entry: npm run build
+        language: system
+        files: ^(frontend/|package(-lock)?\.json|octoprint_prettygcode/static/js/pg-main\.bundle\.js)
+        pass_filenames: false

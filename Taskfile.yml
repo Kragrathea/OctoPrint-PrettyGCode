@@ -43,6 +43,7 @@ tasks:
             msg: "npm not found. Run 'python -m pip install -e .[develop]' then 'nodeenv -p' to provision Node.js."
         cmds:
           - npm install
+          - npm run lint
           - npm run build
 
     ### Translation related

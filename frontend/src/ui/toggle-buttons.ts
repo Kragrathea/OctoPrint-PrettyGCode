@@ -1,10 +1,11 @@
-import { updateWindowStates } from './overlay-windows.js'
+import { updateWindowStates } from './overlay-windows'
+import type { PrettyGCodeApp } from '../app'
 
 let wasMaximized = false
 
-export function initToggleButtons (app) {
+export function initToggleButtons (app: PrettyGCodeApp) {
   // Flip a window setting and refresh the overlays accordingly
-  const toggleWindow = (key) => {
+  const toggleWindow = (key: 'showState' | 'showFiles' | 'showWebcam' | 'showDashboard') => {
     app.settings[key] = !app.settings[key]
     app.settings.save()
     updateWindowStates(app)

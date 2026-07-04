@@ -7,6 +7,7 @@ on:
       - frontend/**
       - package.json
       - package-lock.json
+      - eslint.config.mjs
       - octoprint_prettygcode/static/js/pg-main.bundle.js
       - .github/workflows/check-frontend-bundle.yml
   pull_request:
@@ -14,6 +15,7 @@ on:
       - frontend/**
       - package.json
       - package-lock.json
+      - eslint.config.mjs
       - octoprint_prettygcode/static/js/pg-main.bundle.js
       - .github/workflows/check-frontend-bundle.yml
 
@@ -28,6 +30,7 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm run build
       - name: Verify committed frontend bundle matches sources
         run: git diff --exit-code -- octoprint_prettygcode/static/js/pg-main.bundle.js

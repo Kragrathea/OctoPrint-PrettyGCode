@@ -1,4 +1,6 @@
-export function initLayerSlider (app) {
+import type { PrettyGCodeApp } from '../app'
+
+export function initLayerSlider (app: PrettyGCodeApp) {
   $('.pg-view').append('<div id="pg-layer-slider"></div>')
   $('#pg-layer-slider').slider({
     id: 'pg-layer-slider-ui',
@@ -8,7 +10,7 @@ export function initLayerSlider (app) {
     min: 0,
     max: 100,
     value: 100
-  }).on('slide', (event) => {
+  }).on('slide', (event: any) => {
     app.setCurrentLayerNumber(event.value)
     $('#pg-layer-slider-ui .slider-handle').text(event.value)
   }).on('slideStart', () => {
@@ -18,7 +20,7 @@ export function initLayerSlider (app) {
   })
 }
 
-export function setLayerSliderMax (layerCount) {
+export function setLayerSliderMax (layerCount: number) {
   if (!$('#pg-layer-slider').length) return
 
   $('#pg-layer-slider').slider('setMax', layerCount)
@@ -27,7 +29,7 @@ export function setLayerSliderMax (layerCount) {
   setLayerSliderValue(layerCount)
 }
 
-export function setLayerSliderValue (layer) {
+export function setLayerSliderValue (layer: number) {
   if (!$('#pg-layer-slider').length) return
 
   $('#pg-layer-slider').slider('setValue', layer)

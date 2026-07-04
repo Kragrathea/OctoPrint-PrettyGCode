@@ -1,22 +1,23 @@
 // This file is snake_case because names mirror on purpose the original C++ sources from which the functions are copied from
 /* eslint camelcase: "off" */
 
+import type { MachineState } from './parser'
+
 const arcParams = {
   mm_per_arc_segment: 1.0,
   min_arc_segments: 20,
   min_mm_per_arc_segment: 0.1,
   n_arc_correction: 24
 }
+type ArcParams = typeof arcParams
 
 // Splits an arc into short straight segments.
 // The segment length follows the firmware rules, so drawn arcs match the printed ones.
 // Copied from Prusa firmware's mc_arc so rendered arcs match what gets printed:
 // https://github.com/prusa3d/Prusa-Firmware/blob/74a577bc0e5902767b072ee85f499dc1361bf6ba/Firmware/motion_control.cpp#L29
-export function interpolateArc (state, arc, params = arcParams) {
-  const initial_position = {}
-  const current_position = {}
-  Object.assign(initial_position, state)
-  Object.assign(current_position, state)
+export function interpolateArc (state: MachineState, arc: MachineState & { i: number, j: number, is_clockwise: boolean }, params: ArcParams = arcParams): MachineState[] {
+  const initial_position = { ...state }
+  const current_position = { ...state }
   const interpolated_segments = [initial_position]
 
   const radius = Math.hypot(arc.i, arc.j)
@@ -99,7 +100,7 @@ export function interpolateArc (state, arc, params = arcParams) {
 // A radius too short for the endpoints clamps to the chord's mid-point, like the firmware does.
 // Copied from Marlin firmware's G2_G3 handler:
 // https://github.com/MarlinFirmware/Marlin/blob/6ec4e744c07f4035312ab4f8d377c9c2d2154d5e/Marlin/src/gcode/motion/G2_G3.cpp
-export function arcOffsetFromRadius (current_position, destination, r, clockwise) {
+export function arcOffsetFromRadius (current_position: MachineState, destination: MachineState, r: number, clockwise: boolean) {
   const arc_offset = { i: 0, j: 0 }
   if (r && (current_position.x !== destination.x || current_position.y !== destination.y)) {
     const d2 = { x: (destination.x - current_position.x) * 0.5, y: (destination.y - current_position.y) * 0.5 } // XY vector to midpoint of move from current

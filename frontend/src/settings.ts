@@ -24,22 +24,18 @@ export class Settings {
 
   load () {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
       for (const key in saved) {
         if (key in this) {
-          this[key] = saved[key]
+          (this as any)[key] = saved[key]
         }
       }
-    } catch (e) {}
+    } catch {}
   }
 
   save () {
     try {
-      const data = {}
-      for (const key of Object.keys(this)) {
-        data[key] = this[key]
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-    } catch (e) {}
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...this }))
+    } catch {}
   }
 }

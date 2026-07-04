@@ -1,5 +1,13 @@
-import { updateWebcamStream } from './webcam.js'
-import { applyStatusBarVisibility } from './status-bar.js'
+import { updateWebcamStream } from './webcam'
+import { applyStatusBarVisibility } from './status-bar'
+import type { PrettyGCodeApp } from '../app'
+
+// A resizable overlay scales through a single driver value (webcam height in px, dashboard scale)
+interface Overlay {
+  measure: () => { driver: number, width: number, height: number }
+  apply: (driver: number) => void
+  persist: () => void
+}
 
 const MIN_OVERLAY_HEIGHT = 50 // px
 const MAX_OVERLAY_HEIGHT_FRACTION = 0.9 // share of viewport height
@@ -11,32 +19,32 @@ function defaultOverlayHeight () {
   return Math.round(window.innerHeight * DEFAULT_OVERLAY_HEIGHT_FRACTION)
 }
 
-function clampOverlayHeight (height) {
+function clampOverlayHeight (height: number) {
   return Math.min(window.innerHeight * MAX_OVERLAY_HEIGHT_FRACTION, Math.max(MIN_OVERLAY_HEIGHT, height))
 }
 
-function setWebcamHeight (height) {
+function setWebcamHeight (height: number) {
   $('#pg-webcam').css('height', clampOverlayHeight(height) + 'px')
 }
 
-function setDashboardScale (scale) {
+function setDashboardScale (scale: number) {
   const dashboardElement = document.getElementById('tab_plugin_dashboard')
   if (!dashboardElement) return
 
   if (dashboardElement.offsetHeight) { scale = clampOverlayHeight(dashboardElement.offsetHeight * scale) / dashboardElement.offsetHeight }
 
-  dashboardElement.style.setProperty('--pg-dash-scale', scale)
+  dashboardElement.style.setProperty('--pg-dash-scale', String(scale))
   dashboardScale = scale
 }
 
-function setDashboardDefaultScale (app) {
+function setDashboardDefaultScale (app: PrettyGCodeApp) {
   if (app.settings.dashboardScale) return // The scale is already saved in settings
 
   const naturalHeight = document.getElementById('tab_plugin_dashboard')?.offsetHeight
   if (naturalHeight) setDashboardScale(defaultOverlayHeight() / naturalHeight)
 }
 
-export function updateWindowStates (app) {
+export function updateWindowStates (app: PrettyGCodeApp) {
   const settings = app.settings
 
   applyStatusBarVisibility(settings.showStatusBar)
@@ -55,10 +63,10 @@ export function updateWindowStates (app) {
 // Each overlay keeps its proportions, so resizing scales a single driver (webcam
 // height in px, dashboard scale): dragging `axis` in `direction` changes the dragged
 // dimension, and the driver scales by the same relative amount.
-function makeResizable ($handle, overlay, axis, direction) {
+function makeResizable ($handle: JQuery, overlay: Overlay, axis: 'x' | 'y', direction: 1 | -1) {
   const pointerCoord = axis === 'x' ? 'clientX' : 'clientY'
   $handle.on('pointerdown', function (e) {
-    const pointerEvent = e.originalEvent || e
+    const pointerEvent = (e.originalEvent ?? e) as PointerEvent
     e.preventDefault()
     e.stopPropagation()
 
@@ -67,8 +75,8 @@ function makeResizable ($handle, overlay, axis, direction) {
     const startDimension = axis === 'x' ? startState.width : startState.height
     if (this.setPointerCapture) this.setPointerCapture(pointerEvent.pointerId)
 
-    const onMove = (ev) => {
-      const delta = direction * ((ev.originalEvent || ev)[pointerCoord] - startCoord)
+    const onMove = (ev: JQuery.TriggeredEvent) => {
+      const delta = direction * (((ev.originalEvent ?? ev) as PointerEvent)[pointerCoord] - startCoord)
       if (startDimension) overlay.apply(startState.driver * (startDimension + delta) / startDimension)
     }
     const onUp = () => {
@@ -79,15 +87,15 @@ function makeResizable ($handle, overlay, axis, direction) {
   })
 }
 
-export function initOverlayWindows (app) {
-  const webcamOverlay = {
+export function initOverlayWindows (app: PrettyGCodeApp) {
+  const webcamOverlay: Overlay = {
     measure () {
       const rect = $('#pg-webcam')[0].getBoundingClientRect()
       return { driver: rect.height, width: rect.width, height: rect.height }
     },
     apply: setWebcamHeight,
     persist () {
-      app.settings.webcamHeight = Math.round($('#pg-webcam').height())
+      app.settings.webcamHeight = Math.round($('#pg-webcam').height() ?? 0)
       app.settings.save()
     }
   }
@@ -99,7 +107,7 @@ export function initOverlayWindows (app) {
 
   const $dashboard = $('#tab_plugin_dashboard')
   if ($dashboard.length) {
-    const dashboardOverlay = {
+    const dashboardOverlay: Overlay = {
       measure () {
         const rect = $dashboard[0].getBoundingClientRect()
         return { driver: dashboardScale, width: rect.width, height: rect.height }

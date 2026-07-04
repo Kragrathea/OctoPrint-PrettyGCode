@@ -1,6 +1,7 @@
-import * as THREE from './three-exports.js'
+import * as THREE from './three-exports'
 import CameraControls from 'camera-controls'
 import { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster } from 'three'
+import type { PrettyGCodeApp } from './app'
 
 // Copied from camera-controls/readme.md's `subsetOfTHREE` to keep three.js tree-shakeable
 const CAMERA_CONTROLS_THREE = { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster }
@@ -17,31 +18,33 @@ const NOZZLE_MODEL_URL = PLUGIN_BASEURL + 'prettygcode/static/js/models/Extruder
 
 // Planes used to clip the gcode reflection when the camera is below the bed
 const BELOW_BED_CLIP_PLANES = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)]
-const NO_CLIP_PLANES = []
+const NO_CLIP_PLANES: THREE.Plane[] = []
 
 export class Viewer {
+  app: PrettyGCodeApp
+
   // Renderer
-  renderer = null
+  renderer!: THREE.WebGLRenderer
   forceRender = true
-  timer = null
+  timer!: THREE.Timer
 
   // Scene
-  scene = null
+  scene!: THREE.Scene
 
   // Camera
-  camera = null
-  cameraControls = null
+  camera!: THREE.PerspectiveCamera
+  cameraControls!: CameraControls
   cameraIdleTime = 0
 
   // Camera to render metallic reflections on the nozzle
-  reflectionCamera = null
+  reflectionCamera!: THREE.CubeCamera
 
   // Lights
-  underBedLight = null
-  cameraLight = null
+  underBedLight!: THREE.PointLight
+  cameraLight!: THREE.PointLight
 
   // Nozzle model
-  nozzleModel = null
+  nozzleModel: THREE.Group | null = null
 
   // Bound the gcode reflection to the bed surface: 4 planes through the camera and the bed
   // edges, so a reflected point is shown only where the line of sight crosses the bed.
@@ -50,14 +53,14 @@ export class Viewer {
 
   /* ---- Setup ---- */
 
-  constructor (app) {
+  constructor (app: PrettyGCodeApp) {
     this.app = app
   }
 
   init () {
     const settings = this.app.settings
     const bedVolume = this.app.bedVolume
-    const canvas = document.getElementById('pg-canvas')
+    const canvas = document.getElementById('pg-canvas') as HTMLCanvasElement
 
     // Renderer
     THREE.ColorManagement.enabled = false
@@ -100,7 +103,7 @@ export class Viewer {
     this.animate()
   }
 
-  createRenderer (canvas, antialias) {
+  createRenderer (canvas: HTMLCanvasElement, antialias: boolean) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias })
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.localClippingEnabled = true // Needed for the gcode reflection on the bed surface
@@ -269,12 +272,12 @@ export class Viewer {
     this.cameraControls.setTarget(targetX, targetY, 0, enableTransition)
   }
 
-  frameBounds () {
+  frameBounds (bounds: THREE.Box3) {
     // Re-center on the bed first
     this.resetCameraTarget(true)
 
     // Pull back to roughly the print's footprint, with a floor for tiny models
-    const size = this.app.parsedGcode.bounds.getSize(new THREE.Vector3())
+    const size = bounds.getSize(new THREE.Vector3())
     this.cameraControls.dollyTo(Math.max(40, size.x, size.y), true)
   }
 
@@ -306,16 +309,16 @@ export class Viewer {
 
   /* ---- Apply settings ---- */
 
-  applyBackground (darkMode) {
+  applyBackground (darkMode: boolean) {
     this.scene.background = new THREE.Color(darkMode ? DARK_BACKGROUND : LIGHT_BACKGROUND)
     this.requestRender()
   }
 
-  applyAntialias (antialias) {
+  applyAntialias (antialias: boolean) {
     // Antialias is a fixed WebGL context attribute, so toggling it means recreating the
     // context. A context stays bound to its canvas, so swap in a fresh canvas too.
     const oldCanvas = this.renderer.domElement
-    const canvas = oldCanvas.cloneNode(false)
+    const canvas = oldCanvas.cloneNode(false) as HTMLCanvasElement
 
     oldCanvas.replaceWith(canvas)
 

@@ -4,7 +4,8 @@
     "private": true,
     "description": "Build tooling for PrettyGCode frontend",
     "scripts": {
-        "build": "node frontend/build.mjs"
+        "build": "tsc -p frontend && node frontend/build.mjs",
+        "lint": "eslint ."
     },
     "dependencies": {
         "camera-controls": "3.1.2",
@@ -12,11 +13,14 @@
         "three": "0.184.0"
     },
     "devDependencies": {
-        "esbuild": "^0.28.0"
+        "@types/jquery": "^4.0.1",
+        "@types/three": "0.184.0",
+        "esbuild": "^0.28.0",
+        "eslint": "^9.39.4",
+        "neostandard": "^0.13.0",
+        "typescript": "^6.0.3"
     },
-    "standard": {
-        "env": ["browser"],
-        "globals": ["$", "ko", "OctoPrint", "OCTOPRINT_VIEWMODELS", "PrettyGCode", "VERSION", "PLUGIN_BASEURL"],
-        "ignore": ["octoprint_prettygcode/static/js/pg-main.bundle.js"]
+    "allowScripts": {
+        "esbuild@0.28.1": true
     }
 }

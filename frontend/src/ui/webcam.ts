@@ -1,8 +1,10 @@
-function getStreamUrl (app) {
+import type { PrettyGCodeApp } from '../app'
+
+function getStreamUrl (app: PrettyGCodeApp) {
   const fallback = '/webcam/?action=stream'
   try {
     const webcam = app.settingsVM.settings.webcam
-    const defaultCam = ko.utils.arrayFirst((webcam.webcams && webcam.webcams()) || [], (c) => ko.unwrap(c.name) === ko.unwrap(webcam.defaultWebcam))
+    const defaultCam = ko.utils.arrayFirst((webcam.webcams && webcam.webcams()) || [], (c: any) => ko.unwrap(c.name) === ko.unwrap(webcam.defaultWebcam))
     const compat = defaultCam && ko.unwrap(defaultCam.compat)
     return (compat && ko.unwrap(compat.stream)) || (webcam.streamUrl && webcam.streamUrl()) || fallback
   } catch {
@@ -10,7 +12,7 @@ function getStreamUrl (app) {
   }
 }
 
-export function updateWebcamStream (app) {
+export function updateWebcamStream (app: PrettyGCodeApp) {
   const image = $('.pg-view #pg-webcam-image')
 
   // Stream only while the webcam is actually visible: our tab selected, maximized, and the setting enabled

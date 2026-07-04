@@ -1,61 +1,85 @@
-import { Settings } from './settings.js'
-import { Viewer } from './viewer.js'
-import { parseGcodeFile } from './gcode/parser.js'
-import { PrintTimeline } from './gcode/print-timeline.js'
-import { GCodeModel } from './gcode/gcode-model.js'
-import { initSettingsPanel } from './ui/settings-panel.js'
-import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows.js'
-import { updateWebcamStream } from './ui/webcam.js'
-import { initLayerSlider, setLayerSliderMax, setLayerSliderValue } from './ui/layer-slider.js'
-import { initToggleButtons } from './ui/toggle-buttons.js'
-import { setStatusBarText } from './ui/status-bar.js'
+import { Settings } from './settings'
+import { Viewer } from './viewer'
+import { parseGcodeFile, GCodeParser } from './gcode/parser'
+import { PrintTimeline } from './gcode/print-timeline'
+import { GCodeModel } from './gcode/gcode-model'
+import { initSettingsPanel } from './ui/settings-panel'
+import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows'
+import { updateWebcamStream } from './ui/webcam'
+import { initLayerSlider, setLayerSliderMax, setLayerSliderValue } from './ui/layer-slider'
+import { initToggleButtons } from './ui/toggle-buttons'
+import { setStatusBarText } from './ui/status-bar'
+import type { Vector3 } from 'three'
+
+// Print bed geometry
+interface BedVolume {
+  depth: number
+  formFactor: string
+  height: number
+  origin: string
+  width: number
+}
+
+// OctoPrint current/history data payloads
+interface PrinterState {
+  flags: { printing: boolean, paused: boolean }
+}
+interface PrinterDataPayload {
+  logs: string[]
+  job: { file: { path: string, date: number } }
+  state: PrinterState
+  progress: { filepos: number }
+}
 
 const PG_TAB = '#tab_plugin_prettygcode'
 
 export class PrettyGCodeApp {
-  constructor ({ settingsVM, printerProfilesVM }) {
-    // ViewModel bindings
+  // ViewModel bindings
+  settingsVM: any
+  printerProfilesVM: any
+
+  // Plugin frontend settings
+  settings = new Settings()
+
+  // Plugin view gets lazy-initialized when the tab is opened the first time
+  viewInitialized = false
+
+  // 3D view components
+  viewer = new Viewer(this)
+  printTimeline = new PrintTimeline()
+  gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.viewer.mirrorBoundsPlanes)
+
+  // Parsed gcode of the currently loaded job
+  parsedGcode: GCodeParser | null = null
+
+  // Print bed geometry
+  bedVolume: BedVolume = { depth: 0, formFactor: '', height: 0, origin: '', width: 0 }
+
+  // Nozzle diameter from the active printer profile
+  nozzleDiameter: number | null = null
+
+  // Currently loaded job
+  currentJobPath = ''
+  currentJobDate = 0
+
+  // Live printer and render state
+  currentPrinterState: PrinterState | null = null
+  currentFilePosition = 0
+  currentLayerNumber = 0
+  manualLayerControl = false
+
+  // OctoPrint 2.x changed the terminal log prefixes
+  recvLogPrefix = parseInt(VERSION, 10) < 2 ? 'Recv: ' : '<<< '
+
+  constructor ({ settingsVM, printerProfilesVM }: { settingsVM: any, printerProfilesVM: any }) {
     this.settingsVM = settingsVM
     this.printerProfilesVM = printerProfilesVM
-
-    // Plugin frontend settings
-    this.settings = new Settings()
     this.settings.load()
-
-    // Plugin view gets lazy-initialized when the tab is opened the first time
-    this.viewInitialized = false
-
-    // 3D view components
-    this.viewer = new Viewer(this)
-    this.printTimeline = new PrintTimeline()
-    this.gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.viewer.mirrorBoundsPlanes)
-
-    // Parsed gcode of the currently loaded job
-    this.parsedGcode = null
-
-    // Print bed geometry
-    this.bedVolume = { depth: 0, formFactor: '', height: 0, origin: '', width: 0 }
-
-    // Nozzle diameter from the active printer profile
-    this.nozzleDiameter = null
-
-    // Currently loaded job
-    this.currentJobPath = ''
-    this.currentJobDate = 0
-
-    // Live printer and render state
-    this.currentPrinterState = null
-    this.currentFilePosition = 0
-    this.currentLayerNumber = 0
-    this.manualLayerControl = false
-
-    // OctoPrint 2.x changed the terminal log prefixes
-    this.recvLogPrefix = parseInt(VERSION, 10) < 2 ? 'Recv: ' : '<<< '
   }
 
   /* ---- OctoPrint events ---- */
 
-  onTabChange (current, previous) {
+  onTabChange (current: string, previous: string) {
     if (current === PG_TAB) {
       if (!this.viewInitialized) {
         // Bed geometry and nozzle size, kept in sync with the active printer profile
@@ -91,7 +115,7 @@ export class PrettyGCodeApp {
     }
   }
 
-  fromCurrentData (data) {
+  fromCurrentData (data: PrinterDataPayload) {
     this.updatePrinterData(data)
     if (!this.viewInitialized) return
 
@@ -103,11 +127,11 @@ export class PrettyGCodeApp {
     })
   }
 
-  fromHistoryData (data) {
+  fromHistoryData (data: PrinterDataPayload) {
     this.updatePrinterData(data)
   }
 
-  updatePrinterData (data) {
+  updatePrinterData (data: PrinterDataPayload) {
     // On a newly selected file, reload the gcode
     const job = data.job
     if (this.currentJobPath !== job.file.path || this.currentJobDate !== job.file.date) {
@@ -123,7 +147,7 @@ export class PrettyGCodeApp {
 
   /* ---- Gcode loading ---- */
 
-  async loadGcode (jobPath) {
+  async loadGcode (jobPath: string) {
     this.parsedGcode = await parseGcodeFile(jobPath)
 
     // Index the timeline and build the model
@@ -135,7 +159,7 @@ export class PrettyGCodeApp {
     const layerCount = this.parsedGcode.layers.length
     this.currentLayerNumber = layerCount
     setLayerSliderMax(layerCount)
-    if (layerCount) this.viewer.frameBounds()
+    if (layerCount) this.viewer.frameBounds(this.parsedGcode.bounds)
     this.viewer.requestRender()
   }
 
@@ -149,13 +173,13 @@ export class PrettyGCodeApp {
 
   // Reveal the gcode up to the live print position, or up to the manually selected layer.
   // Returns whether the scene changed and the nozzle position.
-  updatePrintView (deltaSeconds) {
+  updatePrintView (deltaSeconds: number) {
     const state = this.currentPrinterState
     const tracking = state && !this.manualLayerControl && (state.flags.printing || state.flags.paused)
 
     let needRender = false
-    let nozzlePosition = null
-    let revealedLayer = null
+    let nozzlePosition: Vector3 | null = null
+    let revealedLayer: number | null = null
 
     if (tracking) {
       // Reveal gcode up to where the nozzle has passed
@@ -181,11 +205,11 @@ export class PrettyGCodeApp {
 
   /* ---- UI events ---- */
 
-  setCurrentLayerNumber (layerNumber) {
+  setCurrentLayerNumber (layerNumber: number) {
     this.currentLayerNumber = layerNumber
   }
 
-  setManualLayerControl (manual) {
+  setManualLayerControl (manual: boolean) {
     this.manualLayerControl = manual
   }
 
