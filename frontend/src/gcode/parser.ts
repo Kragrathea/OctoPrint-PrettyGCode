@@ -41,14 +41,20 @@ const LAYER_EPSILON_MM = 0.04
 /** Color used before any slicer feature type is seen */
 const DEFAULT_COLOR = new THREE.Color('white')
 /** Colors for slicer feature types; the first keyword found in a comment wins */
-const COLOR_KEYWORDS = [
-  ['inner', 'green'],
-  ['outer', 'red'],
-  ['perimeter', 'red'],
-  ['fill', 'orange'],
-  ['skin', 'yellow'],
-  ['support', 'skyblue'],
-  ['skirt', 'skyblue']
+const COLOR_KEYWORDS: [string[], string][] = [
+  [['overhang'], 'blue'], // Orca "Overhang wall", PrusaSlicer "Overhang perimeter"
+  [['external', 'outer'], 'coral'], // Cura "WALL-OUTER", Orca "Outer wall", PrusaSlicer "External perimeter", Simplify3D "outer perimeter"
+  [['top solid', 'skin', 'surface'], 'tomato'], // Cura "SKIN", Orca "Top surface"/"Bottom surface", PrusaSlicer "Top solid infill"
+  [['bridge'], 'steelblue'], // ideaMaker "BRIDGE", Orca "Bridge", PrusaSlicer "Bridge infill"/"Internal bridge infill", Simplify3D "bridge"
+  [['solid'], 'mediumpurple'], // Orca "Internal solid infill", PrusaSlicer "Solid infill", Simplify3D "solid layer"
+  [['gap'], 'white'], // Orca "Gap infill", PrusaSlicer "Gap fill"
+  [['ironing'], 'salmon'], // Orca "Ironing", PrusaSlicer "Ironing"
+  [['interface'], 'green'], // Cura "SUPPORT-INTERFACE", Orca "Support interface", PrusaSlicer "Support material interface"
+  [['support'], 'lime'], // Cura "SUPPORT", Orca "Support"/"Support transition", PrusaSlicer "Support material", Simplify3D "support"/"dense support"
+  [['skirt', 'brim', 'raft'], 'teal'], // Cura "SKIRT"/"RAFT", ideaMaker "RAFT", Orca "Skirt"/"Brim", PrusaSlicer "Skirt/Brim", Simplify3D "skirt"/"raft"
+  [['tower', 'pillar'], 'lightgreen'], // Cura "PRIME-TOWER", Orca "Prime tower", PrusaSlicer "Wipe tower", Simplify3D "prime pillar"
+  [['inner', 'perimeter'], 'gold'], // Cura "WALL-INNER", Orca "Inner wall", PrusaSlicer "Perimeter", Simplify3D "inner perimeter"
+  [['fill'], 'firebrick'] // Cura "FILL", Orca "Sparse infill", PrusaSlicer "Internal infill", Simplify3D "infill"
 ]
 
 /** Matches the nozzle diameter stated by the slicer, e.g. "; nozzle_diameter = 0.4" */
@@ -110,7 +116,7 @@ export class GCodeParser {
         const commentLower = rawLine.toLowerCase()
 
         // Pick the color based on the feature type
-        const match = COLOR_KEYWORDS.find(([keyword]) => commentLower.includes(keyword))
+        const match = COLOR_KEYWORDS.find(([keywords]) => keywords.some((keyword) => commentLower.includes(keyword)))
         if (match) this.currentColor = new THREE.Color(match[1])
 
         // First nozzle diameter the slicer states wins
