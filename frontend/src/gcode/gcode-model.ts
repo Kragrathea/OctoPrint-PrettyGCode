@@ -20,6 +20,8 @@ const isLayerObject = (child: THREE.Object3D): child is LayerLine => child.name.
 const DEFAULT_NOZZLE_DIAMETER = 0.4
 /** Oversize factor of the drawn lines, to avoid gaps */
 const LINE_THICKNESS_FACTOR = 1.1
+/** Brightness of the highlighted layer, 0 to 1 */
+const HIGHLIGHT_BRIGHTNESS = 0.7
 
 /**
  * Makes the material for thin gcode lines
@@ -42,7 +44,7 @@ const makeThickMaterial = (clippingPlanes: THREE.Plane[] | null = null) =>
  */
 const makeHighlightMaterial = () => {
   const highlightMaterial = makeThickMaterial()
-  highlightMaterial.color.setRGB(0.5, 0.5, 0.5)
+  highlightMaterial.color.setRGB(HIGHLIGHT_BRIGHTNESS, HIGHLIGHT_BRIGHTNESS, HIGHLIGHT_BRIGHTNESS)
   return highlightMaterial
 }
 
