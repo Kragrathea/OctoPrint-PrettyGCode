@@ -90,6 +90,8 @@ export class Viewer {
     CameraControls.install({ THREE: CAMERA_CONTROLS_THREE })
     this.cameraControls = new CameraControls(this.camera, canvas)
     this.cameraControls.dollyToCursor = true
+    this.cameraControls.infinityDolly = true
+    this.cameraControls.minDistance = 10
     this.resetCameraTarget()
 
     // Scene
