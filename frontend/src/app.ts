@@ -270,6 +270,12 @@ export class PrettyGCodeApp {
     this.viewer.applyAntialias(this.settings.antialias)
   }
 
+  /** (Re)applies the layer highlight setting to the displayed layer */
+  updateLayerHighlight () {
+    this.gcodeModel.highlightLayer(this.currentLayerNumber)
+    this.viewer.requestRender()
+  }
+
   /** Rebuilds the displayed gcode model to reflect the current settings */
   rebuildGcodeModel () {
     this.gcodeModel.rebuild()

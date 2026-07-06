@@ -226,7 +226,7 @@ export class GCodeModel {
       if (child.userData.mirror) return
 
       // Highlight the target layer, default on the others
-      child.material = child.userData.layerNumber === layerNumber ? this.highlightMaterial : this.thickMaterial
+      child.material = this.settings.highlightLayer && child.userData.layerNumber === layerNumber ? this.highlightMaterial : this.thickMaterial
     })
   }
 

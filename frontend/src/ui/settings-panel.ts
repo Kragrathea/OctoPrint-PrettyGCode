@@ -45,6 +45,12 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
   ).onFinishChange(() => app.rebuildGcodeModel())
 
   option(
+    'highlightLayer',
+    'Highlight layer',
+    'Shade the topmost displayed layer gray to make it stand out. Only works with thick lines.'
+  ).onFinishChange(() => app.updateLayerHighlight())
+
+  option(
     'antialias',
     'Antialiasing',
     'Smooth jagged edges in the 3D view.'
