@@ -5,7 +5,6 @@ import { PrintTimeline } from './gcode/print-timeline'
 import { GCodeModel } from './gcode/gcode-model'
 import { initSettingsPanel } from './ui/settings-panel'
 import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows'
-import { updateWebcamStream } from './ui/webcam'
 import { initLayerSlider, setLayerSliderMax, setLayerSliderValue } from './ui/layer-slider'
 import { initToggleButtons } from './ui/toggle-buttons'
 import { setStatusBarText } from './ui/status-bar'
@@ -123,14 +122,13 @@ export class PrettyGCodeApp {
         initLayerSlider(this)
         initOverlayWindows(this)
         initToggleButtons(this)
-        updateWindowStates(this)
 
         // Set view as initialized
         this.viewInitialized = true
       }
-      updateWebcamStream(this)
+      updateWindowStates(this)
     } else if (previous === PG_TAB) {
-      updateWebcamStream(this)
+      updateWindowStates(this)
     }
   }
 

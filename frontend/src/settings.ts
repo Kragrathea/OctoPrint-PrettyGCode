@@ -32,8 +32,8 @@ export class Settings {
 
   /** Webcam overlay height in px, 0 for the default */
   webcamHeight = 0
-  /** Dashboard overlay scale, 0 for the default */
-  dashboardScale = 0
+  /** Dashboard overlay height in px, 0 for the default */
+  dashboardHeight = 0
 
   /** Restores the saved settings */
   load () {

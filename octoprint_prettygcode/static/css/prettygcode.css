@@ -139,37 +139,35 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     --hover-color: #eee;
     --focus-color: #ddd;
 }
-/* Dashboard plugin */
+/* Bottom overlays (webcam & dashboard) commons */
+.pg-maximized #pg-webcam,
 .pg-maximized #tab_plugin_dashboard {
-    display: unset;
+    display: block;
     position: absolute;
     bottom: 20px;
-    left: 20px;
     box-shadow: var(--pg-shadow);
+}
+/* Webcam overlay */
+#pg-webcam {
+    display: none;
+}
+.pg-maximized #pg-webcam {
+    right: 50px;
+    z-index: 2005;
+    background: rgba(204, 204, 204, 0.9);
+}
+#pg-webcam #webcam_plugins_container {
+    min-height: 0;
+    margin-top: 0;
+}
+/* Dashboard overlay */
+.pg-maximized #tab_plugin_dashboard {
+    left: 20px;
     z-index: 2004;
     background: rgba(255, 255, 255, 0.2);
     opacity: 0.8;
     transform: scale(var(--pg-dash-scale, 1));
     transform-origin: bottom left;
-}
-
-/* === Webcam === */
-#pg-webcam {
-    bottom: 20px;
-    right: 50px;
-    height: 300px;
-    position: absolute;
-    box-shadow: var(--pg-shadow);
-    display: none;
-}
-#pg-webcam-image {
-    display: block;
-    height: 100%;
-    width: auto;
-}
-.pg-maximized #pg-webcam {
-    display: unset;
-    z-index: 2005;
 }
 
 /* === Resize handles === */
