@@ -84,7 +84,7 @@ export class Viewer {
     this.createRenderer(canvas, settings.antialias)
 
     // Camera and controls
-    this.camera = new THREE.PerspectiveCamera(70, 2, 0.1, 10000)
+    this.camera = new THREE.PerspectiveCamera(70, 2, 1, 5000)
     this.camera.up.set(0, 0, 1)
     this.camera.position.set(bedVolume.width, 0, 50)
     CameraControls.install({ THREE: CAMERA_CONTROLS_THREE })
@@ -126,7 +126,7 @@ export class Viewer {
    * @param antialias - True to enable antialiasing
    */
   createRenderer (canvas: HTMLCanvasElement, antialias: boolean) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias })
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias, logarithmicDepthBuffer: true })
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.localClippingEnabled = true // Needed for the gcode reflection on the bed surface
   }
