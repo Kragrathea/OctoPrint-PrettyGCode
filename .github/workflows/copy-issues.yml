@@ -1,0 +1,44 @@
+name: Copy upstream issues
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: "Source repo (owner/repo)"
+        required: true
+
+permissions:
+  issues: write
+
+jobs:
+  copy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Copy open issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SRC: ${{ inputs.source_repo }}
+          DST: ${{ github.repository }}
+        run: |
+          # List open issues
+          gh issue list --repo "$SRC" --state open --limit 1000 \
+            --json number,title,body \
+          | jq -c '.[]' \
+          | while read -r issue; do
+              num=$(echo "$issue" | jq -r '.number')
+              title=$(echo "$issue" | jq -r '.title')
+              body=$(echo "$issue" | jq -r '.body // ""')
+
+              # Cross-link to the original
+              header="Copied from https://github.com/$SRC/issues/$num"
+              body_full=$(printf '%s\n\n%s' "$header" "$body")
+
+              # Create the issue
+              gh issue create --repo "$DST" \
+                --title "$title" \
+                --body "$body_full" \
+              && echo "Created $SRC#$num" \
+              || echo "FAILED $SRC#$num"
+
+              sleep 2
+            done
