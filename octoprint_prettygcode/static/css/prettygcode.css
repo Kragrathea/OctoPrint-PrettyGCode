@@ -1,95 +1,113 @@
-#tab_plugin_prettygcode .gwin {
+/* === Variables === */
+:root {
+    --pg-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+/* === Tab header === */
+#pg-header {
+    display: flex;
+    align-items: baseline;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+#pg-header h3 {
+    margin: 0;
+}
+#pg-subtitle {
+    font-size: 13px;
+}
+#pg-header .btn {
+    margin-left: auto;
+    align-self: center;
+}
+
+/* === 3D view === */
+.pg-view {
     width: 100%;
     height: 100%;
     position: relative;
 }
-
-
-#tab_plugin_prettygcode .webcam_rotated {
-    transform: rotateZ(-90deg);
+#pg-container {
+    height: 600px;
+}
+#pg-canvas {
+    width: 100%;
+    height: 100%;
 }
 
-
-.pgfullscreen #tab_plugin_prettygcode .gwin {
-    top:0px;
-    left:0px;
+.pg-maximized .pg-view {
+    top: 0px;
+    left: 0px;
     width: 100%;
     height: 100%;
     position: absolute;
 }
-#tab_plugin_prettygcode .fstoggle {
-    top: 20px;
-    right: 60px;
-    position: absolute;
-    z-index:10;
+.pg-maximized #pg-canvas {
+    position: relative;
+    z-index: 2000;
 }
-#tab_plugin_prettygcode .pgsettingstoggle {
-    top: 20px;
-    right: 95px;
-    position: absolute;
-    z-index:10;
+.pg-maximized .pg-status,
+.pg-maximized #pg-layer-slider-ui {
+    z-index: 2001;
 }
-.pgfullscreen #tab_plugin_prettygcode .pgstatetoggle {
-    top: 20px;
-    left: 20px;
-    position: absolute;
-    z-index:10;
-    display:unset;
+.pg-maximized {
+    color: black;
 }
-#tab_plugin_prettygcode .pgstatetoggle {
-    display:none;
+html:has(.page-container.pg-maximized) {
+    overflow: hidden;
 }
-.pgfullscreen {
-    color:black;
+/* Keep OctoPrint modals above the maximized plugin */
+html:has(.page-container.pg-maximized) .modal {
+    z-index: 2101;
 }
-.pgfullscreen #tab_plugin_prettygcode .pgfilestoggle {
-    top: 20px;
-    left: 95px;
-    position: absolute;
-    z-index:10;
-    display:unset;
-}
-#tab_plugin_prettygcode .pgfilestoggle {
-    display:none;
-}
-.pgfullscreen #tab_plugin_prettygcode .pgcameratoggle {
-    bottom: 20px;
-    right: 40px;
-    position: absolute;
-    z-index:10;
-    display:unset;
-}
-#tab_plugin_prettygcode .pgcameratoggle {
-    display:none;
+html:has(.page-container.pg-maximized) .modal-backdrop {
+    z-index: 2100;
 }
 
-.pgfullscreen .pgstatus
-{
-    display:unset;
+/* === Toggle buttons === */
+.pg-toggle {
+    position: absolute;
 }
-.pgstatus
-{
-    display:none;
-    position:absolute;
-    top:0px;
-    left:0px;
-    width:100%;
-    font-size:large;
-    text-align:center;
-    background:#ffffff50;
+.pg-maximized .pg-toggle {
+    z-index: 2010;
+}
+.pg-maximized-only {
+    display: none;
+}
+.pg-maximized .pg-maximized-only {
+    display: unset;
+}
+.pg-toggle-fullscreen { top: 20px; right: 60px; }
+.pg-toggle-maximized { top: 20px; right: 95px; }
+.pg-toggle-settings { top: 20px; right: 130px; }
+.pg-toggle-state { top: 20px; left: 20px; }
+.pg-toggle-files { top: 20px; left: 95px; }
+.pg-toggle-webcam { bottom: 20px; right: 50px; }
+.pg-toggle-dashboard { left: 20px; bottom: 20px; }
+
+/* === Status bar === */
+.pg-status {
+    display: block;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    font-size: large;
+    text-align: center;
+    background: #ffffff50;
 }
 
-.pgfullscreen #state_wrapper {
+/* === Overlay windows === */
+.pg-maximized #state_wrapper {
     top: 20px;
     left: 20px;
     width: 300px;
     position: absolute;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    box-shadow: var(--pg-shadow);
     background: rgba(255, 255, 255, 0.2);
-    z-index:5;
+    z-index: 2005;
 }
-
-.pgfullscreen #files_wrapper {
+.pg-maximized #files_wrapper {
     left: 95px;
     top: 20px;
     max-width: 80%;
@@ -97,202 +115,121 @@
     position: absolute;
     box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.70);
     background: rgba(204, 204, 204, 0.9);
-    z-index:6;
+    z-index: 2006;
 }
-/* .pgfullscreen #files .gcode_files .entry {
-    padding: 5px;
-    line-height: 20px;
-    border-bottom: 1px solid #ddd;
-    position: relative;
-    width: 220px;
-    display: inline-grid;
-    background: white;
-    height: 100px;
-} */
-/* .pgfullscreen #files.collapse {
-    width:0px;
-} */
-
-.gwin #webcam_rotator {
-    bottom: 20px;
-    right: 40px;
+/* View Settings (lil-gui host) */
+#pg-view-settings {
     position: absolute;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    z-index:5;
-    display:none;
-}
-
-.pgfullscreen .gwin #webcam_rotator {
-    display:unset;
-}
-.pgfullscreen .gwin #webcam_rotator.pghidden {
-    display:none;
-}
-
-/* Hide notifications in fullscreen mode.*/ 
-/* todo. only do this if not logged in or as admin. 
-.pgfullscreen .ui-notify {
-    display:none;
-}
-*/
-.pgfullscreen .pghidden {
-    display:none;
-}
-.gwin .pghidden {
-    display:none;
-}
-/*dat gui*/
-#tab_plugin_prettygcode #mygui
-{ 
-    position:absolute;
-    right:95px;
-    top:20px;
-    opacity:1.0;
-    z-index:5;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    z-index:4;
+    right: 130px;
+    top: 20px;
+    box-shadow: var(--pg-shadow);
     background: rgba(255, 255, 255, 1.0);
     opacity: 0.8;
-
 }
-
-.gwin .dg li.save-row{
-    background:black;
-    color:yellow;
+.pg-maximized #pg-view-settings {
+    z-index: 2004;
 }
-.gwin .dg li.save-row .button
-{
-    background:black;
-    color:yellow;    
+#pg-view-settings .lil-gui {
+    --name-width: 62%;
+    --background-color: #fafafa;
+    --text-color: #555;
+    --title-background-color: #e8e8e8;
+    --title-text-color: #555;
+    --widget-color: #e9e9e9;
+    --hover-color: #eee;
+    --focus-color: #ddd;
 }
-.gwin .dg li.save-row select{
-    height: 100%;
+/* Bottom overlays (webcam & dashboard) commons */
+.pg-maximized #pg-webcam,
+.pg-maximized #tab_plugin_dashboard {
+    display: block;
+    position: absolute;
+    bottom: 20px;
+    box-shadow: var(--pg-shadow);
 }
-.gwin .dg .close-button{
-    display:none;
-}
-.gwin .dg li.save-row .button.revert{
-    display:none;
-}
-.gwin .dg li.save-row .button.gears{
-    display:none;
-}
-.gwin .has-save .save-row::before {
-    content: "Preset: ";
-  }
-
-  .gwin .dg li.save-row {
-    display:none;
-}
-
-.gwin .dg.main.taller-than-window .close-button {
-    border-top: 1px solid #ddd;
-}
-
-.gwin .dg.main .close-button {
-    background-color: #ccc;
-}
- 
-.gwin .dg.main .close-button:hover {
-    background-color: #ddd;
-}
-
-.gwin .dg {
-    color: #555;
-    text-shadow: none !important;
-}
-
-.gwin .dg.main::-webkit-scrollbar {
-    background: #fafafa;
-}
-
-.gwin .dg.main::-webkit-scrollbar-thumb {
-    background: #bbb;
-}
- 
-.gwin .dg li:not(.folder) {
-    background: #fafafa;
-    border-bottom: 1px solid #ddd;
-}
- 
-.gwin .dg li.save-row .button {
-    text-shadow: none !important;
-}
-
-.gwin .dg li.title {
-    background: #e8e8e8 url(data:image/gif;base64,R0lGODlhBQAFAJEAAP////Pz8////////yH5BAEAAAIALAAAAAAFAAUAAAIIlI+hKgFxoCgAOw==) 6px 10px no-repeat;
-}
-
-.gwin .dg .cr.function:hover,.dg .cr.boolean:hover {
-    background: #fff;
-}
- 
-.gwin .dg .c input[type=text] {
-    background: #e9e9e9;
-}
- 
-.gwin .dg .c input[type=text]:hover {
-    background: #eee;
-}
- 
-.gwin .dg .c input[type=text]:focus {
-    background: #eee;
-    color: #555;
-}
- 
-.gwin .dg .c .slider {
-    background: #e9e9e9;
-}
-
-.gwin .dg .c .slider:hover {
-    background: #eee;
-}
-
-/*style slider to be more progress bar like*/
-.gwin #myslider .slider-track {
-    background: green;
-}
-.gwin #myslider .slider-handle {
-    width:24px;
-}
-.gwin #myslider .tooltip {
+/* Webcam overlay */
+#pg-webcam {
     display: none;
 }
-
-
-
-#tab_plugin_prettygcode code 
-{ 
-    border: 1px black;
-    white-space: pre; 
+.pg-maximized #pg-webcam {
+    right: 50px;
+    z-index: 2005;
+    background: rgba(204, 204, 204, 0.9);
 }
-
-  /*Support Octoprint Dashboard plugin*/
-
-  
-.pgfullscreen #tab_plugin_dashboard {
-    display: unset;
-    position: absolute;
-    bottom: 20px;
+#pg-webcam #webcam_plugins_container {
+    min-height: 0;
+    margin-top: 0;
+}
+/* Dashboard overlay */
+.pg-maximized #tab_plugin_dashboard {
     left: 20px;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
-    z-index:4;
+    z-index: 2004;
     background: rgba(255, 255, 255, 0.2);
     opacity: 0.8;
-    /* width: 300px;  */
-    /* transform: scale(0.8); */
+    transform: scale(var(--pg-dash-scale, 1));
+    transform-origin: bottom left;
 }
 
-.pgfullscreen #tab_plugin_prettygcode .pgdashtoggle {
-    left: 20px;
-    bottom: 20px;
+/* === Resize handles === */
+.pg-resize-handle {
+    display: none;
     position: absolute;
-    z-index:10;
-    display:unset;
+    touch-action: none;
+    z-index: 2020;
 }
-#tab_plugin_prettygcode .pgdashtoggle {
-    display:none;
+.pg-maximized .pg-resize-handle {
+    display: block;
 }
-.pgfullscreen #tab_plugin_dashboard.pghidden {
-    display:none;
+.pg-resize-top {
+    top: -6px;
+    left: 0;
+    width: 100%;
+    height: 12px;
+    cursor: ns-resize;
+}
+.pg-resize-left {
+    top: 0;
+    left: -6px;
+    width: 12px;
+    height: 100%;
+    cursor: ew-resize;
+}
+.pg-resize-right {
+    top: 0;
+    right: -6px;
+    width: 12px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+/* === Layer slider === */
+#pg-layer-slider-ui {
+    position: absolute;
+    top: 5%;
+    right: 20px;
+    height: 90%;
+}
+#pg-layer-slider-ui .slider-track {
+    background: green;
+}
+#pg-layer-slider-ui .slider-handle {
+    left: 50%;
+    width: auto;
+    min-width: 24px;
+    height: auto;
+    margin: 0;
+    padding: 2px 6px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    transform: translate(-50%, -50%);
+    line-height: 20px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* === Misc === */
+/* Elements toggled off via JS */
+.pg-view .pg-hidden,
+.pg-maximized .pg-hidden {
+    display: none !important;
 }

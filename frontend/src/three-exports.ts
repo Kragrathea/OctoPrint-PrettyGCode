@@ -1,0 +1,5 @@
+export * from 'three'
+export { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
+export { LineSegments2 } from 'three/addons/lines/LineSegments2.js'
+export { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js'
+export { LineMaterial } from 'three/addons/lines/LineMaterial.js'

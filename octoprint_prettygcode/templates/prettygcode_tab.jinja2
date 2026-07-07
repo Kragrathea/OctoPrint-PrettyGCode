@@ -1,96 +1,43 @@
-<div id="sexygcode" style="height:800px">
-  <div class='gwin' id='gwin' style=''>
-    <canvas  id='mycanvas' style='width:100%;height:100%'></canvas>
-    {# <canvas  id='pipcanvas' style='position:absolute;right:0px;width:30%;height:30%'></canvas> #}
-
-    <div id='pgstatus' class='pgstatus'>T:0/0 B:0/0</div>
-    <div id='mygui' class='pghidden'>View Settings</div>
-
-    <button class="pgstatetoggle" title="Toggle state window"><i class="fa icon-black fa-info-circle"></i></button>
-    <button class="pgfilestoggle" title="Toggle file window"><i class="fa icon-black fa-list"></i></button>
-    <button class="pgsettingstoggle" title="Toggle settings window">&#9881</button>
-    <button class="fstoggle" title="Toggle fullscreen mode">&#9974</button>
-    <button class="pgdashtoggle" title="Toggle DashBoard window (if installed)"><i class="fa fa-tachometer"></i></button>
-    <button class="pgcameratoggle" title="Toggle webcam view window">&#128247</button>
-  </div>
-  
-
+<div id="pg-header">
+    <h3 id="injector_link">PrettyGCode</h3>
+    <span id="pg-subtitle" class="muted">A 3D G-code visualizer</span>
+    <a class="btn"
+       href="{{ plugin_prettygcode_github_url }}"
+       target="_blank"
+       rel="noopener"
+       title="View on GitHub">
+        <i class="fa-brands fa-github"></i>
+    </a>
 </div>
-
-<h3 id="injector_link">PrettyGCode</h3>
-A GCode visualizer.
-<br>
-<br>
-You can open directly in fullscreen mode by using the link below.<br>
-<a id="fs_link" href="?fullscreen=1#tab_plugin_prettygcode">Direct link to fullscreen mode</a>
-<br>
-<button id="pginstructions_button" onClick='$("#pginstructions").toggle();'>Show/Hide Instructions</button>
-<div style="display:none" id="pginstructions">
-
-<h4>Fullscreen mode</h4>
-PrettyGCode runs in a tab, but was really made to be run full screen. You can toggle to full screen mode by using the button in the upper right corner of the 3d view. While in fullscreen mode you can toggle the display of several OctoPrint windows, including State, Files and the Webcamera view. Also a window that contains the view from the Dashboard plugin (if installed).
-<br>
-
-
-<h4>
-Options:</h4>
-
-
-<ul>
-<li><b>Sync to progress.</b> Sync the 3d view to approximately where the printer is printing. See notes on syncing below.</li>
-<li><b>Fatlines.</b> Display lines with thickness. This looks much better but can cause a performance hit on slower machines.</li>
-<li><b>Mirror.</b> Display a mirrored version of the object below the print bed. This looks better and allows you to see additional parts of the GCode but is a bit slower.</li>
-<li><b>Orbit when idle.</b> After 5 seconds of no mouse/camera movement the camera will orbit around the center.</li>
-<li><b>Reflections.</b> Realtime reflections in the 3d nozzle. This is pure eye candy and can be disabled for more performance.</li>
-</ul>
-
-Options and window states are stored in cookies in the users browser. So options and opened and closed windows should persist across browser sessions.
-
-<h4>Syncing</h4>
-Syncing to print progress is harder than it sounds. The built in OctoPrint GCode visualizer and PrettyGCode uses the <b>File Position</b> to sync the line drawing in the view. This is actually when the line of GCode is read from the file on disk and NOT when it is actually printed. In this plugin I also display the nozzle in the 3d view. This is calculated based on when the GCode line is <b>sent</b> to the printer. This means the print head should be closer to where it actually is. But it will not match the lines being drawn in the 3d view. It is a compromise.
-
-
-<h4>Performance and WebGL:</h4>
-PrettyGCode uses WebGL and Three.js for rendering. WebGL may not be supported on all browsers. And performance maybe slow on older computers, especially with larger GCode models. 
-
-<h5>Tested browsers</h5>
-
-<ul>
-<li>Chrome</li>
-<li>Firefox</li>
-<li>Edge</li>
-<li>Android Chrome</li>
-</ul>
-
-<h4>Streaming via OBS Studio:</h4>
-My primary use for this plugin is to visually show print status when I stream my prints on Twitch. I use OBSStudio for streaming, but to get the browser plugin to render the 3D view you need to launch OBS with the --enable-gpu flag:<br>
-
-<h4>
-UI modifications</h4>
-If you understand how to use CSS you can use the below section to customize the user interface. For example, to make the web camera smaller in fullscreen mode paste this code into the CSS window:
-
-<br>
-<code>
-/* Make webcam smaller in fullscreen mode. */
-.pgfullscreen .gwin #webcam_rotator {
-    width: 360px;
-}
-</code>
-<br>
-<h5>
-Additional CSS:</h5><button class="btn btn-primary" data-bind="click: updateCss">Add CSS</button>
-<textarea id="pg_add_css" rows="18" style='width:100%' >
-</textarea>
-<button class="btn btn-primary" data-bind="click: updateCss">Add CSS</button>
-
-<h4>PrettyGCode Homepage:</h4>
-<a id="fs_link" href="https://github.com/Kragrathea/OctoPrint-PrettyGCode">PrettyGCode homepage</a>
-
-<h4>
-Discussion:</h4>
-<a id="fs_link" href="https://community.octoprint.org/t/wip-prettygcode-viewer/">PrettyGCode discussion on OctoPrint forums</a>
-
-</div> 
-
-
-
+<div id="pg-container">
+    <div class="pg-view">
+        <canvas id="pg-canvas"></canvas>
+        <div class="pg-status">T:0/0 B:0/0</div>
+        <div id="pg-view-settings" class="pg-hidden">View Settings</div>
+        <button class="pg-toggle pg-maximized-only pg-toggle-state"
+                title="Toggle state window">
+            <i class="fa-solid icon-black fa-info-circle"></i>
+        </button>
+        <button class="pg-toggle pg-maximized-only pg-toggle-files"
+                title="Toggle file window">
+            <i class="fa-solid icon-black fa-list"></i>
+        </button>
+        <button class="pg-toggle pg-toggle-settings" title="Toggle settings window">
+            <i class="fa-solid fa-gear"></i>
+        </button>
+        <button class="pg-toggle pg-toggle-maximized" title="Toggle maximized view">
+            <i class="fa-solid fa-maximize"></i>
+        </button>
+        <button class="pg-toggle pg-toggle-fullscreen" title="Toggle fullscreen">
+            <i class="fa-solid fa-expand"></i>
+        </button>
+        <button class="pg-toggle pg-maximized-only pg-toggle-dashboard"
+                title="Toggle DashBoard window (if installed)">
+            <i class="fa-solid fa-gauge-high"></i>
+        </button>
+        <button class="pg-toggle pg-maximized-only pg-toggle-webcam"
+                title="Toggle webcam view window">
+            <i class="fa-solid fa-video"></i>
+        </button>
+    </div>
+</div>

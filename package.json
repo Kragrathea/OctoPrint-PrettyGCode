@@ -1,0 +1,26 @@
+{
+    "name": "octoprint-prettygcode-frontend",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Build tooling for PrettyGCode frontend",
+    "scripts": {
+        "build": "tsc -p frontend && node frontend/build.mjs",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "camera-controls": "3.1.2",
+        "lil-gui": "0.21.0",
+        "three": "0.184.0"
+    },
+    "devDependencies": {
+        "@types/jquery": "^4.0.1",
+        "@types/three": "0.184.0",
+        "esbuild": "^0.28.0",
+        "eslint": "^9.39.4",
+        "neostandard": "^0.13.0",
+        "typescript": "^6.0.3"
+    },
+    "allowScripts": {
+        "esbuild@0.28.1": true
+    }
+}
