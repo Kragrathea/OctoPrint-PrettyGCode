@@ -2,7 +2,7 @@
 
 This plugin adds a 3D GCode visualizer tab in Octoprint. It displays colored lines to give you some idea what the printer is doing and animates progress during printing.
 
-![Screenshot](/Screenshots/PrettyGcode-Screen2.jpg)
+![Screenshot](/extras/images/screen_1.jpg)
 
 ## Features
 - 3D G-code visualizer
