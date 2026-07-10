@@ -258,6 +258,11 @@ export class PrettyGCodeApp {
     this.manualLayerControl = manual
   }
 
+  /** (Re)applies the navigation mode setting to the 3D view */
+  updateNavigationMode () {
+    this.viewer.applyNavigationMode(this.settings.navigationMode)
+  }
+
   /** (Re)applies the dark mode setting to the 3D view */
   updateDarkMode () {
     this.viewer.applyBackground(this.settings.darkMode)

@@ -130,7 +130,9 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     z-index: 2004;
 }
 #pg-view-settings .lil-gui {
-    --name-width: 62%;
+    --font-size: 14px;
+    --width: 300px;
+    --name-width: 45%;
     --background-color: #fafafa;
     --text-color: #555;
     --title-background-color: #e8e8e8;
@@ -138,6 +140,15 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     --widget-color: #e9e9e9;
     --hover-color: #eee;
     --focus-color: #ddd;
+}
+#pg-view-settings .lil-controller.lil-option {
+    position: relative;
+}
+#pg-view-settings .lil-controller.lil-option .lil-widget {
+    position: static;
+}
+#pg-view-settings .lil-controller.lil-option select {
+    left: 0;
 }
 /* Bottom overlays (webcam & dashboard) commons */
 .pg-maximized #pg-webcam,

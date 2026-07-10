@@ -17,6 +17,63 @@ const DARK_BACKGROUND = 0x000000
 /** Seconds the camera must sit idle before it starts auto-orbiting */
 const ORBIT_IDLE_DELAY_SECONDS = 5
 
+/** Mouse buttons usable in a navigation binding */
+type MouseButton = 'left' | 'middle' | 'right'
+/** Mouse button with an optional modifier key to hold */
+type MouseBinding = MouseButton | `${'shift' | 'ctrl'}+${MouseButton}`
+
+/** Mouse bindings of a navigation mode */
+interface NavigationMode {
+  /** Display name */
+  name: string
+  /** Bindings that rotate the camera around its target */
+  orbit: MouseBinding | MouseBinding[]
+  /** Bindings that pan the camera */
+  pan: MouseBinding | MouseBinding[]
+  /** Bindings that zoom by drag */
+  zoom?: MouseBinding | MouseBinding[]
+}
+
+/** Navigation modes mirroring popular slicers and CADs */
+export const NAVIGATION_MODES = {
+  prusaslicer: {
+    name: 'PrusaSlicer / Bambu Studio / OrcaSlicer / OpenSCAD',
+    orbit: 'left',
+    pan: ['right', 'middle']
+  },
+  cura: {
+    name: 'Cura / Tinkercad / Onshape',
+    orbit: ['right', 'ctrl+left'],
+    pan: ['middle', 'shift+right', 'ctrl+right']
+  },
+  fusion360: {
+    name: 'Fusion 360 / Inventor / AutoCAD',
+    orbit: 'shift+middle',
+    pan: 'middle'
+  },
+  blender: {
+    name: 'Blender / SketchUp / NX / Creo',
+    orbit: 'middle',
+    pan: 'shift+middle',
+    zoom: 'ctrl+middle'
+  },
+  solidworks: {
+    name: 'SOLIDWORKS',
+    orbit: 'middle',
+    pan: 'ctrl+middle',
+    zoom: 'shift+middle'
+  },
+  rhino: {
+    name: 'Rhinoceros',
+    orbit: 'right',
+    pan: 'shift+right',
+    zoom: 'ctrl+right'
+  }
+} satisfies Record<string, NavigationMode>
+
+/** Key identifying a navigation mode in NAVIGATION_MODES */
+export type NavigationModeKey = keyof typeof NAVIGATION_MODES
+
 /** URL of the nozzle 3D model */
 const NOZZLE_MODEL_URL = PLUGIN_BASEURL + 'prettygcode/static/js/models/ExtruderNozzle.obj'
 
@@ -46,6 +103,11 @@ export class Viewer {
   cameraControls!: CameraControls
   /** Seconds the camera has sat idle */
   cameraIdleTime = 0
+
+  /** The active navigation mode */
+  navigationMode: NavigationMode = NAVIGATION_MODES.prusaslicer
+  /** Modifier key currently held down */
+  navigationModifier: 'shift' | 'ctrl' | null = null
 
   /** Camera rendering the metallic reflections on the nozzle */
   reflectionCamera!: THREE.CubeCamera
@@ -92,7 +154,13 @@ export class Viewer {
     this.cameraControls.dollyToCursor = true
     this.cameraControls.infinityDolly = true
     this.cameraControls.minDistance = 10
+    this.applyNavigationMode(settings.navigationMode)
     this.resetCameraTarget()
+
+    // Watch navigation modifiers
+    window.addEventListener('keydown', (event) => this.updateNavigationModifier(event))
+    window.addEventListener('keyup', (event) => this.updateNavigationModifier(event))
+    window.addEventListener('blur', () => this.updateNavigationModifier(null))
 
     // Scene
     this.scene = new THREE.Scene()
@@ -356,6 +424,47 @@ export class Viewer {
   applyBackground (darkMode: boolean) {
     this.scene.background = new THREE.Color(darkMode ? DARK_BACKGROUND : LIGHT_BACKGROUND)
     this.requestRender()
+  }
+
+  /**
+   * Switches the mouse mappings to the given navigation mode
+   * @param mode - NAVIGATION_MODES key
+   */
+  applyNavigationMode (mode: NavigationModeKey) {
+    this.navigationMode = NAVIGATION_MODES[mode] ?? NAVIGATION_MODES.prusaslicer
+    this.applyMouseBindings()
+  }
+
+  /**
+   * (Re)applies the mouse bindings for the held modifier key
+   * @param event - Event carrying the modifier key state, or null when the window loses focus
+   */
+  updateNavigationModifier (event: KeyboardEvent | null) {
+    const modifier = event?.shiftKey ? 'shift' : event?.ctrlKey ? 'ctrl' : null
+    if (modifier !== this.navigationModifier) {
+      this.navigationModifier = modifier
+      this.applyMouseBindings()
+    }
+  }
+
+  /** Binds each mouse button to its action in the active navigation mode */
+  applyMouseBindings () {
+    const actions: Array<[MouseBinding | MouseBinding[] | undefined, number]> = [
+      [this.navigationMode.orbit, CameraControls.ACTION.ROTATE],
+      [this.navigationMode.pan, CameraControls.ACTION.TRUCK],
+      [this.navigationMode.zoom, CameraControls.ACTION.DOLLY]
+    ]
+
+    const buttons: Record<MouseButton, number> = { left: CameraControls.ACTION.NONE, middle: CameraControls.ACTION.NONE, right: CameraControls.ACTION.NONE }
+    const modifierButtons: Partial<typeof buttons> = {}
+    for (const [bindings, action] of actions) {
+      for (const binding of [bindings ?? []].flat()) {
+        const [button, modifier] = binding.split('+').reverse() as [MouseButton, string?]
+        if (modifier === undefined) buttons[button] = action
+        else if (modifier === this.navigationModifier) modifierButtons[button] = action
+      }
+    }
+    Object.assign(this.cameraControls.mouseButtons, buttons, modifierButtons)
   }
 
   /**

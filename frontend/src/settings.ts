@@ -1,8 +1,12 @@
+import type { NavigationModeKey } from './viewer'
+
 /** localStorage key holding the settings */
 const STORAGE_KEY = 'pg-settings'
 
 /** Plugin frontend settings, persisted in the browser */
 export class Settings {
+  /** Navigation mode of the 3D view */
+  navigationMode: NavigationModeKey = 'prusaslicer'
   /** Whether to use a dark background in the 3D view */
   darkMode = false
   /** Whether to show a reflection of the print on the bed */

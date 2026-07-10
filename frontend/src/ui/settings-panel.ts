@@ -1,5 +1,6 @@
 import GUI from 'lil-gui'
 import { applyStatusBarVisibility } from './status-bar'
+import { NAVIGATION_MODES } from '../viewer'
 import type { Settings } from '../settings'
 import type { PrettyGCodeApp } from '../app'
 
@@ -19,6 +20,11 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
     controller.domElement.title = help
     return controller
   }
+
+  const navigationOptions = Object.fromEntries(Object.entries(NAVIGATION_MODES).map(([key, mode]) => [mode.name, key]))
+  const navigation = gui.add(settings, 'navigationMode', navigationOptions).name('Navigation')
+  navigation.domElement.title = 'Set which mouse buttons rotate, pan and zoom the 3D view.'
+  navigation.onFinishChange(() => app.updateNavigationMode())
 
   option(
     'darkMode',
