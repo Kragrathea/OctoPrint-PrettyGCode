@@ -1,12 +1,9 @@
 import { clampOverlayHeight, defaultOverlayHeight, makeResizable } from './overlay-windows'
 import type { Overlay } from './overlay-windows'
-import type { PrettyGCodeApp } from '../app'
+import type { Settings } from '../settings'
 
 /** Placeholder for restoring the webcam containers to their original position */
 let restorePlaceholder: Comment | null = null
-
-/** Webcam overlay target height in px */
-let webcamHeight = 0
 
 /**
  * Finds OctoPrint's webcam containers
@@ -21,17 +18,17 @@ function getWebcamContainers () {
  * Resizes the webcam overlay
  * @param height - Height in px
  */
-function setWebcamHeight (height: number) {
+function applyWebcamHeight (height: number) {
   const overlay = $('#pg-webcam')
   if (!overlay.length) return
 
-  webcamHeight = clampOverlayHeight(height)
+  const target = clampOverlayHeight(height)
 
   // The docked content derives its height from the width, so steer the width toward the target height
   const rect = overlay[0].getBoundingClientRect()
-  if (Math.abs(rect.height - webcamHeight) < 1) return
+  if (Math.abs(rect.height - target) < 1) return
   const aspect = rect.height ? rect.width / rect.height : 16 / 9
-  overlay.css('width', Math.round(webcamHeight * aspect) + 'px')
+  overlay.css('width', Math.round(target * aspect) + 'px')
 }
 
 /**
@@ -102,16 +99,16 @@ function undockWebcam () {
 
 /**
  * Shows or hides the webcam overlay to match the current settings, docking or undocking the webcam containers
- * @param app - Application instance
+ * @param settings - Plugin frontend settings
  */
-export function updateWebcamOverlay (app: PrettyGCodeApp) {
+export function updateWebcamOverlay (settings: Settings) {
   const webcamContainersAvailable = getWebcamContainers().length > 0
 
-  $('.pg-view #pg-webcam').toggleClass('pg-hidden', !app.settings.showWebcam || !webcamContainersAvailable)
-  if (app.settings.showWebcam) setWebcamHeight(app.settings.webcamHeight || defaultOverlayHeight())
+  $('.pg-view #pg-webcam').toggleClass('pg-hidden', !settings.showWebcam || !webcamContainersAvailable)
+  if (settings.showWebcam) applyWebcamHeight(settings.webcamHeight || defaultOverlayHeight())
 
   // Dock only while the overlay is actually visible: our tab selected, maximized, and the setting enabled
-  const visible = webcamContainersAvailable && app.settings.showWebcam &&
+  const visible = webcamContainersAvailable && settings.showWebcam &&
     OctoPrint.coreui.selectedTab === '#tab_plugin_prettygcode' && $('.page-container').hasClass('pg-maximized')
   if (visible) dockWebcam()
   else undockWebcam()
@@ -119,27 +116,27 @@ export function updateWebcamOverlay (app: PrettyGCodeApp) {
 
 /**
  * Creates the webcam overlay
- * @param app - Application instance
+ * @param settings - Plugin frontend settings
  */
-export function initWebcamOverlay (app: PrettyGCodeApp) {
+export function initWebcamOverlay (settings: Settings) {
   const webcamOverlay: Overlay = {
     measure () {
       const rect = $('#pg-webcam')[0].getBoundingClientRect()
-      return { driver: rect.height, width: rect.width, height: rect.height }
+      return { width: rect.width, height: rect.height }
     },
-    apply: setWebcamHeight,
-    persist () {
-      app.settings.webcamHeight = Math.round($('#pg-webcam').height() ?? 0)
-      app.settings.save()
-    }
+    apply (height: number) {
+      settings.webcamHeight = Math.round(clampOverlayHeight(height))
+      applyWebcamHeight(settings.webcamHeight)
+    },
+    persist: () => settings.save()
   }
 
   $('.pg-view').append('<div id="pg-webcam"><div class="pg-resize-handle pg-resize-top"></div><div class="pg-resize-handle pg-resize-left"></div></div>')
-  setWebcamHeight(app.settings.webcamHeight || defaultOverlayHeight())
+  applyWebcamHeight(settings.webcamHeight || defaultOverlayHeight())
   makeResizable($('#pg-webcam .pg-resize-top'), webcamOverlay, 'y', -1)
   makeResizable($('#pg-webcam .pg-resize-left'), webcamOverlay, 'x', -1)
 
   // The stream sizes in after loading: keep the height in step with the target height
-  const contentObserver = new ResizeObserver(() => { if (webcamHeight) setWebcamHeight(webcamHeight) })
+  const contentObserver = new ResizeObserver(() => applyWebcamHeight(settings.webcamHeight || defaultOverlayHeight()))
   contentObserver.observe($('#pg-webcam')[0])
 }

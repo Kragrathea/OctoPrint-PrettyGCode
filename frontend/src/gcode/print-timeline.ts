@@ -32,19 +32,19 @@ export class PrintTimeline {
   /** Drawn layers in print order */
   drawnLayers: DrawnLayer[] = []
   /** Total drawn segments across all layers */
-  totalSegments = 0
+  private totalSegments = 0
 
   /** Cumulative estimated time at each segment's start, travel gaps included */
-  segmentStartTimes = new Float64Array(0)
+  private segmentStartTimes = new Float64Array(0)
   /** Cumulative estimated time at each segment's end, travel gaps included */
-  segmentEndTimes = new Float64Array(0)
+  private segmentEndTimes = new Float64Array(0)
 
   /** Timeline coordinate the nozzle has been eased to */
-  nozzleTime = 0
+  private nozzleTime = 0
   /** Timeline coordinate of the printer's read position */
-  targetTime = 0
+  private targetTime = 0
   /** Nozzle position in scene coordinates */
-  nozzlePosition = new THREE.Vector3()
+  private readonly nozzlePosition = new THREE.Vector3()
 
   /**
    * Indexes parsed layers into a new timeline
@@ -132,7 +132,7 @@ export class PrintTimeline {
    * @param filePosition - Bytes of the file sent to the printer
    * @returns The number of drawn segments passed
    */
-  segmentsReadAt (filePosition: number) {
+  private segmentsReadAt (filePosition: number) {
     let count = 0
 
     for (const layer of this.drawnLayers) {
@@ -161,7 +161,7 @@ export class PrintTimeline {
    * @param time - Timeline coordinate in seconds
    * @returns The spot at that coordinate
    */
-  locateTime (time: number): TimelineSpot {
+  private locateTime (time: number): TimelineSpot {
     const starts = this.segmentStartTimes
     const ends = this.segmentEndTimes
 
@@ -187,7 +187,7 @@ export class PrintTimeline {
    * Moves the nozzle position to a timeline spot
    * @param spot - Timeline position
    */
-  updateNozzlePosition (spot: TimelineSpot) {
+  private updateNozzlePosition (spot: TimelineSpot) {
     const position = this.nozzlePosition
 
     // Past the end: park on the last segment's endpoint

@@ -72,30 +72,30 @@ const scratchHsl = { h: 0, s: 0, l: 0 }
 /** Streaming gcode parser: feed it text chunks to get colored layers of segments with file positions and time estimates */
 export class GCodeParser {
   /** Parsed layers: segment endpoints, colors, file positions and estimated durations */
-  layers: Layer[] = []
+  readonly layers: Layer[] = []
 
   /** Bounding box of the extruded gcode */
-  bounds = new THREE.Box3()
+  readonly bounds = new THREE.Box3()
 
   /** Nozzle diameter the slicer states, if any */
   slicerNozzleDiameter: number | null = null
 
   /** Current machine state */
-  machineState: MachineState = INITIAL_MACHINE_STATE
+  private machineState: MachineState = INITIAL_MACHINE_STATE
   /** Layer being filled, if any */
-  currentLayer: Layer | null = null
+  private currentLayer: Layer | null = null
   /** Color of the current feature type */
-  currentColor = DEFAULT_COLOR
+  private currentColor = DEFAULT_COLOR
   /** Partial line left over from the previous chunk */
-  pendingLine = ''
+  private pendingLine = ''
   /** Bytes parsed so far */
-  filePosition = 0
+  private filePosition = 0
   /** Travel time accumulated since the last segment */
-  pendingTravelSeconds = 0
+  private pendingTravelSeconds = 0
   /** Whether axis moves are relative */
-  axesRelative = false
+  private axesRelative = false
   /** Whether extrusion is relative */
-  extrusionRelative = false
+  private extrusionRelative = false
 
   /**
    * Parses the next chunk of gcode text; chunks may split lines anywhere
@@ -258,7 +258,7 @@ export class GCodeParser {
    * @param move - Machine state after the command
    * @returns The extruded length in mm
    */
-  extrusionDelta (args: Record<string, number>, move: MachineState) {
+  private extrusionDelta (args: Record<string, number>, move: MachineState) {
     if (args.e === undefined) return 0
     return this.extrusionRelative ? args.e : move.e - this.machineState.e
   }
@@ -268,7 +268,7 @@ export class GCodeParser {
    * @param move - Machine state starting the layer
    * @returns The new layer
    */
-  newLayer (move: MachineState) {
+  private newLayer (move: MachineState) {
     this.currentLayer = { vertices: [], z: move.z, colors: [], filePositions: [], durations: [] }
     this.layers.push(this.currentLayer)
     return this.currentLayer
@@ -279,7 +279,7 @@ export class GCodeParser {
    * @param start - Machine state at the move start
    * @param end - Machine state at the move end
    */
-  addTravel (start: MachineState, end: MachineState) {
+  private addTravel (start: MachineState, end: MachineState) {
     const length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z)
     this.pendingTravelSeconds += (length || 0) / feedrateMmPerSecond(end.f)
   }
@@ -289,7 +289,7 @@ export class GCodeParser {
    * @param start - Machine state at the segment start
    * @param end - Machine state at the segment end
    */
-  addSegment (start: MachineState, end: MachineState) {
+  private addSegment (start: MachineState, end: MachineState) {
     // Check coordinates
     if (Number.isNaN(start.x) || Number.isNaN(start.y) || Number.isNaN(start.z) || Number.isNaN(end.x) || Number.isNaN(end.y) || Number.isNaN(end.z)) {
       console.warn('PrettyGCode: bad line segment', start, end)

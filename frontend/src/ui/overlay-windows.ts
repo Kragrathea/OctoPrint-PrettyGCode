@@ -1,12 +1,11 @@
-import { initWebcamOverlay, updateWebcamOverlay } from './webcam'
-import { initDashboardOverlay, updateDashboardOverlay } from './dashboard'
-import { applyStatusBarVisibility } from './status-bar'
-import type { PrettyGCodeApp } from '../app'
+import { initWebcamOverlay } from './webcam'
+import { initDashboardOverlay } from './dashboard'
+import type { Settings } from '../settings'
 
-/** A resizable overlay that scales through a single driver value (webcam height in px, dashboard scale) */
+/** A resizable overlay sized through its height in px */
 export interface Overlay {
-  measure: () => { driver: number, width: number, height: number }
-  apply: (driver: number) => void
+  measure: () => { width: number, height: number }
+  apply: (height: number) => void
   persist: () => void
 }
 
@@ -35,21 +34,7 @@ export function clampOverlayHeight (height: number) {
 }
 
 /**
- * Shows or hides the windows and overlays to match the current settings
- * @param app - Application instance
- */
-export function updateWindowStates (app: PrettyGCodeApp) {
-  applyStatusBarVisibility(app.settings.showStatusBar)
-
-  $('#state_wrapper').toggleClass('pg-hidden', !app.settings.showState)
-  $('#files_wrapper').toggleClass('pg-hidden', !app.settings.showFiles)
-
-  updateDashboardOverlay(app)
-  updateWebcamOverlay(app)
-}
-
-/**
- * Makes an overlay resizable by dragging a handle, scaling its driver value proportionally
+ * Makes an overlay resizable by dragging a handle, scaling its height proportionally to the drag
  * @param $handle - Drag handle element
  * @param overlay - Overlay to resize
  * @param axis - Pointer axis the drag follows
@@ -62,14 +47,14 @@ export function makeResizable ($handle: JQuery, overlay: Overlay, axis: 'x' | 'y
     e.preventDefault()
     e.stopPropagation()
 
-    const startState = overlay.measure()
+    const startSize = overlay.measure()
     const startCoord = pointerEvent[pointerCoord]
-    const startDimension = axis === 'x' ? startState.width : startState.height
+    const startDimension = axis === 'x' ? startSize.width : startSize.height
     if (this.setPointerCapture) this.setPointerCapture(pointerEvent.pointerId)
 
     const onMove = (ev: JQuery.TriggeredEvent) => {
       const delta = direction * (((ev.originalEvent ?? ev) as PointerEvent)[pointerCoord] - startCoord)
-      if (startDimension) overlay.apply(startState.driver * (startDimension + delta) / startDimension)
+      if (startDimension) overlay.apply(startSize.height * (startDimension + delta) / startDimension)
     }
     const onUp = () => {
       $handle.off('pointermove', onMove).off('pointerup pointercancel', onUp)
@@ -81,9 +66,9 @@ export function makeResizable ($handle: JQuery, overlay: Overlay, axis: 'x' | 'y
 
 /**
  * Creates the overlays
- * @param app - Application instance
+ * @param settings - Plugin frontend settings
  */
-export function initOverlayWindows (app: PrettyGCodeApp) {
-  initWebcamOverlay(app)
-  initDashboardOverlay(app)
+export function initOverlayWindows (settings: Settings) {
+  initWebcamOverlay(settings)
+  initDashboardOverlay(settings)
 }

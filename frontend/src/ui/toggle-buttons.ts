@@ -1,4 +1,3 @@
-import { updateWindowStates } from './overlay-windows'
 import type { PrettyGCodeApp } from '../app'
 
 /** Last known maximized state */
@@ -13,7 +12,7 @@ export function initToggleButtons (app: PrettyGCodeApp) {
   const toggleWindow = (key: 'showState' | 'showFiles' | 'showWebcam' | 'showDashboard') => {
     app.settings[key] = !app.settings[key]
     app.settings.save()
-    updateWindowStates(app)
+    app.updateWindowStates()
   }
 
   // Restore the maximized layout from the URL (bookmarked/embedded maximized view)
@@ -32,7 +31,7 @@ export function initToggleButtons (app: PrettyGCodeApp) {
     else url.searchParams.delete('maximized')
     history.replaceState(null, '', url)
 
-    updateWindowStates(app)
+    app.updateWindowStates()
   })
 
   $('.pg-toggle-fullscreen').on('click', () => {
@@ -45,14 +44,14 @@ export function initToggleButtons (app: PrettyGCodeApp) {
       $('.page-container').addClass('pg-maximized')
       $('.page-container')[0].requestFullscreen()
 
-      updateWindowStates(app)
+      app.updateWindowStates()
     }
   })
   $(document).on('fullscreenchange', () => {
     if (!document.fullscreenElement) {
       // Leaving fullscreen restores the maximized state from before entering it
       $('.page-container').toggleClass('pg-maximized', wasMaximized)
-      updateWindowStates(app)
+      app.updateWindowStates()
     }
   })
 

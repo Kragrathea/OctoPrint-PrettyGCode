@@ -1,7 +1,7 @@
 import * as THREE from './three-exports'
 import CameraControls from 'camera-controls'
 import { Vector2, Vector3, Vector4, Quaternion, Matrix4, Spherical, Box3, Sphere, Raycaster } from 'three'
-import type { PrettyGCodeApp } from './app'
+import type { Settings } from './settings'
 
 /**
  * Subset of three.js required by camera-controls.
@@ -82,63 +82,85 @@ const BELOW_BED_CLIP_PLANES = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)]
 /** Empty plane set, to disable clipping */
 const NO_CLIP_PLANES: THREE.Plane[] = []
 
+/** Print bed geometry */
+export interface BedVolume {
+  depth: number
+  height: number
+  origin: string
+  width: number
+}
+
+/** Per-frame print view outcome: whether the scene changed and the nozzle position to show */
+export interface PrintViewUpdate {
+  needRender: boolean
+  nozzlePosition: Vector3 | null
+}
+
 /** The plugin's 3D view: renders the bed, the gcode model and the nozzle */
 export class Viewer {
-  /** Owning application instance */
-  app: PrettyGCodeApp
+  /** Plugin frontend settings */
+  private readonly settings: Settings
+  /** Getter of the current print bed geometry */
+  private readonly getBedVolume: () => BedVolume
+  /** Callback advancing the print view each frame */
+  private readonly onFrame: (deltaSeconds: number) => PrintViewUpdate
 
   /** WebGL renderer */
-  renderer!: THREE.WebGLRenderer
+  private renderer!: THREE.WebGLRenderer
   /** Whether to render the next frame regardless of changes */
-  forceRender = true
+  private forceRender = true
   /** Timer measuring frame deltas */
-  timer!: THREE.Timer
+  private timer!: THREE.Timer
 
   /** The 3D scene */
   scene!: THREE.Scene
 
   /** Perspective camera */
-  camera!: THREE.PerspectiveCamera
+  private camera!: THREE.PerspectiveCamera
   /** Camera controls */
-  cameraControls!: CameraControls
+  private cameraControls!: CameraControls
   /** Seconds the camera has sat idle */
-  cameraIdleTime = 0
+  private cameraIdleTime = 0
 
   /** The active navigation mode */
-  navigationMode: NavigationMode = NAVIGATION_MODES.prusaslicer
+  private navigationMode: NavigationMode = NAVIGATION_MODES.prusaslicer
   /** Modifier key currently held down */
-  navigationModifier: 'shift' | 'ctrl' | null = null
+  private navigationModifier: 'shift' | 'ctrl' | null = null
 
   /** Camera rendering the metallic reflections on the nozzle */
-  reflectionCamera!: THREE.CubeCamera
+  private reflectionCamera!: THREE.CubeCamera
 
   /** Light under the bed */
-  underBedLight!: THREE.PointLight
+  private underBedLight!: THREE.PointLight
   /** Light following the camera */
-  cameraLight!: THREE.PointLight
+  private cameraLight!: THREE.PointLight
 
   /** Nozzle model, once loaded */
-  nozzleModel: THREE.Group | null = null
+  private nozzleModel: THREE.Group | null = null
 
   /**
    * Planes bounding the gcode reflection to the bed surface, each through the camera and a bed
    * edge, so a reflected point shows only where the line of sight crosses the bed; updated each frame
    */
-  mirrorBoundsPlanes = [new THREE.Plane(), new THREE.Plane(), new THREE.Plane(), new THREE.Plane()]
+  readonly mirrorBoundsPlanes = [new THREE.Plane(), new THREE.Plane(), new THREE.Plane(), new THREE.Plane()]
 
   /* ---- Setup ---- */
 
   /**
-   * @param app - Owning application instance
+   * @param settings - Plugin frontend settings
+   * @param getBedVolume - Getter of the current print bed geometry
+   * @param onFrame - Callback advancing the print view each frame, run before rendering
    */
-  constructor (app: PrettyGCodeApp) {
-    this.app = app
+  constructor (settings: Settings, getBedVolume: () => BedVolume, onFrame: (deltaSeconds: number) => PrintViewUpdate) {
+    this.settings = settings
+    this.getBedVolume = getBedVolume
+    this.onFrame = onFrame
   }
 
   /** Sets up the 3D view and starts its render loop */
   init () {
-    const settings = this.app.settings
-    const bedVolume = this.app.bedVolume
+    const settings = this.settings
+    const bedVolume = this.getBedVolume()
     const canvas = document.getElementById('pg-canvas') as HTMLCanvasElement
 
     // Renderer
@@ -195,7 +217,7 @@ export class Viewer {
    * @param canvas - Canvas to render into
    * @param antialias - True to enable antialiasing
    */
-  createRenderer (canvas: HTMLCanvasElement, antialias: boolean) {
+  private createRenderer (canvas: HTMLCanvasElement, antialias: boolean) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias, logarithmicDepthBuffer: true })
     this.renderer.setPixelRatio(window.devicePixelRatio)
     this.renderer.localClippingEnabled = true // Needed for the gcode reflection on the bed surface
@@ -225,9 +247,8 @@ export class Viewer {
   /* ---- Render loop ---- */
 
   /** Renders a frame when needed and schedules the next one */
-  animate () {
-    const app = this.app
-    const settings = app.settings
+  private animate () {
+    const settings = this.settings
 
     this.timer.update()
     const deltaSeconds = this.timer.getDelta()
@@ -247,7 +268,7 @@ export class Viewer {
     if (needRender) this.reflectionCamera.update(this.renderer, this.scene)
 
     // Update and get the print view
-    const printView = app.updatePrintView(deltaSeconds)
+    const printView = this.onFrame(deltaSeconds)
     if (printView.needRender) needRender = true
 
     // Update nozzle model position
@@ -305,7 +326,7 @@ export class Viewer {
    * Matches the rendering size to the canvas display size
    * @returns True if the size changed
    */
-  resizeCanvasToDisplaySize () {
+  private resizeCanvasToDisplaySize () {
     const canvas = this.renderer.domElement
     const width = canvas.clientWidth
     const height = canvas.clientHeight
@@ -328,7 +349,7 @@ export class Viewer {
   updateBedMesh () {
     if (!this.scene) return
 
-    const bedVolume = this.app.bedVolume
+    const bedVolume = this.getBedVolume()
 
     // Drop the previous bed before rebuilding it at the current size
     for (const name of ['plane', 'grid']) {
@@ -365,7 +386,7 @@ export class Viewer {
   resetCameraTarget (enableTransition = false) {
     if (!this.cameraControls) return
 
-    const bedVolume = this.app.bedVolume
+    const bedVolume = this.getBedVolume()
     const lowerleft = bedVolume.origin === 'lowerleft'
 
     // Aim at the bed center
@@ -389,8 +410,8 @@ export class Viewer {
   }
 
   /** (Re)computes the planes that clip the bed reflection to the bed surface */
-  updateMirrorBoundsPlanes () {
-    const bedVolume = this.app.bedVolume
+  private updateMirrorBoundsPlanes () {
+    const bedVolume = this.getBedVolume()
     const lowerleft = bedVolume.origin === 'lowerleft'
     const xMin = lowerleft ? 0 : -bedVolume.width / 2
     const xMax = lowerleft ? bedVolume.width : bedVolume.width / 2
@@ -439,7 +460,7 @@ export class Viewer {
    * (Re)applies the mouse bindings for the held modifier key
    * @param event - Event carrying the modifier key state, or null when the window loses focus
    */
-  updateNavigationModifier (event: KeyboardEvent | null) {
+  private updateNavigationModifier (event: KeyboardEvent | null) {
     const modifier = event?.shiftKey ? 'shift' : event?.ctrlKey ? 'ctrl' : null
     if (modifier !== this.navigationModifier) {
       this.navigationModifier = modifier
@@ -448,7 +469,7 @@ export class Viewer {
   }
 
   /** Binds each mouse button to its action in the active navigation mode */
-  applyMouseBindings () {
+  private applyMouseBindings () {
     const actions: Array<[MouseBinding | MouseBinding[] | undefined, number]> = [
       [this.navigationMode.orbit, CameraControls.ACTION.ROTATE],
       [this.navigationMode.pan, CameraControls.ACTION.TRUCK],

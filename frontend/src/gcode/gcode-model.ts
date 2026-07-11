@@ -51,31 +51,31 @@ const makeHighlightMaterial = () => {
 /** The rendered gcode model, made of per-layer line objects */
 export class GCodeModel {
   /** Group holding the gcode model lines */
-  linesGroup = new THREE.Group()
+  readonly linesGroup = new THREE.Group()
 
   /** Layers the model was last built from */
-  layers: Layer[] = []
+  private layers: Layer[] = []
 
   /** The growing tip drawn along the segment the nozzle is currently laying down */
-  tipLine: LayerLine | null = null
+  private tipLine: LayerLine | null = null
 
   /** Material for thin lines */
-  thinMaterial = makeThinMaterial()
+  private readonly thinMaterial = makeThinMaterial()
   /** Material for thick lines */
-  thickMaterial = makeThickMaterial()
+  private readonly thickMaterial = makeThickMaterial()
   /** Material for the highlighted layer */
-  highlightMaterial = makeHighlightMaterial()
+  private readonly highlightMaterial = makeHighlightMaterial()
 
   /** Thick line material for the mirror, clipped to the bed */
-  mirrorThickMaterial: THREE.LineMaterial
+  private readonly mirrorThickMaterial: THREE.LineMaterial
   /** Thin line material for the mirror, clipped to the bed */
-  mirrorThinMaterial: THREE.LineBasicMaterial
+  private readonly mirrorThinMaterial: THREE.LineBasicMaterial
 
   /** Plugin frontend settings */
-  settings: Settings
+  private readonly settings: Settings
 
   /** Print timeline of the loaded gcode */
-  timeline: PrintTimeline
+  private readonly timeline: PrintTimeline
 
   /**
    * @param settings - Plugin frontend settings
@@ -122,7 +122,7 @@ export class GCodeModel {
    * @param material - Material to render with
    * @returns The new line object
    */
-  makeLine (vertices: number[], colors: number[], material: THREE.LineMaterial | THREE.LineBasicMaterial): LayerLine {
+  private makeLine (vertices: number[], colors: number[], material: THREE.LineMaterial | THREE.LineBasicMaterial): LayerLine {
     if (this.settings.thickLines) {
       // Thick lines
       const geometry = new THREE.LineSegmentsGeometry()
@@ -143,7 +143,7 @@ export class GCodeModel {
    * @param layer - Parsed layer
    * @param layerNumber - 1-based layer number
    */
-  addLayerLines (layer: Layer, layerNumber: number) {
+  private addLayerLines (layer: Layer, layerNumber: number) {
     // Skip empty layers
     if (layer.vertices.length <= 2) return
 
@@ -178,7 +178,7 @@ export class GCodeModel {
    * @param layer - Parsed layer
    * @returns The mirror's vertices and colors
    */
-  makeMirrorData (layer: Layer) {
+  private makeMirrorData (layer: Layer) {
     // Mirror through the bed: flip the Z of every vertex
     const vertices = layer.vertices.slice()
     for (let i = 2; i < vertices.length; i += 3) vertices[i] = -vertices[i]
@@ -298,7 +298,7 @@ export class GCodeModel {
    * @param count - Segments to draw
    * @returns True if the count changed
    */
-  setRevealCount (child: LayerLine, count: number) {
+  private setRevealCount (child: LayerLine, count: number) {
     // Thick lines are instanced; thin ones aren't, so limit their drawn vertex range (2 per segment)
     if (this.settings.thickLines) {
       const geometry = child.geometry as THREE.LineSegmentsGeometry
@@ -315,7 +315,7 @@ export class GCodeModel {
   /* ---- Growing tip line ---- */
 
   /** (Re)creates the line used to draw the partially printed segment */
-  buildTipLine () {
+  private buildTipLine () {
     if (this.tipLine) {
       this.linesGroup.remove(this.tipLine)
       this.tipLine.geometry.dispose()
@@ -347,7 +347,7 @@ export class GCodeModel {
    * Grows the partially printed segment's line up to a timeline position
    * @param spot - Timeline position
    */
-  updateTipLine (spot: TimelineSpot) {
+  private updateTipLine (spot: TimelineSpot) {
     const tipLine = this.tipLine
     if (!tipLine) return
 
@@ -383,7 +383,7 @@ export class GCodeModel {
    * @param g - Green component (0-1)
    * @param b - Blue component (0-1)
    */
-  setTipLineGeometry (startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, r: number, g: number, b: number) {
+  private setTipLineGeometry (startX: number, startY: number, startZ: number, endX: number, endY: number, endZ: number, r: number, g: number, b: number) {
     if (!this.tipLine) return
 
     const geometry = this.tipLine.geometry

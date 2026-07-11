@@ -1,51 +1,48 @@
 import { clampOverlayHeight, defaultOverlayHeight, makeResizable } from './overlay-windows'
 import type { Overlay } from './overlay-windows'
-import type { PrettyGCodeApp } from '../app'
-
-/** Dashboard overlay target height in px */
-let dashboardHeight = 0
+import type { Settings } from '../settings'
 
 /**
  * Resizes the dashboard overlay
  * @param height - Height in px
  */
-function setDashboardHeight (height: number) {
+function applyDashboardHeight (height: number) {
   const dashboardElement = document.getElementById('tab_plugin_dashboard')
   if (!dashboardElement) return
 
-  dashboardHeight = clampOverlayHeight(height)
+  const target = clampOverlayHeight(height)
 
   // The overlay is a scaled miniature: derive the scale from the content's natural height
-  if (dashboardElement.offsetHeight) dashboardElement.style.setProperty('--pg-dash-scale', String(dashboardHeight / dashboardElement.offsetHeight))
+  if (dashboardElement.offsetHeight) dashboardElement.style.setProperty('--pg-dash-scale', String(target / dashboardElement.offsetHeight))
 }
 
 /**
  * Shows or hides the dashboard overlay to match the current settings
- * @param app - Application instance
+ * @param settings - Plugin frontend settings
  */
-export function updateDashboardOverlay (app: PrettyGCodeApp) {
-  $('#tab_plugin_dashboard').toggleClass('pg-hidden', !app.settings.showDashboard)
-  if (app.settings.showDashboard && $('.page-container').hasClass('pg-maximized')) setDashboardHeight(app.settings.dashboardHeight || defaultOverlayHeight())
+export function updateDashboardOverlay (settings: Settings) {
+  $('#tab_plugin_dashboard').toggleClass('pg-hidden', !settings.showDashboard)
+  if (settings.showDashboard && $('.page-container').hasClass('pg-maximized')) applyDashboardHeight(settings.dashboardHeight || defaultOverlayHeight())
 }
 
 /**
  * Creates the dashboard overlay
- * @param app - Application instance
+ * @param settings - Plugin frontend settings
  */
-export function initDashboardOverlay (app: PrettyGCodeApp) {
+export function initDashboardOverlay (settings: Settings) {
   const $dashboard = $('#tab_plugin_dashboard')
   if (!$dashboard.length) return
 
   const dashboardOverlay: Overlay = {
     measure () {
       const rect = $dashboard[0].getBoundingClientRect()
-      return { driver: rect.height, width: rect.width, height: rect.height }
+      return { width: rect.width, height: rect.height }
     },
-    apply: setDashboardHeight,
-    persist () {
-      app.settings.dashboardHeight = Math.round($dashboard[0].getBoundingClientRect().height)
-      app.settings.save()
-    }
+    apply (height: number) {
+      settings.dashboardHeight = Math.round(clampOverlayHeight(height))
+      applyDashboardHeight(settings.dashboardHeight)
+    },
+    persist: () => settings.save()
   }
 
   $dashboard.append('<div class="pg-resize-handle pg-resize-top"></div><div class="pg-resize-handle pg-resize-right"></div>')
@@ -53,6 +50,6 @@ export function initDashboardOverlay (app: PrettyGCodeApp) {
   makeResizable($dashboard.children('.pg-resize-right'), dashboardOverlay, 'x', 1)
 
   // The dashboard fills in asynchronously after startup: keep the height in step with its content
-  const contentObserver = new ResizeObserver(() => { if (dashboardHeight) setDashboardHeight(dashboardHeight) })
+  const contentObserver = new ResizeObserver(() => updateDashboardOverlay(settings))
   contentObserver.observe($dashboard[0])
 }

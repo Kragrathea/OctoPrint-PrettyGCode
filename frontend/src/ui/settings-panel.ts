@@ -1,5 +1,4 @@
 import GUI from 'lil-gui'
-import { applyStatusBarVisibility } from './status-bar'
 import { NAVIGATION_MODES } from '../viewer'
 import type { Settings } from '../settings'
 import type { PrettyGCodeApp } from '../app'
@@ -72,7 +71,7 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
     'showStatusBar',
     'Status bar',
     'Show the temperature status bar across the top of the view.'
-  ).onFinishChange(() => applyStatusBarVisibility(settings.showStatusBar))
+  ).onFinishChange(() => app.updateWindowStates())
 
   return gui
 }

@@ -4,20 +4,14 @@ import { parseGcodeFile, GCodeParser } from './gcode/parser'
 import { PrintTimeline } from './gcode/print-timeline'
 import { GCodeModel } from './gcode/gcode-model'
 import { initSettingsPanel } from './ui/settings-panel'
-import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows'
+import { initOverlayWindows } from './ui/overlay-windows'
+import { updateDashboardOverlay } from './ui/dashboard'
+import { updateWebcamOverlay } from './ui/webcam'
 import { initLayerSlider, updateLayerSliderMax, setLayerSliderValue } from './ui/layer-slider'
 import { initToggleButtons } from './ui/toggle-buttons'
-import { setStatusBarText } from './ui/status-bar'
+import { setStatusBarText, applyStatusBarVisibility } from './ui/status-bar'
+import type { BedVolume, PrintViewUpdate } from './viewer'
 import type { Vector3 } from 'three'
-
-/** Print bed geometry */
-interface BedVolume {
-  depth: number
-  formFactor: string
-  height: number
-  origin: string
-  width: number
-}
 
 /** Printer state reported by OctoPrint */
 interface PrinterState {
@@ -37,55 +31,52 @@ const PG_TAB = '#tab_plugin_prettygcode'
 
 /** Main plugin container, orchestrating all its components */
 export class PrettyGCodeApp {
-  /** OctoPrint settings view model */
-  settingsVM: any
   /** OctoPrint printer profiles view model */
-  printerProfilesVM: any
+  private readonly printerProfilesVM: any
 
   /** Plugin frontend settings */
-  settings = new Settings()
+  readonly settings = new Settings()
 
   /** Whether the plugin view has been initialized */
-  viewInitialized = false
+  private viewInitialized = false
 
   /** The 3D view */
-  viewer = new Viewer(this)
+  private readonly viewer = new Viewer(this.settings, () => this.bedVolume, (deltaSeconds) => this.updatePrintView(deltaSeconds))
   /** Print timeline of the loaded gcode */
-  printTimeline = new PrintTimeline()
+  private readonly printTimeline = new PrintTimeline()
   /** The rendered gcode model */
-  gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.viewer.mirrorBoundsPlanes)
+  private readonly gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.viewer.mirrorBoundsPlanes)
 
   /** Parsed gcode of the currently loaded job */
-  parsedGcode: GCodeParser | null = null
+  private parsedGcode: GCodeParser | null = null
 
   /** Print bed geometry */
-  bedVolume: BedVolume = { depth: 0, formFactor: '', height: 0, origin: '', width: 0 }
+  private bedVolume: BedVolume = { depth: 0, height: 0, origin: '', width: 0 }
 
   /** Nozzle diameter from the active printer profile */
-  nozzleDiameter: number | null = null
+  private nozzleDiameter: number | null = null
 
   /** Server path of the currently loaded job */
-  currentJobPath = ''
+  private currentJobPath = ''
   /** Upload date of the currently loaded job */
-  currentJobDate = 0
+  private currentJobDate = 0
 
   /** Latest printer state reported by OctoPrint */
-  currentPrinterState: PrinterState | null = null
+  private currentPrinterState: PrinterState | null = null
   /** Bytes of the job file sent to the printer so far */
-  currentFilePosition = 0
-  /** 1-based topmost layer to display */
-  currentLayerNumber = 0
+  private currentFilePosition = 0
+  /** 1-based current layer */
+  private _currentLayerNumber = 0
   /** Whether the user is browsing layers manually */
-  manualLayerControl = false
+  private manualLayerControl = false
 
   /** Prefix of received terminal log lines */
-  recvLogPrefix = parseInt(VERSION, 10) < 2 ? 'Recv: ' : '<<< '
+  private readonly recvLogPrefix = parseInt(VERSION, 10) < 2 ? 'Recv: ' : '<<< '
 
   /**
    * @param viewModels - OctoPrint view models
    */
-  constructor ({ settingsVM, printerProfilesVM }: { settingsVM: any, printerProfilesVM: any }) {
-    this.settingsVM = settingsVM
+  constructor ({ printerProfilesVM }: { printerProfilesVM: any }) {
     this.printerProfilesVM = printerProfilesVM
     this.settings.load()
   }
@@ -120,15 +111,15 @@ export class PrettyGCodeApp {
         // UI controls
         initSettingsPanel(this)
         initLayerSlider(this)
-        initOverlayWindows(this)
+        initOverlayWindows(this.settings)
         initToggleButtons(this)
 
         // Set view as initialized
         this.viewInitialized = true
       }
-      updateWindowStates(this)
+      this.updateWindowStates()
     } else if (previous === PG_TAB) {
-      updateWindowStates(this)
+      this.updateWindowStates()
     }
   }
 
@@ -160,7 +151,7 @@ export class PrettyGCodeApp {
    * Syncs the app with a printer data payload, loading the newly selected job if it changed
    * @param data - OctoPrint data payload
    */
-  updatePrinterData (data: PrinterDataPayload) {
+  private updatePrinterData (data: PrinterDataPayload) {
     // On a newly selected file, reload the gcode
     const job = data.job
     if (this.currentJobPath !== job.file.path || this.currentJobDate !== job.file.date) {
@@ -185,7 +176,7 @@ export class PrettyGCodeApp {
    * Loads a job file and displays it in the 3D view
    * @param jobPath - Server path of the job file
    */
-  async loadGcode (jobPath: string) {
+  private async loadGcode (jobPath: string) {
     this.parsedGcode = await parseGcodeFile(jobPath)
 
     // Index the timeline and build the model
@@ -194,14 +185,14 @@ export class PrettyGCodeApp {
     this.updateLineWidth()
 
     // Show the whole model: slider max and current layer at the top
-    this.currentLayerNumber = this.layerCount
     updateLayerSliderMax(this)
+    this.setCurrentLayerNumber(this.layerCount)
     if (this.layerCount) this.viewer.frameBounds(this.parsedGcode.bounds)
     this.viewer.requestRender()
   }
 
   /** Updates the drawn line thickness to the current nozzle diameter */
-  updateLineWidth () {
+  private updateLineWidth () {
     // The slicer's nozzle diameter wins over the printer profile
     this.gcodeModel.applyLineWidth(this.parsedGcode?.slicerNozzleDiameter ?? this.nozzleDiameter)
     this.viewer.requestRender()
@@ -214,7 +205,7 @@ export class PrettyGCodeApp {
    * @param deltaSeconds - Seconds elapsed since the previous call
    * @returns Whether the scene changed and the nozzle position to show, if any
    */
-  updatePrintView (deltaSeconds: number) {
+  private updatePrintView (deltaSeconds: number): PrintViewUpdate {
     const state = this.currentPrinterState
     const tracking = state && !this.manualLayerControl && (state.flags.printing || state.flags.paused)
 
@@ -246,12 +237,17 @@ export class PrettyGCodeApp {
 
   /* ---- UI events ---- */
 
+  /** 1-based current layer */
+  get currentLayerNumber () {
+    return this._currentLayerNumber
+  }
+
   /**
-   * Selects the topmost layer to display
+   * Selects the current layer
    * @param layerNumber - 1-based layer number
    */
   setCurrentLayerNumber (layerNumber: number) {
-    this.currentLayerNumber = layerNumber
+    this._currentLayerNumber = layerNumber
     setLayerSliderValue(this, layerNumber)
   }
 
@@ -290,17 +286,28 @@ export class PrettyGCodeApp {
     this.viewer.requestRender()
   }
 
+  /** Shows or hides the overlay windows to match the current settings */
+  updateWindowStates () {
+    applyStatusBarVisibility(this.settings.showStatusBar)
+
+    $('#state_wrapper').toggleClass('pg-hidden', !this.settings.showState)
+    $('#files_wrapper').toggleClass('pg-hidden', !this.settings.showFiles)
+
+    updateDashboardOverlay(this.settings)
+    updateWebcamOverlay(this.settings)
+  }
+
   /* ---- Printer profile ---- */
 
   /** Refreshes the nozzle diameter from the active printer profile */
-  updateNozzleDiameter () {
+  private updateNozzleDiameter () {
     const currentProfileData = this.printerProfilesVM.currentProfileData()
     const extruder = currentProfileData && currentProfileData.extruder
     this.nozzleDiameter = extruder && typeof extruder.nozzleDiameter === 'function' ? extruder.nozzleDiameter() : null
   }
 
   /** Refreshes the print bed geometry from the active printer profile */
-  updateBedVolume () {
+  private updateBedVolume () {
     const currentProfileData = this.printerProfilesVM.currentProfileData()
     if (!currentProfileData || !currentProfileData.volume) return
 
@@ -314,6 +321,6 @@ export class PrettyGCodeApp {
           depth: volume.custom_box.y_max() - volume.custom_box.y_min()
         }
 
-    this.bedVolume = { ...dims, origin: volume.origin(), formFactor: volume.formFactor() }
+    this.bedVolume = { ...dims, origin: volume.origin() }
   }
 }

@@ -1,8 +1,7 @@
 $(function () {
   function PrettyGCodeViewModel (parameters) {
     const app = new PrettyGCode.App({
-      settingsVM: parameters[0],
-      printerProfilesVM: parameters[1]
+      printerProfilesVM: parameters[0]
     })
 
     this.onTabChange = (current, previous) => app.onTabChange(current, previous)
@@ -13,7 +12,7 @@ $(function () {
 
   OCTOPRINT_VIEWMODELS.push({
     construct: PrettyGCodeViewModel,
-    dependencies: ['settingsViewModel', 'printerProfilesViewModel'],
+    dependencies: ['printerProfilesViewModel'],
     elements: ['#tab_plugin_prettygcode']
   })
 })
