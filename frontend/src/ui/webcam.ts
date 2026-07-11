@@ -137,6 +137,7 @@ export function initWebcamOverlay (settings: Settings) {
   makeResizable($('#pg-webcam .pg-resize-left'), webcamOverlay, 'x', -1)
 
   // The stream sizes in after loading: keep the height in step with the target height
-  const contentObserver = new ResizeObserver(() => applyWebcamHeight(settings.webcamHeight || defaultOverlayHeight()))
+  // Resize on the next frame so the observer does not react to its own changes
+  const contentObserver = new ResizeObserver(() => requestAnimationFrame(() => applyWebcamHeight(settings.webcamHeight || defaultOverlayHeight())))
   contentObserver.observe($('#pg-webcam')[0])
 }

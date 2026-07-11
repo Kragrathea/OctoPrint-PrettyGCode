@@ -50,6 +50,7 @@ export function initDashboardOverlay (settings: Settings) {
   makeResizable($dashboard.children('.pg-resize-right'), dashboardOverlay, 'x', 1)
 
   // The dashboard fills in asynchronously after startup: keep the height in step with its content
-  const contentObserver = new ResizeObserver(() => updateDashboardOverlay(settings))
+  // Resize on the next frame so the observer does not react to its own changes
+  const contentObserver = new ResizeObserver(() => requestAnimationFrame(() => updateDashboardOverlay(settings)))
   contentObserver.observe($dashboard[0])
 }
