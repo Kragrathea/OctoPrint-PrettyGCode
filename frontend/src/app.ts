@@ -5,7 +5,7 @@ import { PrintTimeline } from './gcode/print-timeline'
 import { GCodeModel } from './gcode/gcode-model'
 import { initSettingsPanel } from './ui/settings-panel'
 import { initOverlayWindows, updateWindowStates } from './ui/overlay-windows'
-import { initLayerSlider, setLayerSliderMax, setLayerSliderValue } from './ui/layer-slider'
+import { initLayerSlider, updateLayerSliderMax, setLayerSliderValue } from './ui/layer-slider'
 import { initToggleButtons } from './ui/toggle-buttons'
 import { setStatusBarText } from './ui/status-bar'
 import type { Vector3 } from 'three'
@@ -176,6 +176,11 @@ export class PrettyGCodeApp {
 
   /* ---- Gcode loading ---- */
 
+  /** Layer count of the loaded gcode */
+  get layerCount () {
+    return this.parsedGcode?.layers.length ?? 0
+  }
+
   /**
    * Loads a job file and displays it in the 3D view
    * @param jobPath - Server path of the job file
@@ -189,10 +194,9 @@ export class PrettyGCodeApp {
     this.updateLineWidth()
 
     // Show the whole model: slider max and current layer at the top
-    const layerCount = this.parsedGcode.layers.length
-    this.currentLayerNumber = layerCount
-    setLayerSliderMax(layerCount)
-    if (layerCount) this.viewer.frameBounds(this.parsedGcode.bounds)
+    this.currentLayerNumber = this.layerCount
+    updateLayerSliderMax(this)
+    if (this.layerCount) this.viewer.frameBounds(this.parsedGcode.bounds)
     this.viewer.requestRender()
   }
 
@@ -224,7 +228,7 @@ export class PrettyGCodeApp {
       if (spot) {
         this.gcodeModel.revealTo(spot)
         revealedLayer = this.printTimeline.layerNumberAt(spot.segmentIndex)
-        setLayerSliderValue(revealedLayer)
+        this.setCurrentLayerNumber(revealedLayer)
       }
       needRender = true
       nozzlePosition = this.printTimeline.getNozzlePosition()
@@ -248,6 +252,7 @@ export class PrettyGCodeApp {
    */
   setCurrentLayerNumber (layerNumber: number) {
     this.currentLayerNumber = layerNumber
+    setLayerSliderValue(this, layerNumber)
   }
 
   /**

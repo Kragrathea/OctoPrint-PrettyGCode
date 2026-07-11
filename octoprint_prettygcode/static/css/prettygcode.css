@@ -47,7 +47,8 @@
     z-index: 2000;
 }
 .pg-maximized .pg-status,
-.pg-maximized #pg-layer-slider-ui {
+.pg-maximized #pg-layer-slider-ui,
+.pg-maximized .pg-layer-step-button {
     z-index: 2001;
 }
 .pg-maximized {
@@ -216,9 +217,9 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 /* === Layer slider === */
 #pg-layer-slider-ui {
     position: absolute;
-    top: 5%;
+    top: 60px;
     right: 20px;
-    height: 90%;
+    height: calc(100% - 120px);
 }
 #pg-layer-slider-ui .slider-track {
     background: green;
@@ -236,6 +237,20 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     line-height: 20px;
     text-align: center;
     white-space: nowrap;
+}
+.pg-layer-step-button {
+    position: absolute;
+    right: 16px;
+    width: 28px;
+    padding: 2px 0;
+    border-radius: 8px;
+    touch-action: manipulation;
+}
+#pg-layer-step-up-button {
+    top: 20px;
+}
+#pg-layer-step-down-button {
+    bottom: 20px;
 }
 
 /* === Misc === */
