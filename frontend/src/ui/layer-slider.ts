@@ -76,6 +76,13 @@ export function initLayerSlider (app: PrettyGCodeApp) {
     app.setManualLayerControl(false)
   })
 
+  // Step layers with the mouse wheel while hovering the slider
+  $('#pg-layer-slider-ui').on('wheel', (event: any) => {
+    event.preventDefault()
+    const deltaY = (event.originalEvent as WheelEvent).deltaY
+    if (deltaY) stepLayer(deltaY < 0 ? 1 : -1)
+  })
+
   // Bind the step buttons
   bindStepButton('#pg-layer-step-up-button', 1)
   bindStepButton('#pg-layer-step-down-button', -1)
