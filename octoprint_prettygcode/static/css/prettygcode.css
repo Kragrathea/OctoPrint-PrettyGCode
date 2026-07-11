@@ -58,11 +58,11 @@ html:has(.page-container.pg-maximized) {
     overflow: hidden;
 }
 /* Keep OctoPrint modals above the maximized plugin */
-html:has(.page-container.pg-maximized) .modal {
-    z-index: 2101;
+html:has(.page-container.pg-maximized) .modal-scrollable {
+    z-index: 2101 !important;
 }
 html:has(.page-container.pg-maximized) .modal-backdrop {
-    z-index: 2100;
+    z-index: 2100 !important;
 }
 
 /* === Toggle buttons === */
