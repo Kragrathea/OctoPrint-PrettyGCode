@@ -20,9 +20,6 @@ const isLayerObject = (child: THREE.Object3D): child is LayerLine => child.name.
 const DEFAULT_NOZZLE_DIAMETER = 0.4
 /** Oversize factor of the drawn lines, to avoid gaps */
 const LINE_THICKNESS_FACTOR = 1.1
-/** Brightness of the highlighted layer, 0 to 1 */
-const HIGHLIGHT_BRIGHTNESS = 0.7
-
 /**
  * Makes the material for thin gcode lines
  * @param clippingPlanes - Clipping planes to apply, if any
@@ -37,16 +34,6 @@ const makeThinMaterial = (clippingPlanes: THREE.Plane[] | null = null) => new TH
  */
 const makeThickMaterial = (clippingPlanes: THREE.Plane[] | null = null) =>
   new THREE.LineMaterial({ worldUnits: true, linewidth: DEFAULT_NOZZLE_DIAMETER * LINE_THICKNESS_FACTOR, vertexColors: true, clippingPlanes })
-
-/**
- * Makes the material for the highlighted layer
- * @returns The new material
- */
-const makeHighlightMaterial = () => {
-  const highlightMaterial = makeThickMaterial()
-  highlightMaterial.color.setRGB(HIGHLIGHT_BRIGHTNESS, HIGHLIGHT_BRIGHTNESS, HIGHLIGHT_BRIGHTNESS)
-  return highlightMaterial
-}
 
 /** The rendered gcode model, made of per-layer line objects */
 export class GCodeModel {
@@ -64,7 +51,7 @@ export class GCodeModel {
   /** Material for thick lines */
   private readonly thickMaterial = makeThickMaterial()
   /** Material for the highlighted layer */
-  private readonly highlightMaterial = makeHighlightMaterial()
+  private readonly highlightMaterial = makeThickMaterial()
 
   /** Thick line material for the mirror, clipped to the bed */
   private readonly mirrorThickMaterial: THREE.LineMaterial
@@ -221,6 +208,10 @@ export class GCodeModel {
     // Highlight material works only on thick lines
     if (!this.settings.thickLines) return
 
+    // Shade the highlight material by the set intensity
+    const brightness = 1 - this.settings.highlightIntensity / 100
+    this.highlightMaterial.color.setRGB(brightness, brightness, brightness)
+
     this.linesGroup.traverse((child) => {
       if (!isLayerObject(child)) return
 
@@ -228,7 +219,7 @@ export class GCodeModel {
       if (child.userData.mirror) return
 
       // Highlight the target layer, default on the others
-      child.material = this.settings.highlightLayer && child.userData.layerNumber === layerNumber ? this.highlightMaterial : this.thickMaterial
+      child.material = this.settings.highlightIntensity > 0 && child.userData.layerNumber === layerNumber ? this.highlightMaterial : this.thickMaterial
     })
   }
 

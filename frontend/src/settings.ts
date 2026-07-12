@@ -15,8 +15,8 @@ export class Settings {
   orbitWhenIdle = false
   /** Whether to draw the lines with their real thickness */
   thickLines = true
-  /** Whether to highlight the topmost displayed layer */
-  highlightLayer = true
+  /** Shading intensity of the topmost displayed layer, in percent */
+  highlightIntensity = 30
   /** Whether to antialias the 3D view */
   antialias = true
   /** Transparency of the nozzle model, in percent */

@@ -49,11 +49,9 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
     'Display lines with thickness, based on nozzle size.'
   ).onFinishChange(() => app.rebuildGcodeModel())
 
-  option(
-    'highlightLayer',
-    'Highlight layer',
-    'Shade the topmost displayed layer gray to make it stand out. Only works with thick lines.'
-  ).onFinishChange(() => app.updateLayerHighlight())
+  const highlightIntensity = gui.add(settings, 'highlightIntensity', 0, 100, 1).name('Highlight layer')
+  highlightIntensity.domElement.title = 'Set how strongly the topmost displayed layer is shaded. Only works with thick lines.'
+  highlightIntensity.onChange(() => app.updateLayerHighlight())
 
   option(
     'antialias',
