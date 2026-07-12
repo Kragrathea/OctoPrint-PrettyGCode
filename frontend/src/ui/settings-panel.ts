@@ -50,7 +50,7 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
   ).onFinishChange(() => app.rebuildGcodeModel())
 
   const highlightIntensity = gui.add(settings, 'highlightIntensity', 0, 100, 1).name('Highlight layer')
-  highlightIntensity.domElement.title = 'Set how strongly the topmost displayed layer is shaded. Only works with thick lines.'
+  highlightIntensity.domElement.title = 'Set how strongly the topmost displayed layer is shaded.'
   highlightIntensity.onChange(() => app.updateLayerHighlight())
 
   option(

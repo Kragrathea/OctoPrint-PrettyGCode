@@ -50,8 +50,10 @@ export class GCodeModel {
   private readonly thinMaterial = makeThinMaterial()
   /** Material for thick lines */
   private readonly thickMaterial = makeThickMaterial()
-  /** Material for the highlighted layer */
-  private readonly highlightMaterial = makeThickMaterial()
+  /** Thin line material for the highlighted layer */
+  private readonly highlightThinMaterial = makeThinMaterial()
+  /** Thick line material for the highlighted layer */
+  private readonly highlightThickMaterial = makeThickMaterial()
 
   /** Thick line material for the mirror, clipped to the bed */
   private readonly mirrorThickMaterial: THREE.LineMaterial
@@ -195,7 +197,7 @@ export class GCodeModel {
 
     this.thickMaterial.linewidth = lineWidth
     this.mirrorThickMaterial.linewidth = lineWidth
-    this.highlightMaterial.linewidth = lineWidth
+    this.highlightThickMaterial.linewidth = lineWidth
   }
 
   /* ---- Reveal and highlight ---- */
@@ -205,12 +207,14 @@ export class GCodeModel {
    * @param layerNumber - 1-based layer number to highlight
    */
   highlightLayer (layerNumber: number) {
-    // Highlight material works only on thick lines
-    if (!this.settings.thickLines) return
-
-    // Shade the highlight material by the set intensity
+    // Shade the highlight materials by the set intensity
     const brightness = 1 - this.settings.highlightIntensity / 100
-    this.highlightMaterial.color.setRGB(brightness, brightness, brightness)
+    this.highlightThinMaterial.color.setRGB(brightness, brightness, brightness)
+    this.highlightThickMaterial.color.setRGB(brightness, brightness, brightness)
+
+    const thickLines = this.settings.thickLines
+    const highlightMaterial = thickLines ? this.highlightThickMaterial : this.highlightThinMaterial
+    const defaultMaterial = thickLines ? this.thickMaterial : this.thinMaterial
 
     this.linesGroup.traverse((child) => {
       if (!isLayerObject(child)) return
@@ -219,7 +223,7 @@ export class GCodeModel {
       if (child.userData.mirror) return
 
       // Highlight the target layer, default on the others
-      child.material = this.settings.highlightIntensity > 0 && child.userData.layerNumber === layerNumber ? this.highlightMaterial : this.thickMaterial
+      child.material = this.settings.highlightIntensity > 0 && child.userData.layerNumber === layerNumber ? highlightMaterial : defaultMaterial
     })
   }
 
@@ -319,12 +323,12 @@ export class GCodeModel {
       const geometry = new THREE.LineSegmentsGeometry()
       geometry.setPositions(positions)
       geometry.setColors(colors)
-      line = new THREE.LineSegments2(geometry, this.highlightMaterial)
+      line = new THREE.LineSegments2(geometry, this.highlightThickMaterial)
     } else {
       const geometry = new THREE.BufferGeometry()
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
       geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-      line = new THREE.LineSegments(geometry, this.thinMaterial)
+      line = new THREE.LineSegments(geometry, this.highlightThinMaterial)
     }
 
     line.visible = false
