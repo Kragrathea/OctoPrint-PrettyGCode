@@ -21,6 +21,8 @@ export class Settings {
   antialias = true
   /** Transparency of the nozzle model, in percent */
   nozzleTransparency = 0
+  /** Whether to reflect the scene on the nozzle model */
+  nozzleReflection = true
   /** Whether to show the temperature status bar */
   showStatusBar = true
 

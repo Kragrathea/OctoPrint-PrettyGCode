@@ -65,6 +65,12 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
   nozzleTransparency.domElement.title = 'Set how transparent the nozzle 3D model at the current print position is.'
 
   option(
+    'nozzleReflection',
+    'Nozzle reflection',
+    'Reflect the surrounding scene on the nozzle 3D model.'
+  )
+
+  option(
     'showStatusBar',
     'Status bar',
     'Show the temperature status bar across the top of the view.'

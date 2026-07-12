@@ -76,6 +76,12 @@ export type NavigationModeKey = keyof typeof NAVIGATION_MODES
 
 /** URL of the nozzle 3D model */
 const NOZZLE_MODEL_URL = PLUGIN_BASEURL + 'prettygcode/static/js/models/ExtruderNozzle.obj'
+/** Nozzle color */
+const NOZZLE_COLOR = 0xba971b
+/** Brighter nozzle color compensating for the disabled reflection */
+const NOZZLE_UNREFLECTIVE_COLOR = 0xffd826
+/** Emissive lift applied to the unreflective nozzle color */
+const NOZZLE_UNREFLECTIVE_EMISSIVE = 0.36
 
 /** Planes clipping the gcode reflection when the camera is below the bed */
 const BELOW_BED_CLIP_PLANES = [new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)]
@@ -235,7 +241,7 @@ export class Viewer {
         metalness: 1,
         roughness: 0.5,
         envMap: this.reflectionCamera.renderTarget.texture,
-        color: 0xba971b
+        color: NOZZLE_COLOR
       })
       // Depth-only twins drawn first keep the transparency uniform on the outer surface
       const depthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true })
@@ -275,8 +281,21 @@ export class Viewer {
       return
     }
 
+    // Toggle the nozzle reflection to match the setting
+    const envMap = settings.nozzleReflection ? this.reflectionCamera.renderTarget.texture : null
+    if (this.nozzleMaterial && this.nozzleMaterial.envMap !== envMap) {
+      this.nozzleMaterial.envMap = envMap
+      this.nozzleMaterial.metalness = envMap ? 1 : 0
+      this.nozzleMaterial.roughness = envMap ? 0.5 : 1
+      this.nozzleMaterial.color.setHex(envMap ? NOZZLE_COLOR : NOZZLE_UNREFLECTIVE_COLOR)
+      this.nozzleMaterial.emissive.setHex(envMap ? 0x000000 : NOZZLE_UNREFLECTIVE_COLOR)
+      this.nozzleMaterial.emissiveIntensity = NOZZLE_UNREFLECTIVE_EMISSIVE
+      this.nozzleMaterial.needsUpdate = true
+      needRender = true
+    }
+
     // Rebuild the nozzle reflection
-    if (needRender) this.reflectionCamera.update(this.renderer, this.scene)
+    if (needRender && settings.nozzleReflection) this.reflectionCamera.update(this.renderer, this.scene)
 
     // Update and get the print view
     const printView = this.onFrame(deltaSeconds)
@@ -297,6 +316,7 @@ export class Viewer {
     if (this.nozzleModel && this.nozzleMaterial && this.nozzleMaterial.opacity !== nozzleOpacity) {
       this.nozzleMaterial.opacity = nozzleOpacity
       this.nozzleMaterial.transparent = nozzleOpacity < 1
+      this.nozzleMaterial.needsUpdate = true
       this.nozzleModel.visible = nozzleOpacity > 0
       needRender = true
     }
