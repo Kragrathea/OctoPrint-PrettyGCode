@@ -61,11 +61,8 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
     'Smooth jagged edges in the 3D view.'
   ).onFinishChange(() => app.updateAntialias())
 
-  option(
-    'showNozzle',
-    'Show nozzle',
-    'Show a 3D model of the nozzle at the position currently being sent to the printer.'
-  )
+  const nozzleTransparency = gui.add(settings, 'nozzleTransparency', 0, 100, 1).name('Nozzle transparency')
+  nozzleTransparency.domElement.title = 'Set how transparent the nozzle 3D model at the current print position is.'
 
   option(
     'showStatusBar',

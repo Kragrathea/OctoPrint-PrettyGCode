@@ -162,6 +162,21 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 #pg-view-settings .lil-controller.lil-option select {
     left: 0;
 }
+#pg-view-settings .lil-controller.lil-number input {
+    height: var(--widget-height);
+    margin-bottom: 0;
+    border: 0;
+    border-radius: var(--widget-border-radius);
+    background: var(--widget-color);
+    box-shadow: none;
+}
+#pg-view-settings .lil-controller.lil-number input:hover {
+    background: var(--hover-color);
+}
+#pg-view-settings .lil-controller.lil-number input:active,
+#pg-view-settings .lil-controller.lil-number input:focus {
+    background: var(--focus-color);
+}
 /* Bottom overlays (webcam & dashboard) commons */
 .pg-maximized #pg-webcam,
 .pg-maximized #tab_plugin_dashboard {

@@ -137,6 +137,8 @@ export class Viewer {
 
   /** Nozzle model, once loaded */
   private nozzleModel: THREE.Group | null = null
+  /** Material shared by the nozzle model meshes, once loaded */
+  private nozzleMaterial: THREE.MeshStandardMaterial | null = null
 
   /**
    * Planes bounding the gcode reflection to the bed surface, each through the camera and a bed
@@ -235,10 +237,19 @@ export class Viewer {
         envMap: this.reflectionCamera.renderTarget.texture,
         color: 0xba971b
       })
-      obj.children.forEach((child) => {
-        if (child instanceof THREE.Mesh) child.material = material
+      // Depth-only twins drawn first keep the transparency uniform on the outer surface
+      const depthMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, transparent: true })
+      obj.children.slice().forEach((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.material = material
+          child.renderOrder = 2
+          const twin = new THREE.Mesh(child.geometry, depthMaterial)
+          twin.renderOrder = 1
+          obj.add(twin)
+        }
       })
       this.nozzleModel = obj
+      this.nozzleMaterial = material
       this.scene.add(obj)
       this.requestRender()
     })
@@ -281,9 +292,12 @@ export class Viewer {
       }
     }
 
-    // Show or hide the nozzle to match the setting
-    if (this.nozzleModel && this.nozzleModel.visible !== settings.showNozzle) {
-      this.nozzleModel.visible = settings.showNozzle
+    // Fade the nozzle to match the transparency setting
+    const nozzleOpacity = 1 - settings.nozzleTransparency / 100
+    if (this.nozzleModel && this.nozzleMaterial && this.nozzleMaterial.opacity !== nozzleOpacity) {
+      this.nozzleMaterial.opacity = nozzleOpacity
+      this.nozzleMaterial.transparent = nozzleOpacity < 1
+      this.nozzleModel.visible = nozzleOpacity > 0
       needRender = true
     }
 

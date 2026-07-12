@@ -19,8 +19,8 @@ export class Settings {
   highlightLayer = true
   /** Whether to antialias the 3D view */
   antialias = true
-  /** Whether to show the nozzle model */
-  showNozzle = true
+  /** Transparency of the nozzle model, in percent */
+  nozzleTransparency = 0
   /** Whether to show the temperature status bar */
   showStatusBar = true
 
