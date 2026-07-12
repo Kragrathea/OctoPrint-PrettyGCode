@@ -1,6 +1,8 @@
 /* === Variables === */
 :root {
     --pg-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    --pg-edge-margin: 20px;
+    --pg-slider-lane: 40px;
 }
 
 /* === Tab header === */
@@ -78,13 +80,13 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 .pg-maximized .pg-maximized-only {
     display: unset;
 }
-.pg-toggle-fullscreen { top: 20px; right: 60px; }
-.pg-toggle-maximized { top: 20px; right: 95px; }
-.pg-toggle-settings { top: 20px; right: 130px; }
-.pg-toggle-state { top: 20px; left: 20px; }
-.pg-toggle-files { top: 20px; left: 95px; }
-.pg-toggle-webcam { bottom: 20px; right: 50px; }
-.pg-toggle-dashboard { left: 20px; bottom: 20px; }
+.pg-toggle-fullscreen { top: var(--pg-edge-margin); right: calc(var(--pg-edge-margin) + var(--pg-slider-lane)); }
+.pg-toggle-maximized { top: var(--pg-edge-margin); right: 95px; }
+.pg-toggle-settings { top: var(--pg-edge-margin); right: 130px; }
+.pg-toggle-state { top: var(--pg-edge-margin); left: var(--pg-edge-margin); }
+.pg-toggle-files { top: var(--pg-edge-margin); left: 95px; }
+.pg-toggle-webcam { bottom: var(--pg-edge-margin); right: calc(var(--pg-edge-margin) + var(--pg-slider-lane)); }
+.pg-toggle-dashboard { left: var(--pg-edge-margin); bottom: var(--pg-edge-margin); }
 
 /* === Status bar === */
 .pg-status {
@@ -100,8 +102,8 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 
 /* === Overlay windows === */
 .pg-maximized #state_wrapper {
-    top: 20px;
-    left: 20px;
+    top: var(--pg-edge-margin);
+    left: var(--pg-edge-margin);
     width: 300px;
     position: absolute;
     box-shadow: var(--pg-shadow);
@@ -110,11 +112,11 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 }
 .pg-maximized #files_wrapper {
     left: 95px;
-    top: 20px;
+    top: var(--pg-edge-margin);
     max-width: 80%;
     width: 300px;
     position: absolute;
-    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.70);
+    box-shadow: var(--pg-shadow);
     background: rgba(204, 204, 204, 0.9);
     z-index: 2006;
 }
@@ -122,7 +124,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 #pg-view-settings {
     position: absolute;
     right: 130px;
-    top: 20px;
+    top: var(--pg-edge-margin);
     box-shadow: var(--pg-shadow);
     background: rgba(255, 255, 255, 1.0);
     opacity: 0.8;
@@ -156,7 +158,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 .pg-maximized #tab_plugin_dashboard {
     display: block;
     position: absolute;
-    bottom: 20px;
+    bottom: var(--pg-edge-margin);
     box-shadow: var(--pg-shadow);
 }
 /* Webcam overlay */
@@ -164,7 +166,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     display: none;
 }
 .pg-maximized #pg-webcam {
-    right: 50px;
+    right: calc(var(--pg-edge-margin) + var(--pg-slider-lane));
     z-index: 2005;
     background: rgba(204, 204, 204, 0.9);
 }
@@ -174,7 +176,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 }
 /* Dashboard overlay */
 .pg-maximized #tab_plugin_dashboard {
-    left: 20px;
+    left: var(--pg-edge-margin);
     z-index: 2004;
     background: rgba(255, 255, 255, 0.2);
     opacity: 0.8;
@@ -218,7 +220,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 #pg-layer-slider-ui {
     position: absolute;
     top: 60px;
-    right: 20px;
+    right: var(--pg-edge-margin);
     height: calc(100% - 120px);
 }
 #pg-layer-slider-ui .slider-track {
@@ -247,10 +249,10 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     touch-action: manipulation;
 }
 #pg-layer-step-up-button {
-    top: 20px;
+    top: var(--pg-edge-margin);
 }
 #pg-layer-step-down-button {
-    bottom: 20px;
+    bottom: var(--pg-edge-margin);
 }
 
 /* === Misc === */
