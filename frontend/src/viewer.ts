@@ -139,7 +139,7 @@ export class Viewer {
   private navigationModifier: 'shift' | 'ctrl' | null = null
 
   /** Camera rendering the metallic reflections on the nozzle */
-  private reflectionCamera!: THREE.CubeCamera
+  private nozzleReflectionCamera!: THREE.CubeCamera
 
   /** Light under the bed */
   private underBedLight!: THREE.PointLight
@@ -150,6 +150,8 @@ export class Viewer {
   private nozzleModel: THREE.Group | null = null
   /** Material shared by the nozzle model meshes, once loaded */
   private nozzleMaterial: THREE.MeshStandardMaterial | null = null
+  /** Offset from the nozzle position to the nozzle model center */
+  private readonly nozzleCenterOffset = new THREE.Vector3()
 
   /**
    * Planes bounding the gcode reflection to the bed surface, each through the camera and a bed
@@ -217,9 +219,8 @@ export class Viewer {
     this.scene.add(this.cameraLight)
 
     // Reflection camera
-    this.reflectionCamera = new THREE.CubeCamera(1, 100000, new THREE.WebGLCubeRenderTarget(128))
-    this.reflectionCamera.position.set(bedVolume.width / 2, bedVolume.depth / 2, 10)
-    this.scene.add(this.reflectionCamera)
+    this.nozzleReflectionCamera = new THREE.CubeCamera(1, 100000, new THREE.WebGLCubeRenderTarget(128))
+    this.scene.add(this.nozzleReflectionCamera)
 
     this.timer = new THREE.Timer()
     this.animate()
@@ -245,7 +246,7 @@ export class Viewer {
       const material = new THREE.MeshStandardMaterial({
         metalness: 1,
         roughness: 0.5,
-        envMap: this.reflectionCamera.renderTarget.texture,
+        envMap: this.nozzleReflectionCamera.renderTarget.texture,
         color: NOZZLE_COLOR
       })
       // Depth-only twins drawn first keep the transparency uniform on the outer surface
@@ -261,6 +262,7 @@ export class Viewer {
       })
       this.nozzleModel = obj
       this.nozzleMaterial = material
+      new THREE.Box3().setFromObject(obj).getCenter(this.nozzleCenterOffset).sub(obj.position)
       this.scene.add(obj)
       this.requestRender()
     })
@@ -287,7 +289,7 @@ export class Viewer {
     }
 
     // Toggle the nozzle reflection to match the setting
-    const envMap = settings.nozzleReflection ? this.reflectionCamera.renderTarget.texture : null
+    const envMap = settings.nozzleReflection ? this.nozzleReflectionCamera.renderTarget.texture : null
     if (this.nozzleMaterial && this.nozzleMaterial.envMap !== envMap) {
       this.nozzleMaterial.envMap = envMap
       this.nozzleMaterial.metalness = envMap ? 1 : 0
@@ -298,9 +300,6 @@ export class Viewer {
       this.nozzleMaterial.needsUpdate = true
       needRender = true
     }
-
-    // Rebuild the nozzle reflection
-    if (needRender && settings.nozzleReflection) this.reflectionCamera.update(this.renderer, this.scene)
 
     // Update and get the print view
     const printView = this.onFrame(deltaSeconds)
@@ -324,6 +323,15 @@ export class Viewer {
       this.nozzleMaterial.needsUpdate = true
       this.nozzleModel.visible = nozzleOpacity > 0
       needRender = true
+    }
+
+    // Rebuild the nozzle reflection, capturing the scene from the nozzle center with the nozzle hidden
+    if (needRender && settings.nozzleReflection && this.nozzleModel) {
+      const nozzleVisible = this.nozzleModel.visible
+      this.nozzleModel.visible = false
+      this.nozzleReflectionCamera.position.copy(this.nozzleModel.position).add(this.nozzleCenterOffset)
+      this.nozzleReflectionCamera.update(this.renderer, this.scene)
+      this.nozzleModel.visible = nozzleVisible
     }
 
     // Auto-orbit once the camera has sat idle a while
