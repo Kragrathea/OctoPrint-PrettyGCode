@@ -22,6 +22,12 @@ const DARK_GRID_CENTER = 0xffffff
 /** Seconds the camera must sit idle before it starts auto-orbiting */
 const ORBIT_IDLE_DELAY_SECONDS = 5
 
+/** Zoom-out limit, in multiples of the largest bed or gcode dimension */
+const MAX_ZOOM_OUT_FACTOR = 5
+
+/** Slowest zoom speed, reached at the gcode surface */
+const MIN_ZOOM_SPEED = 0.5
+
 /** Mouse buttons usable in a navigation binding */
 type MouseButton = 'left' | 'middle' | 'right'
 /** Mouse button with an optional modifier key to hold */
@@ -132,6 +138,8 @@ export class Viewer {
   private cameraControls!: CameraControls
   /** Seconds the camera has sat idle */
   private cameraIdleTime = 0
+  /** Bounds of the displayed gcode */
+  private readonly gcodeBounds = new THREE.Box3()
 
   /** The active navigation mode */
   private navigationMode: NavigationMode = NAVIGATION_MODES.prusaslicer
@@ -334,6 +342,20 @@ export class Viewer {
       this.nozzleModel.visible = nozzleVisible
     }
 
+    // Cap any pending dolly at the zoom-out limit
+    if (this.cameraControls.getSpherical(new Spherical()).radius > this.cameraControls.maxDistance) {
+      this.cameraControls.dollyTo(this.cameraControls.maxDistance, true)
+    }
+
+    // Slow the zoom near the gcode
+    if (!this.gcodeBounds.isEmpty()) {
+      const position = this.cameraControls.getPosition(new Vector3())
+      const size = this.gcodeBounds.getSize(new Vector3())
+      const gcodeSpan = Math.max(1, size.x, size.y, size.z)
+      const gcodeDistance = this.gcodeBounds.distanceToPoint(position)
+      this.cameraControls.dollySpeed = MIN_ZOOM_SPEED + (1 - MIN_ZOOM_SPEED) * Math.min(1, gcodeDistance / gcodeSpan)
+    }
+
     // Auto-orbit once the camera has sat idle a while
     if (this.cameraControls.update(deltaSeconds)) {
       this.cameraIdleTime = 0
@@ -392,7 +414,7 @@ export class Viewer {
 
   /* ---- Scene and camera ---- */
 
-  /** (Re)builds the bed plane and grid to match the current bed geometry */
+  /** (Re)builds the bed plane and grid and refits the camera limits to the current bed geometry */
   updateBedMesh () {
     if (!this.scene) return
 
@@ -424,6 +446,30 @@ export class Viewer {
     grid.material.opacity = 0.6
     grid.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
     this.scene.add(grid)
+
+    // Update camera limits
+    this.updateCameraLimits()
+  }
+
+  /** (Re)fits the camera limits to the current bed and gcode geometry */
+  private updateCameraLimits () {
+    const bedVolume = this.getBedVolume()
+    const gcodeSize = this.gcodeBounds.getSize(new Vector3())
+    const maxSceneDimension = Math.max(100, bedVolume.width, bedVolume.depth, bedVolume.height, gcodeSize.x, gcodeSize.y, gcodeSize.z)
+    const isLowerleft = bedVolume.origin === 'lowerleft'
+    const centerX = isLowerleft ? bedVolume.width / 2 : 0
+    const centerY = isLowerleft ? bedVolume.depth / 2 : 0
+
+    // Cap the zoom-out
+    this.cameraControls.maxDistance = MAX_ZOOM_OUT_FACTOR * maxSceneDimension
+    this.cameraControls.setBoundary(new Box3(
+      new Vector3(centerX - 2 * maxSceneDimension, centerY - 2 * maxSceneDimension, -2 * maxSceneDimension),
+      new Vector3(centerX + 2 * maxSceneDimension, centerY + 2 * maxSceneDimension, 2 * maxSceneDimension)
+    ))
+
+    // Keep the far plane past the zoom-out limit
+    this.camera.far = this.cameraControls.maxDistance * 1.2
+    this.camera.updateProjectionMatrix()
   }
 
   /**
@@ -448,6 +494,10 @@ export class Viewer {
    * @param bounds - Box to frame, in scene coordinates
    */
   frameBounds (bounds: THREE.Box3) {
+    // Update gcode boundaries and camera limits
+    this.gcodeBounds.copy(bounds)
+    this.updateCameraLimits()
+
     // Re-center on the bed first
     this.resetCameraTarget(true)
 
