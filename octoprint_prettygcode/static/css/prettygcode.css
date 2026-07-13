@@ -153,6 +153,9 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     --hover-color: #eee;
     --focus-color: #ddd;
 }
+#pg-view-settings .lil-root > .lil-title {
+    display: none;
+}
 #pg-view-settings .lil-controller.lil-option {
     position: relative;
 }
