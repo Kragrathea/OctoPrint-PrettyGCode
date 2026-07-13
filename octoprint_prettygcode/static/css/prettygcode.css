@@ -10,6 +10,7 @@
 
     /* ---- Windows ---- */
     --pg-window-bg: rgba(250, 250, 250, 0.8);
+    --pg-window-text: #555;
     --pg-window-radius: 4px;
     --pg-window-header-height: 24px;
 
@@ -143,6 +144,14 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 .pg-maximized #files_wrapper .accordion-body {
     height: auto !important;
 }
+.pg-maximized #state_wrapper .accordion-heading,
+.pg-maximized #files_wrapper .accordion-heading {
+    display: flow-root;
+}
+.pg-maximized #state_wrapper .accordion-heading-button > a,
+.pg-maximized #files_wrapper .accordion-heading-button > a {
+    color: var(--pg-window-text);
+}
 .pg-maximized #state_wrapper::after,
 .pg-maximized #files_wrapper::after,
 #pg-view-settings::after {
@@ -150,7 +159,8 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     top: 0;
     line-height: var(--pg-window-header-height);
     font-weight: bold;
-    color: #555;
+    color: var(--pg-window-text);
+    pointer-events: none;
 }
 .pg-maximized #state_wrapper::after { content: "State"; right: 15px; }
 .pg-maximized #files_wrapper::after { content: "Files"; right: 15px; }
@@ -174,9 +184,9 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     --width: 300px;
     --name-width: 45%;
     --background-color: transparent;
-    --text-color: #555;
+    --text-color: var(--pg-window-text);
     --title-background-color: rgba(0, 0, 0, 0.07);
-    --title-text-color: #555;
+    --title-text-color: var(--pg-window-text);
     --widget-color: rgba(0, 0, 0, 0.07);
     --hover-color: rgba(0, 0, 0, 0.05);
     --focus-color: rgba(0, 0, 0, 0.12);
@@ -286,7 +296,8 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     height: auto;
 }
 #pg-layer-slider-ui .slider-track {
-    background: green;
+    background-clip: padding-box;
+    border-color: rgba(0, 0, 0, 0.3);
 }
 #pg-layer-slider-ui .slider-handle {
     left: 50%;
@@ -315,6 +326,76 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 }
 #pg-layer-step-down-button {
     bottom: var(--pg-margin-bottom);
+}
+
+/* === Dark mode === */
+.pg-dark {
+    --pg-window-bg: rgba(34, 34, 34, 0.85);
+    --pg-window-text: #ccc;
+    --pg-shadow-color: rgba(0, 0, 0, 0.6);
+}
+.pg-maximized.pg-dark {
+    color: #ddd;
+}
+.pg-dark .pg-status {
+    background: #ffffff20;
+    color: #e8e8e8;
+}
+.pg-dark .pg-toggle,
+.pg-dark .pg-layer-step-button {
+    color: #ddd;
+    text-shadow: none;
+    border: 1px solid #1a1a1a;
+    background-color: #333;
+    background-image: linear-gradient(to bottom, #3c3c3c, #2b2b2b);
+}
+.pg-dark .pg-toggle:hover,
+.pg-dark .pg-toggle:active,
+.pg-dark .pg-layer-step-button:hover,
+.pg-dark .pg-layer-step-button:active,
+.pg-dark .pg-layer-step-button[disabled] {
+    color: #ddd;
+    background-color: #2b2b2b;
+}
+.pg-dark #pg-layer-slider-ui .slider-track {
+    background-color: #333;
+    background-image: none;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+.pg-dark #pg-layer-slider-ui .slider-handle {
+    color: #ddd;
+    text-shadow: none;
+    border-color: #1a1a1a;
+    background-color: #333;
+    background-image: linear-gradient(to bottom, #3c3c3c, #2b2b2b);
+}
+.pg-dark #pg-layer-slider-ui.slider-disabled .slider-handle {
+    background-image: linear-gradient(to bottom, #555, #444);
+}
+.pg-dark #pg-view-settings .lil-gui {
+    --title-background-color: rgba(255, 255, 255, 0.08);
+    --widget-color: rgba(255, 255, 255, 0.1);
+    --hover-color: rgba(255, 255, 255, 0.15);
+    --focus-color: rgba(255, 255, 255, 0.22);
+}
+.pg-maximized.pg-dark #state_wrapper,
+.pg-maximized.pg-dark #files_wrapper {
+    border-color: #444;
+}
+.pg-maximized.pg-dark #state_wrapper hr {
+    border-top-color: #444;
+    border-bottom-color: transparent;
+}
+.pg-maximized.pg-dark #state_wrapper .progress,
+.pg-maximized.pg-dark #files_wrapper .progress {
+    background-color: rgba(255, 255, 255, 0.12);
+    background-image: none;
+}
+.pg-maximized.pg-dark #files .gcode_files .entry {
+    border-bottom-color: #444;
+}
+.pg-maximized.pg-dark #files .gcode_files .entry:hover {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* === Misc === */

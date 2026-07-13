@@ -14,6 +14,11 @@ const LIGHT_BACKGROUND = 0xd0d0d0
 /** Dark theme background color */
 const DARK_BACKGROUND = 0x000000
 
+/** Light theme bed grid center-line color */
+const LIGHT_GRID_CENTER = 0x000000
+/** Dark theme bed grid center-line color */
+const DARK_GRID_CENTER = 0xffffff
+
 /** Seconds the camera must sit idle before it starts auto-orbiting */
 const ORBIT_IDLE_DELAY_SECONDS = 5
 
@@ -404,7 +409,7 @@ export class Viewer {
     this.scene.add(plane)
 
     // Grid lines, rotated from three's default XZ plane into the scene's z-up XY plane
-    const grid = new THREE.GridHelper(bedVolume.width, bedVolume.width / 10, 0x000000, 0x888888)
+    const grid = new THREE.GridHelper(bedVolume.width, bedVolume.width / 10, this.settings.darkMode ? DARK_GRID_CENTER : LIGHT_GRID_CENTER, 0x888888)
     grid.name = 'grid'
     grid.position.set(centerX, centerY, 0)
     grid.material.transparent = true

@@ -64,6 +64,7 @@ export function initLayerSlider (app: PrettyGCodeApp) {
     id: 'pg-layer-slider-ui',
     orientation: 'vertical',
     reversed: true,
+    selection: 'after',
     tooltip: 'hide',
     min: 0,
     max: 100,

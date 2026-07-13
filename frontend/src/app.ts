@@ -113,6 +113,7 @@ export class PrettyGCodeApp {
         initLayerSlider(this)
         initOverlayWindows(this.settings)
         initToggleButtons(this)
+        this.updateDarkMode()
 
         // Set view as initialized
         this.viewInitialized = true
@@ -264,9 +265,11 @@ export class PrettyGCodeApp {
     this.viewer.applyNavigationMode(this.settings.navigationMode)
   }
 
-  /** (Re)applies the dark mode setting to the 3D view */
+  /** (Re)applies the dark mode setting */
   updateDarkMode () {
+    $('.page-container').toggleClass('pg-dark', this.settings.darkMode)
     this.viewer.applyBackground(this.settings.darkMode)
+    this.viewer.updateBedMesh()
   }
 
   /** (Re)applies the antialias setting to the 3D view */

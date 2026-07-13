@@ -28,7 +28,7 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
     interfaceFolder,
     'darkMode',
     'Dark mode',
-    'Use a dark background for the 3D view.'
+    'Use a dark theme.'
   ).onFinishChange(() => app.updateDarkMode())
 
   option(

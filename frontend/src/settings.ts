@@ -7,7 +7,7 @@ const STORAGE_KEY = 'pg-settings'
 export class Settings {
   /** Navigation mode of the 3D view */
   navigationMode: NavigationModeKey = 'prusaslicer'
-  /** Whether to use a dark background in the 3D view */
+  /** Whether to use a dark theme */
   darkMode = false
   /** Whether to show a reflection of the print on the bed */
   showMirror = false
