@@ -1,5 +1,8 @@
 import type { PrettyGCodeApp } from '../app'
 
+/** Settings keys of the toggleable windows */
+type WindowKey = 'showState' | 'showFiles' | 'showWebcam' | 'showDashboard'
+
 /** Last known maximized state */
 let wasMaximized = false
 
@@ -8,9 +11,14 @@ let wasMaximized = false
  * @param app - Application instance
  */
 export function initToggleButtons (app: PrettyGCodeApp) {
-  // Flip a window setting and refresh the overlays accordingly
-  const toggleWindow = (key: 'showState' | 'showFiles' | 'showWebcam' | 'showDashboard') => {
+  /**
+   * Toggles a window open or closed
+   * @param key - Settings key of the window to toggle
+   * @param closes - Settings key of the window to close when the toggled one opens
+   */
+  const toggleWindow = (key: WindowKey, closes?: WindowKey) => {
     app.settings[key] = !app.settings[key]
+    if (app.settings[key] && closes) app.settings[closes] = false
     app.settings.save()
     app.updateWindowStates()
   }
@@ -57,8 +65,8 @@ export function initToggleButtons (app: PrettyGCodeApp) {
 
   $('.pg-toggle-settings').on('click', () => $('#pg-view-settings').toggleClass('pg-hidden'))
 
-  $('.pg-toggle-state').on('click', () => toggleWindow('showState'))
-  $('.pg-toggle-files').on('click', () => toggleWindow('showFiles'))
+  $('.pg-toggle-state').on('click', () => toggleWindow('showState', 'showFiles'))
+  $('.pg-toggle-files').on('click', () => toggleWindow('showFiles', 'showState'))
   $('.pg-toggle-webcam').on('click', () => toggleWindow('showWebcam'))
   $('.pg-toggle-dashboard').on('click', () => toggleWindow('showDashboard'))
 }

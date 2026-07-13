@@ -1,12 +1,23 @@
 /* === Variables === */
 :root {
-    --pg-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    /* ---- Layout ---- */
     --pg-margin-top: 20px;
     --pg-margin-bottom: 20px;
     --pg-margin-left: 20px;
     --pg-margin-right: 20px;
     --pg-slider-lane: 40px;
     --pg-status-height: 24px;
+
+    /* ---- Windows ---- */
+    --pg-window-bg: rgba(250, 250, 250, 0.8);
+    --pg-window-radius: 4px;
+    --pg-window-header-height: 24px;
+
+    /* ---- Shadow ---- */
+    --pg-shadow-offset: 1px;
+    --pg-shadow-blur: 4px;
+    --pg-shadow-color: rgba(0, 0, 0, 0.2);
+    --pg-shadow: 0 var(--pg-shadow-offset) var(--pg-shadow-blur) var(--pg-shadow-color);
 }
 
 /* === Tab header === */
@@ -88,7 +99,7 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 .pg-toggle-maximized { top: var(--pg-margin-top); right: 95px; }
 .pg-toggle-settings { top: var(--pg-margin-top); right: 130px; }
 .pg-toggle-state { top: var(--pg-margin-top); left: var(--pg-margin-left); }
-.pg-toggle-files { top: var(--pg-margin-top); left: 95px; }
+.pg-toggle-files { top: var(--pg-margin-top); left: 55px; }
 .pg-toggle-webcam { bottom: var(--pg-margin-bottom); right: calc(var(--pg-margin-right) + var(--pg-slider-lane)); }
 .pg-toggle-dashboard { left: var(--pg-margin-left); bottom: var(--pg-margin-bottom); }
 
@@ -110,48 +121,65 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 }
 
 /* === Overlay windows === */
-.pg-maximized #state_wrapper {
+.pg-maximized #state_wrapper,
+.pg-maximized #files_wrapper {
     top: var(--pg-margin-top);
     left: var(--pg-margin-left);
     width: 300px;
+    padding-top: var(--pg-window-header-height);
     position: absolute;
     box-shadow: var(--pg-shadow);
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--pg-window-bg);
     z-index: 2005;
 }
 .pg-maximized #files_wrapper {
-    left: 95px;
-    top: var(--pg-margin-top);
     max-width: 80%;
-    width: 300px;
-    position: absolute;
-    box-shadow: var(--pg-shadow);
-    background: rgba(204, 204, 204, 0.9);
-    z-index: 2006;
 }
+.pg-maximized #state_wrapper .accordion-toggle,
+.pg-maximized #files_wrapper .accordion-toggle {
+    display: none;
+}
+.pg-maximized #state_wrapper .accordion-body,
+.pg-maximized #files_wrapper .accordion-body {
+    height: auto !important;
+}
+.pg-maximized #state_wrapper::after,
+.pg-maximized #files_wrapper::after,
+#pg-view-settings::after {
+    position: absolute;
+    top: 0;
+    line-height: var(--pg-window-header-height);
+    font-weight: bold;
+    color: #555;
+}
+.pg-maximized #state_wrapper::after { content: "State"; right: 15px; }
+.pg-maximized #files_wrapper::after { content: "Files"; right: 15px; }
+#pg-view-settings::after { content: "Settings"; left: 15px; }
 /* View Settings (lil-gui host) */
 #pg-view-settings {
     position: absolute;
     right: 130px;
     top: var(--pg-margin-top);
+    padding-top: var(--pg-window-header-height);
     box-shadow: var(--pg-shadow);
-    background: rgba(255, 255, 255, 1.0);
-    opacity: 0.8;
+    background: var(--pg-window-bg);
+    border-radius: var(--pg-window-radius);
+    overflow: hidden;
 }
 .pg-maximized #pg-view-settings {
-    z-index: 2004;
+    z-index: 2007;
 }
 #pg-view-settings .lil-gui {
     --font-size: 14px;
     --width: 300px;
     --name-width: 45%;
-    --background-color: #fafafa;
+    --background-color: transparent;
     --text-color: #555;
-    --title-background-color: #e8e8e8;
+    --title-background-color: rgba(0, 0, 0, 0.07);
     --title-text-color: #555;
-    --widget-color: #e9e9e9;
-    --hover-color: #eee;
-    --focus-color: #ddd;
+    --widget-color: rgba(0, 0, 0, 0.07);
+    --hover-color: rgba(0, 0, 0, 0.05);
+    --focus-color: rgba(0, 0, 0, 0.12);
 }
 #pg-view-settings .lil-root > .lil-title {
     display: none;
@@ -187,6 +215,8 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
     position: absolute;
     bottom: var(--pg-margin-bottom);
     box-shadow: var(--pg-shadow);
+    background: var(--pg-window-bg);
+    border-radius: var(--pg-window-radius);
 }
 /* Webcam overlay */
 #pg-webcam {
@@ -195,20 +225,24 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 .pg-maximized #pg-webcam {
     right: calc(var(--pg-margin-right) + var(--pg-slider-lane));
     z-index: 2005;
-    background: rgba(204, 204, 204, 0.9);
 }
 #pg-webcam #webcam_plugins_container {
     min-height: 0;
     margin-top: 0;
+    border-radius: var(--pg-window-radius);
 }
 /* Dashboard overlay */
 .pg-maximized #tab_plugin_dashboard {
     left: var(--pg-margin-left);
     z-index: 2004;
-    background: rgba(255, 255, 255, 0.2);
-    opacity: 0.8;
     transform: scale(var(--pg-dash-scale, 1));
     transform-origin: bottom left;
+    box-shadow: 0 calc(var(--pg-shadow-offset) / var(--pg-dash-scale, 1)) calc(var(--pg-shadow-blur) / var(--pg-dash-scale, 1)) var(--pg-shadow-color);
+    border-radius: calc(var(--pg-window-radius) / var(--pg-dash-scale, 1));
+}
+.pg-maximized #tab_plugin_dashboard #fullWindowIconLink,
+.pg-maximized #tab_plugin_dashboard #dashboard_fullScreenIcon {
+    display: none;
 }
 
 /* === Resize handles === */
