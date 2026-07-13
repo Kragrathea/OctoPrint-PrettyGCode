@@ -101,6 +101,8 @@ html:has(.page-container.pg-maximized) .modal-backdrop {
 .pg-toggle-settings { top: var(--pg-margin-top); right: 130px; }
 .pg-toggle-state { top: var(--pg-margin-top); left: var(--pg-margin-left); }
 .pg-toggle-files { top: var(--pg-margin-top); left: 55px; }
+.pg-reset-view { top: var(--pg-margin-top); left: var(--pg-margin-left); }
+.pg-maximized .pg-reset-view { left: 90px; }
 .pg-toggle-webcam { bottom: var(--pg-margin-bottom); right: calc(var(--pg-margin-right) + var(--pg-slider-lane)); }
 .pg-toggle-dashboard { left: var(--pg-margin-left); bottom: var(--pg-margin-bottom); }
 

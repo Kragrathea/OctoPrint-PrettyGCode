@@ -28,6 +28,9 @@ const MAX_ZOOM_OUT_FACTOR = 5
 /** Slowest zoom speed, reached at the gcode surface */
 const MIN_ZOOM_SPEED = 0.5
 
+/** Polar angle of the default view, in radians from vertical */
+const DEFAULT_VIEW_POLAR_ANGLE = Math.PI / 4
+
 /** Mouse buttons usable in a navigation binding */
 type MouseButton = 'left' | 'middle' | 'right'
 /** Mouse button with an optional modifier key to hold */
@@ -200,7 +203,7 @@ export class Viewer {
     this.cameraControls.infinityDolly = true
     this.cameraControls.minDistance = 10
     this.applyNavigationMode(settings.navigationMode)
-    this.resetCameraTarget()
+    this.applyDefaultView()
 
     // Watch navigation modifiers
     window.addEventListener('keydown', (event) => this.updateNavigationModifier(event))
@@ -490,6 +493,26 @@ export class Viewer {
   }
 
   /**
+   * Moves the camera to the default view
+   * @param enableTransition - True to animate the move
+   * @param footprint - Print footprint to frame, the whole bed when omitted
+   */
+  applyDefaultView (enableTransition = false, footprint?: number) {
+    const bedVolume = this.getBedVolume()
+
+    // Re-center on the bed first
+    this.resetCameraTarget(enableTransition)
+
+    // Return to the elevated front view
+    this.cameraControls.normalizeRotations()
+    this.cameraControls.rotateTo(0, DEFAULT_VIEW_POLAR_ANGLE, enableTransition)
+
+    // Pull back to roughly the framed footprint, with a floor for tiny models
+    const distance = footprint ?? Math.max(bedVolume.width, bedVolume.depth)
+    this.cameraControls.dollyTo(Math.max(40, distance), enableTransition)
+  }
+
+  /**
    * Adjusts the camera to show the given bounds
    * @param bounds - Box to frame, in scene coordinates
    */
@@ -498,12 +521,9 @@ export class Viewer {
     this.gcodeBounds.copy(bounds)
     this.updateCameraLimits()
 
-    // Re-center on the bed first
-    this.resetCameraTarget(true)
-
-    // Pull back to roughly the print's footprint, with a floor for tiny models
+    // Frame the print's footprint from the default view
     const size = bounds.getSize(new THREE.Vector3())
-    this.cameraControls.dollyTo(Math.max(40, size.x, size.y), true)
+    this.applyDefaultView(true, Math.max(size.x, size.y))
   }
 
   /** (Re)computes the planes that clip the bed reflection to the bed surface */

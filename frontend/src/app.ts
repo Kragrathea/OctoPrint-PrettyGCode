@@ -188,7 +188,7 @@ export class PrettyGCodeApp {
     // Show the whole model: slider max and current layer at the top
     updateLayerSliderMax(this)
     this.setCurrentLayerNumber(this.layerCount)
-    if (this.layerCount) this.viewer.frameBounds(this.parsedGcode.bounds)
+    this.resetView()
     this.viewer.requestRender()
   }
 
@@ -258,6 +258,12 @@ export class PrettyGCodeApp {
    */
   setManualLayerControl (manual: boolean) {
     this.manualLayerControl = manual
+  }
+
+  /** Resets the camera to the default view */
+  resetView () {
+    if (this.parsedGcode?.layers.length) this.viewer.frameBounds(this.parsedGcode.bounds)
+    else this.viewer.applyDefaultView(true)
   }
 
   /** (Re)applies the navigation mode setting to the 3D view */

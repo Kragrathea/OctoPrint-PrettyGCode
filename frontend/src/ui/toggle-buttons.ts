@@ -63,10 +63,12 @@ export function initToggleButtons (app: PrettyGCodeApp) {
     }
   })
 
-  $('.pg-toggle-settings').on('click', () => $('#pg-view-settings').toggleClass('pg-hidden'))
-
   $('.pg-toggle-state').on('click', () => toggleWindow('showState', 'showFiles'))
   $('.pg-toggle-files').on('click', () => toggleWindow('showFiles', 'showState'))
-  $('.pg-toggle-webcam').on('click', () => toggleWindow('showWebcam'))
+  $('.pg-reset-view').on('click', () => app.resetView())
+
+  $('.pg-toggle-settings').on('click', () => $('#pg-view-settings').toggleClass('pg-hidden'))
+
   $('.pg-toggle-dashboard').on('click', () => toggleWindow('showDashboard'))
+  $('.pg-toggle-webcam').on('click', () => toggleWindow('showWebcam'))
 }
