@@ -83,6 +83,13 @@ export function initSettingsPanel (app: PrettyGCodeApp) {
     'Show a reflection of the print on the bed.'
   ).onFinishChange(() => app.rebuildGcodeModel())
 
+  option(
+    gcodeModelFolder,
+    'showExcluded',
+    'Excluded gcode',
+    'Show gcode excluded by the Exclude Region and Cancel Object plugins, greyed out.'
+  ).onFinishChange(() => app.rebuildGcodeModel())
+
   /* ---- Nozzle ---- */
 
   const nozzleFolder = gui.addFolder('Nozzle')

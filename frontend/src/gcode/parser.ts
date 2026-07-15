@@ -17,6 +17,7 @@ export interface Layer {
   colors: number[]
   filePositions: number[]
   durations: number[]
+  objectIds: number[]
 }
 
 /** Initial machine state */
@@ -80,12 +81,20 @@ export class GCodeParser {
   /** Nozzle diameter the slicer states, if any */
   slicerNozzleDiameter: number | null = null
 
+  /** Names of the objects marked in the gcode, by object id */
+  readonly objectNames: string[] = []
+
+  /** Tag of the object markers, lowercased */
+  private readonly objectTag: string
+
   /** Current machine state */
   private machineState: MachineState = INITIAL_MACHINE_STATE
   /** Layer being filled, if any */
   private currentLayer: Layer | null = null
   /** Color of the current feature type */
   private currentColor = DEFAULT_COLOR
+  /** Id of the object the parsed segments belong to, -1 for none */
+  private currentObjectId = -1
   /** Partial line left over from the previous chunk */
   private pendingLine = ''
   /** Bytes parsed so far */
@@ -96,6 +105,13 @@ export class GCodeParser {
   private axesRelative = false
   /** Whether extrusion is relative */
   private extrusionRelative = false
+
+  /**
+   * @param objectTag - Tag of the "@<tag> <name>" object markers
+   */
+  constructor (objectTag = 'Object') {
+    this.objectTag = objectTag.toLowerCase()
+  }
 
   /**
    * Parses the next chunk of gcode text; chunks may split lines anywhere
@@ -112,6 +128,13 @@ export class GCodeParser {
       const rawLine = lines[i]
       this.filePosition += (NON_ASCII.test(rawLine) ? textEncoder.encode(rawLine).length : rawLine.length) + 1
 
+      // Parse object markers
+      if (rawLine.startsWith('@')) {
+        this.parseObjectMarker(rawLine)
+        continue
+      }
+
+      // Parse comments
       if (rawLine.includes(';')) {
         const commentLower = rawLine.toLowerCase()
 
@@ -264,12 +287,31 @@ export class GCodeParser {
   }
 
   /**
+   * Parse the object marker, updating the current object id
+   * @param rawLine - Object marker line, starting with "@"
+   */
+  private parseObjectMarker (rawLine: string) {
+    const space = rawLine.indexOf(' ')
+    const command = (space < 0 ? rawLine : rawLine.slice(0, space)).slice(1).toLowerCase()
+
+    if (command === this.objectTag + 'stop') {
+      this.currentObjectId = -1
+    } else if (command === this.objectTag && space > 0) {
+      const name = rawLine.slice(space + 1).trim()
+      if (!name) return
+
+      const id = this.objectNames.indexOf(name)
+      this.currentObjectId = id >= 0 ? id : this.objectNames.push(name) - 1
+    }
+  }
+
+  /**
    * Opens a new layer and makes it current
    * @param move - Machine state starting the layer
    * @returns The new layer
    */
   private newLayer (move: MachineState) {
-    this.currentLayer = { vertices: [], z: move.z, colors: [], filePositions: [], durations: [] }
+    this.currentLayer = { vertices: [], z: move.z, colors: [], filePositions: [], durations: [], objectIds: [] }
     this.layers.push(this.currentLayer)
     return this.currentLayer
   }
@@ -299,9 +341,10 @@ export class GCodeParser {
     // Open a layer if none is active yet
     const layer = this.currentLayer ?? this.newLayer(start)
 
-    // Store the segment endpoints and its position in the file
+    // Store the segment endpoints, its position in the file and the object it belongs to
     layer.vertices.push(start.x, start.y, start.z, end.x, end.y, end.z)
     layer.filePositions.push(this.filePosition)
+    layer.objectIds.push(this.currentObjectId)
 
     // Estimated seconds of the travel leading here and of the segment itself
     const length = Math.hypot(end.x - start.x, end.y - start.y, end.z - start.z) || Math.abs(end.e - start.e) || 0
@@ -330,10 +373,11 @@ export class GCodeParser {
 /**
  * Downloads and parses a job's gcode; an empty path yields an empty result
  * @param jobPath - Server path of the job file
+ * @param objectTag - Tag of the "@<tag> <name>" object markers
  * @returns The parser holding the parsed gcode
  */
-export async function parseGcodeFile (jobPath: string) {
-  const parser = new GCodeParser()
+export async function parseGcodeFile (jobPath: string, objectTag?: string) {
+  const parser = new GCodeParser(objectTag)
   if (!jobPath) return parser
 
   const fileUrl = OctoPrint.files.downloadPath('local', jobPath)

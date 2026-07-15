@@ -1,5 +1,6 @@
 import * as THREE from '../three-exports'
 import type { Layer } from './parser'
+import type { PrintExclusions } from './exclusions'
 
 /** A non-empty layer in print order, carrying its offset into the global segment numbering */
 interface DrawnLayer {
@@ -46,6 +47,16 @@ export class PrintTimeline {
   /** Nozzle position in scene coordinates */
   private readonly nozzlePosition = new THREE.Vector3()
 
+  /** Print exclusions of the loaded gcode */
+  private readonly exclusions: PrintExclusions
+
+  /**
+   * @param exclusions - Print exclusions of the loaded gcode
+   */
+  constructor (exclusions: PrintExclusions) {
+    this.exclusions = exclusions
+  }
+
   /**
    * Indexes parsed layers into a new timeline
    * @param layers - Parsed gcode layers
@@ -53,11 +64,13 @@ export class PrintTimeline {
   index (layers: Layer[]) {
     // Flatten the drawn layers into print order, tracking each one's running segment offset
     this.drawnLayers = []
+    const excludedFlags: (Uint8Array | null)[] = []
     let base = 0
     layers.forEach((layer, i) => {
       if (layer.vertices.length <= 2) return // empty layers have no drawn object
       const numSegments = layer.vertices.length / 6
       this.drawnLayers.push({ layerNumber: i + 1, globalBase: base, numSegments, vertices: layer.vertices, colors: layer.colors, filePositions: layer.filePositions, durations: layer.durations })
+      excludedFlags.push(this.exclusions.classifyLayer(layer))
       base += numSegments
     })
     this.totalSegments = base
@@ -68,16 +81,22 @@ export class PrintTimeline {
     const ends = new Float64Array(this.totalSegments)
     let time = 0
     let globalIndex = 0
-    for (const layer of this.drawnLayers) {
+    this.drawnLayers.forEach((layer, i) => {
       const durations = layer.durations
-      for (let offset = 0; offset < durations.length; offset += 2) {
-        time += durations[offset]
-        starts[globalIndex] = time
-        time += durations[offset + 1]
+      const excluded = excludedFlags[i]
+      for (let offset = 0, segment = 0; offset < durations.length; offset += 2, segment++) {
+        // Excluded segments take no time
+        if (excluded && excluded[segment]) {
+          starts[globalIndex] = time
+        } else {
+          time += durations[offset]
+          starts[globalIndex] = time
+          time += durations[offset + 1]
+        }
         ends[globalIndex] = time
         globalIndex++
       }
-    }
+    })
     this.segmentStartTimes = starts
     this.segmentEndTimes = ends
 

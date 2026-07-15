@@ -2,6 +2,7 @@ import { Settings } from './settings'
 import { Viewer } from './viewer'
 import { parseGcodeFile, GCodeParser } from './gcode/parser'
 import { PrintTimeline } from './gcode/print-timeline'
+import { PrintExclusions } from './gcode/exclusions'
 import { GCodeModel } from './gcode/gcode-model'
 import { initSettingsPanel } from './ui/settings-panel'
 import { initOverlayWindows } from './ui/overlay-windows'
@@ -33,6 +34,8 @@ const PG_TAB = '#tab_plugin_prettygcode'
 export class PrettyGCodeApp {
   /** OctoPrint printer profiles view model */
   private readonly printerProfilesVM: any
+  /** OctoPrint settings view model */
+  private readonly settingsVM: any
 
   /** Plugin frontend settings */
   readonly settings = new Settings()
@@ -42,10 +45,12 @@ export class PrettyGCodeApp {
 
   /** The 3D view */
   private readonly viewer = new Viewer(this.settings, () => this.bedVolume, (deltaSeconds) => this.updatePrintView(deltaSeconds))
+  /** Print exclusions of the loaded gcode */
+  private readonly exclusions = new PrintExclusions()
   /** Print timeline of the loaded gcode */
-  private readonly printTimeline = new PrintTimeline()
+  private readonly printTimeline = new PrintTimeline(this.exclusions)
   /** The rendered gcode model */
-  private readonly gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.viewer.mirrorBoundsPlanes)
+  private readonly gcodeModel = new GCodeModel(this.settings, this.printTimeline, this.exclusions, this.viewer.mirrorBoundsPlanes)
 
   /** Parsed gcode of the currently loaded job */
   private parsedGcode: GCodeParser | null = null
@@ -76,8 +81,9 @@ export class PrettyGCodeApp {
   /**
    * @param viewModels - OctoPrint view models
    */
-  constructor ({ printerProfilesVM }: { printerProfilesVM: any }) {
+  constructor ({ printerProfilesVM, settingsVM }: { printerProfilesVM: any, settingsVM: any }) {
     this.printerProfilesVM = printerProfilesVM
+    this.settingsVM = settingsVM
     this.settings.load()
   }
 
@@ -106,7 +112,9 @@ export class PrettyGCodeApp {
         this.viewer.init()
         this.viewer.loadNozzle()
         this.viewer.scene.add(this.gcodeModel.linesGroup)
+        this.viewer.scene.add(this.exclusions.regionMarkersGroup)
         this.loadGcode(this.currentJobPath)
+        this.fetchExclusions()
 
         // UI controls
         initSettingsPanel(this)
@@ -149,6 +157,15 @@ export class PrettyGCodeApp {
   }
 
   /**
+   * Handles a plugin message broadcast by the OctoPrint server
+   * @param plugin - Identifier of the sending plugin
+   * @param data - Message payload
+   */
+  onDataUpdaterPluginMessage (plugin: string, data: any) {
+    if (this.exclusions.applyPluginMessage(plugin, data)) this.updateExclusions()
+  }
+
+  /**
    * Syncs the app with a printer data payload, loading the newly selected job if it changed
    * @param data - OctoPrint data payload
    */
@@ -178,7 +195,10 @@ export class PrettyGCodeApp {
    * @param jobPath - Server path of the job file
    */
   private async loadGcode (jobPath: string) {
-    this.parsedGcode = await parseGcodeFile(jobPath)
+    // The object marker tag comes from the Cancel Object plugin settings
+    const objectTag = this.settingsVM.settings?.plugins?.cancelobject?.reptag?.()
+    this.parsedGcode = await parseGcodeFile(jobPath, objectTag)
+    this.exclusions.setGcodeObjectNames(this.parsedGcode.objectNames)
 
     // Index the timeline and build the model
     this.printTimeline.index(this.parsedGcode.layers)
@@ -197,6 +217,22 @@ export class PrettyGCodeApp {
     // The slicer's nozzle diameter wins over the printer profile
     this.gcodeModel.applyLineWidth(this.parsedGcode?.slicerNozzleDiameter ?? this.nozzleDiameter)
     this.viewer.requestRender()
+  }
+
+  /* ---- Exclusions ---- */
+
+  /** Fetches the current exclusions and applies them to the view */
+  private async fetchExclusions () {
+    if (await this.exclusions.fetch()) this.updateExclusions()
+  }
+
+  /** (Re)applies the current exclusions to the timeline and the model */
+  private updateExclusions () {
+    if (!this.viewInitialized || !this.parsedGcode) return
+
+    this.printTimeline.index(this.parsedGcode.layers)
+    this.gcodeModel.rebuild()
+    this.updateLayerHighlight()
   }
 
   /* ---- Print tracking ---- */

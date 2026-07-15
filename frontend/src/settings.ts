@@ -11,6 +11,8 @@ export class Settings {
   darkMode = false
   /** Whether to show a reflection of the print on the bed */
   showMirror = false
+  /** Whether to show gcode excluded from printing, greyed out */
+  showExcluded = true
   /** Whether to auto-orbit the camera when idle */
   orbitWhenIdle = false
   /** Whether to draw the lines with their real thickness */
